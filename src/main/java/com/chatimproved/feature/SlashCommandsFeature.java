@@ -13,7 +13,6 @@ import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ChatboxInput;
@@ -28,12 +27,16 @@ import java.util.Map;
 @Slf4j
 public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeature.SlashCommandsConfig>
 {
-    @ConfigGroup("featureSlashCommands")
     public interface SlashCommandsConfig extends ChatFeatureConfig
     {
         boolean featureSlashCommands_Enabled();
         boolean featureSlashCommands_ReplyEnabled();
         boolean featureSlashCommands_WhisperEnabled();
+    }
+
+    @Override
+    public String getConfigGroup() {
+        return "featureSlashCommands";
     }
 
     public interface ChatCommandHandler

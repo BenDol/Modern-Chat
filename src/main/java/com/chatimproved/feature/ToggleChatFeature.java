@@ -8,12 +8,10 @@ import net.runelite.api.GameState;
 import net.runelite.api.VarClientStr;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.VarClientIntChanged;
 import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -25,18 +23,22 @@ import javax.inject.Inject;
 import java.awt.Canvas;
 import java.awt.event.KeyEvent;
 
-import static com.chatimproved.feature.ToggleChatFeature.*;
+import static com.chatimproved.feature.ToggleChatFeature.ToggleChatFeatureConfig;
 
 @Slf4j
 public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConfig>
 {
-	@ConfigGroup("featureToggle")
 	public interface ToggleChatFeatureConfig extends ChatFeatureConfig
 	{
 		boolean featureToggle_Enabled();
 		Keybind featureToggle_ToggleKey();
 		boolean featureToggle_StartHidden();
 		boolean featureToggle_autoHideOnSend();
+	}
+
+	@Override
+	public String getConfigGroup() {
+		return "featureToggle";
 	}
 
 	private static final int DEFER_HIDE_DELAY_TICKS = 0;   // initial wait before first check

@@ -2,6 +2,7 @@ package com.chatimproved.feature;
 
 public interface ChatFeature<T extends ChatFeatureConfig> {
     T getConfig();
+    String getConfigGroup();
     boolean isEnabled();
     void startUp();
     default void shutDown() {

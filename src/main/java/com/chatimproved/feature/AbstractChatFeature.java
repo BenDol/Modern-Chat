@@ -1,8 +1,6 @@
 package com.chatimproved.feature;
 
 import com.chatimproved.ChatImprovedConfig;
-import com.chatimproved.util.ReflectionUtil;
-import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -55,8 +53,8 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
             if (!e.getGroup().equals(ChatImprovedConfig.GROUP))
                 return;
 
-            ConfigGroup configGroup = ReflectionUtil.findAnnotation(config, ConfigGroup.class);
-            if (!e.getKey().startsWith(configGroup.value() + "_"))
+            String configGroup = getConfigGroup();
+            if (!e.getKey().startsWith(configGroup + "_"))
                 return;
 
             if (e.getKey().endsWith("_Enabled")) {

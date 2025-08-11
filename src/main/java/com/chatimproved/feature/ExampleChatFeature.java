@@ -17,10 +17,14 @@ import static com.chatimproved.feature.ExampleChatFeature.ExampleChatFeatureConf
 @Slf4j
 public class ExampleChatFeature extends AbstractChatFeature<ExampleChatFeatureConfig>
 {
-	@ConfigGroup("featureExample")
 	public interface ExampleChatFeatureConfig extends ChatFeatureConfig
 	{
 		boolean featureExample_Enabled();
+	}
+
+	@Override
+	public String getConfigGroup() {
+		return "featureExample";
 	}
 
 	@Inject private Client client;
