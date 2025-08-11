@@ -3,7 +3,6 @@ package com.chatimproved;
 import javax.inject.Inject;
 
 import com.chatimproved.feature.ChatFeature;
-import com.chatimproved.feature.ExampleChatFeature;
 import com.chatimproved.feature.SlashCommandsFeature;
 import com.chatimproved.feature.ToggleChatFeature;
 import com.google.inject.Provides;

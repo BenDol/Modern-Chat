@@ -7,8 +7,6 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 
-import java.util.Objects;
-
 public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implements ChatFeature<T> {
 
     protected final T config;
