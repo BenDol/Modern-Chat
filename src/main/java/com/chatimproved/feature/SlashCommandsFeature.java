@@ -322,7 +322,7 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         final String target = lastPmFrom;
         if (target == null || target.isEmpty())
         {
-            // No one to reply to; quietly do nothing (or post a game message if you want)
+            // No one to reply to; quietly do nothing
             return;
         }
 
@@ -359,7 +359,7 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         clientThread.invokeLater(() -> {
             try
             {
-                // Open "To <target>:" compose line (also clears the slash text)
+                // Open "To <target>:" compose line
                 client.runScript(ScriptID.OPEN_PRIVATE_MESSAGE_INTERFACE, target);
 
                 // Optional: prefill message body if you start using it
