@@ -194,7 +194,6 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
             return; // Don't do anything if a system prompt is active
         }
 
-        // When the player starts typing into a system prompt, ensure chat is shown
         String raw = client.getVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT);
         handleChatInput(raw);
         lastChatInput = raw;
