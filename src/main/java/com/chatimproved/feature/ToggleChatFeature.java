@@ -182,12 +182,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	}
 
 	@Subscribe
-	public void onVarClientIntChanged(VarClientIntChanged e)
-	{
-
-	}
-
-	@Subscribe
 	public void onVarClientStrChanged(VarClientStrChanged e)
 	{
 		if (e.getIndex() != VarClientStr.INPUT_TEXT)
