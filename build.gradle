@@ -26,7 +26,7 @@ dependencies {
 	testImplementation group: 'net.runelite', name:'jshell', version: runeLiteVersion
 }
 
-group = 'com.improvedchat'
+group = 'com.chatimproved'
 version = '1.0'
 
 tasks.withType(JavaCompile).configureEach {
