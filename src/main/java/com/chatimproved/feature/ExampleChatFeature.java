@@ -1,0 +1,79 @@
+package com.chatimproved.feature;
+
+import com.chatimproved.ChatImprovedConfig;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.client.config.ConfigGroup;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
+
+import javax.inject.Inject;
+
+import static com.chatimproved.feature.ExampleChatFeature.ExampleChatFeatureConfig;
+
+@Slf4j
+public class ExampleChatFeature extends AbstractChatFeature<ExampleChatFeatureConfig>
+{
+	@ConfigGroup("featureExample")
+	public interface ExampleChatFeatureConfig extends ChatFeatureConfig
+	{
+		boolean featureExample_Enabled();
+	}
+
+	@Inject private Client client;
+
+	@Inject
+	public ExampleChatFeature(ChatImprovedConfig config, EventBus eventBus) {
+		super(config, eventBus);
+	}
+
+	@Override
+	protected ExampleChatFeatureConfig extractConfig(ChatImprovedConfig config) {
+		return new ExampleChatFeatureConfig()
+		{
+			@Override
+			public boolean featureExample_Enabled() {
+				return config.featureExample_Enabled();
+			}
+		};
+	}
+
+	@Override
+	public boolean isEnabled() {
+		return config.featureExample_Enabled();
+	}
+
+	@Override
+	public void startUp()
+	{
+		super.startUp();
+
+		// Example: Register a key listener to toggle chat visibility
+	}
+
+	@Override
+	public void shutDown(boolean fullShutdown)
+	{
+		super.shutDown(fullShutdown);
+
+		// Example: Unregister any listeners or clean up resources
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged e)
+	{
+		if (e.getGameState() == GameState.LOGGED_IN)
+		{
+			// Example: Perform actions when the player logs in
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick tick)
+	{
+		// Example: Handle game ticks for periodic updates
+	}
+}
