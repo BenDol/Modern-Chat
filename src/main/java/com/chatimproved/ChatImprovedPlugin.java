@@ -26,7 +26,7 @@ public class ChatImprovedPlugin extends Plugin
 {
 	@Inject private ChatImprovedConfig cfg;
 
-	@Inject private ExampleChatFeature exampleChatFeature;
+	//@Inject private ExampleChatFeature exampleChatFeature;
 	@Inject private ToggleChatFeature toggleChatFeature;
 	@Inject private SlashCommandsFeature slashCommandsFeature;
 
@@ -42,7 +42,7 @@ public class ChatImprovedPlugin extends Plugin
 	protected void startUp()
 	{
 		features = new HashSet<>();
-		tryAddFeature(exampleChatFeature);
+		//tryAddFeature(exampleChatFeature);
 		tryAddFeature(toggleChatFeature);
 		tryAddFeature(slashCommandsFeature);
 

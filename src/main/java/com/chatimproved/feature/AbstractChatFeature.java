@@ -64,12 +64,16 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
             if (e.getKey().endsWith("_Enabled")) {
                 // If the feature is disabled, we can soft-shut it down
                 String newValue = e.getNewValue();
-                if (newValue == null || Objects.equals(newValue, "false") || Objects.equals(newValue, "0") && isEnabled()) {
+                if (newValue == null || !isTrue(newValue) && isEnabled()) {
                     shutDown();
-                } else if (Objects.equals(newValue, "true") || Objects.equals(newValue, "1") && !isEnabled()) {
+                } else if (isTrue(newValue) && !isEnabled()) {
                     startUp();
                 }
             }
+        }
+
+        private boolean isTrue(String value) {
+            return value != null && (value.equalsIgnoreCase("true") || value.equals("1"));
         }
     }
 }

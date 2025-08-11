@@ -275,9 +275,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		deferTimeoutTicksLeft = 0;
 	}
 
+	/** MUST be on client thread: apply the current chat visibility state. */
 	private void applyVisibilityNow()
 	{
-		// MUST be on client thread
 		Widget root = client.getWidget(InterfaceID.CHATBOX, 0);
 		if (root != null)
 		{
@@ -285,7 +285,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		}
 	}
 
-	/** AWT thread OK */
 	private boolean isCanvasFocused()
 	{
 		Canvas canvas = client.getCanvas();
@@ -306,7 +305,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		String t = Text.removeTags(raw).trim();
 		if (t.isEmpty()) return false;
 
-        // system prompt placeholder
+        // empty chat placeholder
         return !t.endsWith(": *");
     }
 }
