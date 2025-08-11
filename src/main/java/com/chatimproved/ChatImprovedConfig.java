@@ -105,7 +105,7 @@ public interface ChatImprovedConfig extends Config,
 
     @ConfigItem(
         keyName = "featureSlashCommands_Enabled",
-        name = "Enable Slash Commands",
+        name = "Enable",
         description = "Enable custom slash commands in chat",
         position = 0,
         section = slashCommandsSection
