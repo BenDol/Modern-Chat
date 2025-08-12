@@ -1,7 +1,11 @@
-package com.chatimproved.feature;
+package com.modernchat.feature.command;
 
-import com.chatimproved.ChatImprovedConfig;
-import com.chatimproved.util.InterfaceUtil;
+import com.modernchat.ModernChatConfig;
+import com.modernchat.feature.AbstractChatFeature;
+import com.modernchat.feature.ChatFeatureConfig;
+import com.modernchat.util.ClientUtil;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -16,6 +20,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ChatboxInput;
+import net.runelite.client.input.KeyListener;
 import net.runelite.client.util.Text;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -25,65 +30,80 @@ import java.util.Locale;
 import java.util.Map;
 
 @Slf4j
-public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeature.SlashCommandsConfig>
+public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature.CommandsChatConfig>
 {
-    public interface SlashCommandsConfig extends ChatFeatureConfig
-    {
-        boolean featureSlashCommands_Enabled();
-        boolean featureSlashCommands_ReplyEnabled();
-        boolean featureSlashCommands_WhisperEnabled();
-    }
-
     @Override
     public String getConfigGroup() {
-        return "featureSlashCommands";
+        return "featureCommands";
     }
 
-    public interface ChatCommandHandler
+    public interface CommandsChatConfig extends ChatFeatureConfig
     {
+        boolean featureCommands_Enabled();
+        boolean featureCommands_ReplyEnabled();
+        boolean featureCommands_WhisperEnabled();
+        boolean featureCommands_PrivateMessageEnabled();
+    }
+
+    public interface ChatCommandHandler extends KeyListener
+    {
+        void startUp(CommandsChatFeature feature);
+        void shutDown(CommandsChatFeature feature);
+
         default void handleInput(String[] args) {}
         default void handleSubmit(String[] args, ChatboxInput ev) {}
         default void handleInputOrSubmit(String[] args, ChatboxInput ev) {}
     }
 
-    @Inject private Client client;
-    @Inject private ClientThread clientThread;
+    @Inject private ReplyChatCommand replyChatCommand;
+    @Inject private WhisperChatCommand whisperChatCommand;
+    @Inject private PrivateMessageChatCommand privateMessageChatCommand;
+
+    @Inject @Getter private Client client;
+    @Inject @Getter private ClientThread clientThread;
 
     // Track last inbound PM sender (sanitized RuneScape name)
     private volatile String lastPmFrom;
-    private volatile String lastChatInput;
+    @Getter
+    private String lastChatInput;
 
-    // registry: "command" -> handler(args)
+    // "command" -> handler(args)
     private final Map<String, ChatCommandHandler> commandHandlers = new HashMap<>();
 
     // Queue to execute scripts after the frame (avoids reentrancy)
+    @Getter @Setter
+    private String pmTarget = null;
     private String pendingPmTarget = null;
-    private String pendingPrefill  = null;
+    private String pendingPrefill = null;
 
     @Inject
-    public SlashCommandsFeature(ChatImprovedConfig rootConfig, EventBus eventBus)
+    public CommandsChatFeature(ModernChatConfig rootConfig, EventBus eventBus)
     {
         super(rootConfig, eventBus);
     }
 
     @Override
-    protected SlashCommandsConfig extractConfig(ChatImprovedConfig cfg)
+    protected CommandsChatConfig extractConfig(ModernChatConfig cfg)
     {
         // Map root config to feature config
-        return new SlashCommandsConfig()
+        return new CommandsChatConfig()
         {
-            @Override public boolean featureSlashCommands_Enabled()
+            @Override public boolean featureCommands_Enabled()
             {
-                return cfg.featureSlashCommands_Enabled();
+                return cfg.featureCommands_Enabled();
             }
 
-            @Override public boolean featureSlashCommands_ReplyEnabled()
+            @Override public boolean featureCommands_ReplyEnabled()
             {
-                return cfg.featureSlashCommands_ReplyEnabled();
+                return cfg.featureCommands_ReplyEnabled();
             }
 
-            @Override public boolean featureSlashCommands_WhisperEnabled() {
-                return cfg.featureSlashCommands_WhisperEnabled();
+            @Override public boolean featureCommands_WhisperEnabled() {
+                return cfg.featureCommands_WhisperEnabled();
+            }
+
+            @Override public boolean featureCommands_PrivateMessageEnabled() {
+                return cfg.featureCommands_PrivateMessageEnabled();
             }
         };
     }
@@ -91,7 +111,7 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
     @Override
     public boolean isEnabled()
     {
-        return config.featureSlashCommands_Enabled();
+        return config.featureCommands_Enabled();
     }
 
     @Override
@@ -100,72 +120,52 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         super.startUp();
         lastPmFrom = null;
         lastChatInput = null;
+        pmTarget = null;
         pendingPmTarget = null;
         pendingPrefill = null;
-        buildRegistry();
+        registerCommandHandlers();
+        commandHandlers.forEach((cmd, handler) -> {
+            handler.startUp(this);
+            log.debug("Registered chat command: /{}", cmd);
+        });
     }
 
     @Override
     public void shutDown(boolean fullShutdown)
     {
         super.shutDown(fullShutdown);
-        commandHandlers.clear();
         lastPmFrom = null;
         lastChatInput = null;
+        pmTarget = null;
         pendingPmTarget = null;
         pendingPrefill = null;
+        shutDownCommandHandlers();
+        commandHandlers.clear();
     }
 
-    private void buildRegistry()
+    private void registerCommandHandlers()
     {
         commandHandlers.clear();
 
         // /r and /reply
-        commandHandlers.put("r", new ChatCommandHandler() {
-            @Override
-            public void handleInput(String[] args) {
-                if (!config.featureSlashCommands_ReplyEnabled())
-                    return;
-                replyToLastPm(/*body*/ null);
-                clearChatInput();
-            }
-        });
+        commandHandlers.put("r", replyChatCommand);
         commandHandlers.put("reply", commandHandlers.get("r"));
 
-        // Add more commands later, e.g.:
-        commandHandlers.put("w", new ChatCommandHandler() {
-            @Override
-            public void handleInputOrSubmit(String[] args, ChatboxInput ev) {
-                if (!config.featureSlashCommands_WhisperEnabled())
-                    return;
-
-                // Example: /w <name> - whisper to a player
-                if (args == null || (ev == null && args.length < 2) ||
-                                    (ev != null && args.length < 1)) {
-                    return;
-                }
-
-                String arg = args[0].trim();
-                if (arg.isEmpty()) {
-                    log.debug("Invalid target name for /w command");
-                    return;
-                }
-
-                String target = Text.toJagexName(arg.trim());
-                if (target.isEmpty()) {
-                    log.warn("Invalid target name for /w command");
-                    return;
-                }
-
-                if (ev != null) {
-                    ev.consume(); // Prevent default chat submission
-                }
-
-                replyTo(target);
-                clearChatInput();
-            }
-        });
+        // /w and /whisper
+        commandHandlers.put("w", whisperChatCommand);
         commandHandlers.put("whisper", commandHandlers.get("w"));
+
+        // /pm /private message
+        commandHandlers.put("pm", privateMessageChatCommand);
+        commandHandlers.put("private", commandHandlers.get("pm"));
+    }
+
+    private void shutDownCommandHandlers()
+    {
+        commandHandlers.forEach((cmd, handler) -> {
+            handler.shutDown(this);
+            log.debug("Shutdown chat command: /{}", cmd);
+        });
     }
 
     /** Remember the last inbound PM sender. */
@@ -190,7 +190,7 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         if (input == null || input.isHidden())
             return;
 
-        if (InterfaceUtil.isSystemTextEntryActiveCT(client)) {
+        if (ClientUtil.isSystemTextEntryActive(client)) {
             return; // Don't do anything if a system prompt is active
         }
 
@@ -215,11 +215,11 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         }
         catch (Exception ex)
         {
-            log.warn("Slash command '{}' failed", handler.getClass().getSimpleName(), ex);
+            log.warn("Chat command '{}' failed", handler.getClass().getSimpleName(), ex);
         }
     }
 
-    /** Intercept slash commands before they send. */
+    /** Intercept commands before they send. */
     @Subscribe
     public void onChatboxInput(ChatboxInput ev)
     {
@@ -251,7 +251,7 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         }
         catch (Exception ex)
         {
-            log.warn("Slash command '{}' failed", handler.getClass().getSimpleName(), ex);
+            log.warn("Chat command '{}' failed", handler.getClass().getSimpleName(), ex);
         }
     }
 
@@ -261,13 +261,13 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
 
         final String typed = Text.removeTags(raw).trim();
         if (!typed.startsWith("/"))
-            return null; // Not a slash command, ignore
+            return null; // Not a command, ignore
 
         // Parse: "/cmd arg1, arg2, arg3, etc"
         final String[] parts = typed.split("\\s+", 2);
         if (parts.length < 1)
         {
-            log.debug("Slash command without arguments: {}", typed);
+            log.debug("Chat command without arguments: {}", typed);
             return null; // No command or no args, ignore
         }
 
@@ -276,12 +276,12 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         final ChatCommandHandler handler = commandHandlers.get(cmd);
         if (handler == null)
         {
-            log.debug("Unknown slash command: {}", cmd);
+            log.debug("Unknown command: {}", cmd);
             return null; // Unknown command, ignore
         }
         else
         {
-            log.debug("Slash command /{} with args: {}", cmd, String.join(", ", args));
+            log.debug("Chat command /{} with args: {}", cmd, String.join(", ", args));
             return Pair.of(handler, args); // Return handler and parsed args
         }
     }
@@ -300,7 +300,7 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         return parts;
     }
 
-    private void replyTo(String target)
+    public void replyTo(String target)
     {
         if (target == null || target.isEmpty())
         {
@@ -317,12 +317,11 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         }
     }
 
-    private void replyToLastPm(String body)
+    public void replyToLastPm(String body)
     {
         final String target = lastPmFrom;
         if (target == null || target.isEmpty())
         {
-            // No one to reply to; quietly do nothing
             return;
         }
 
@@ -344,13 +343,52 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
         });
     }
 
+    public void cancelPrivateMessageCompose()
+    {
+        String lastPmTarget = getPmTarget();
+        if (lastPmTarget == null || lastPmTarget.isEmpty()) {
+            return;
+        }
+
+        setPmTarget(null);
+
+        clientThread.invokeLater(() -> {
+            try {
+                client.setVarcStrValue(VarClientStr.PRIVATE_MESSAGE_TARGET, "");
+            } catch (Throwable ex) {
+                // Some client builds may not have this VarClientStr; safe to ignore
+            }
+
+            try {
+                client.runScript(ScriptID.MESSAGE_LAYER_CLOSE, 1, 1, 1);
+            } catch (Throwable ex) {
+                log.debug("Failed to close message layer script", ex);
+            }
+
+            client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, "");
+        });
+    }
+
     @Subscribe
     public void onPostClientTick(PostClientTick e)
     {
-        if (pendingPmTarget == null)
+        if (ClientUtil.isSystemTextEntryActive(client)) {
+            // If a system prompt is active, don't open PM interface
             return;
+        }
 
-        final String target = pendingPmTarget;
+        String target = pendingPmTarget;
+        if (target == null || target.isEmpty())
+        {
+            target = pmTarget; // Use the current target if no pending
+        }
+
+        if (target == null || target.isEmpty())
+        {
+            return;
+        }
+
+        final String currentTarget = Text.toJagexName(target);
         final String body = pendingPrefill;
         pendingPmTarget = null;
         pendingPrefill  = null;
@@ -360,7 +398,7 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
             try
             {
                 // Open "To <target>:" compose line
-                client.runScript(ScriptID.OPEN_PRIVATE_MESSAGE_INTERFACE, target);
+                client.runScript(ScriptID.OPEN_PRIVATE_MESSAGE_INTERFACE, currentTarget);
 
                 // Optional: prefill message body if you start using it
                 if (body != null && !body.isEmpty())
@@ -370,7 +408,7 @@ public class SlashCommandsFeature extends AbstractChatFeature<SlashCommandsFeatu
             }
             catch (Throwable ex)
             {
-                log.warn("Failed to open PM to {} via slash command", target, ex);
+                log.warn("Failed to open PM to {} via chat command", currentTarget, ex);
             }
         });
     }

@@ -1,4 +1,4 @@
-package com.chatimproved.feature;
+package com.modernchat.feature;
 
 public interface ChatFeatureConfig {
 

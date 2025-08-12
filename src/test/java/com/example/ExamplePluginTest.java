@@ -1,6 +1,6 @@
 package com.example;
 
-import com.chatimproved.ChatImprovedPlugin;
+import com.modernchat.ModernChatPlugin;
 import net.runelite.client.RuneLite;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 
@@ -8,7 +8,7 @@ public class ExamplePluginTest
 {
 	public static void main(String[] args) throws Exception
 	{
-		ExternalPluginManager.loadBuiltin(ChatImprovedPlugin.class);
+		ExternalPluginManager.loadBuiltin(ModernChatPlugin.class);
 		RuneLite.main(args);
 	}
 }

@@ -1,10 +1,11 @@
-package com.chatimproved;
+package com.modernchat;
 
 import javax.inject.Inject;
 
-import com.chatimproved.feature.ChatFeature;
-import com.chatimproved.feature.SlashCommandsFeature;
-import com.chatimproved.feature.ToggleChatFeature;
+import com.modernchat.feature.ChatFeature;
+import com.modernchat.feature.command.CommandsChatFeature;
+import com.modernchat.feature.MessageHistoryChatFeature;
+import com.modernchat.feature.ToggleChatFeature;
 import com.google.inject.Provides;
 
 import lombok.extern.slf4j.Slf4j;
@@ -17,33 +18,35 @@ import java.util.Set;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Chat Improved",
-	description = "An improved chat plugin for RuneLite that enhances the chat experience with additional features.",
-	tags = {"chat", "improved", "quality of life"}
+	name = "Modern Chat",
+	description = "A chat plugin for RuneLite that modernizes the chat experience with additional features.",
+	tags = {"chat", "modern", "quality of life"}
 )
-public class ChatImprovedPlugin extends Plugin
+public class ModernChatPlugin extends Plugin
 {
-	@Inject private ChatImprovedConfig cfg;
+	@Inject private ModernChatConfig cfg;
 
 	//@Inject private ExampleChatFeature exampleChatFeature;
 	@Inject private ToggleChatFeature toggleChatFeature;
-	@Inject private SlashCommandsFeature slashCommandsFeature;
+	@Inject private CommandsChatFeature commandsChatFeature;
+	@Inject private MessageHistoryChatFeature messageHistoryChatFeature;
 
 	private Set<ChatFeature<?>> features;
 
 	@Provides
-	ChatImprovedConfig provideConfig(ConfigManager configManager)
+	ModernChatConfig provideConfig(ConfigManager configManager)
 	{
-		return configManager.getConfig(ChatImprovedConfig.class);
+		return configManager.getConfig(ModernChatConfig.class);
 	}
 
 	@Override
 	protected void startUp()
 	{
 		features = new HashSet<>();
-		//tryAddFeature(exampleChatFeature);
-		tryAddFeature(toggleChatFeature);
-		tryAddFeature(slashCommandsFeature);
+		//addFeature(exampleChatFeature);
+		addFeature(toggleChatFeature);
+		addFeature(commandsChatFeature);
+		addFeature(messageHistoryChatFeature);
 
 		features.forEach(ChatFeature::startUp);
 	}
@@ -63,23 +66,18 @@ public class ChatImprovedPlugin extends Plugin
 		features = null;
 	}
 
-	protected boolean tryAddFeature(ChatFeature<?> feature) {
+	protected void addFeature(ChatFeature<?> feature) {
 		if (features == null) {
 			log.warn("Cannot add feature {}: plugin is not started", feature.getClass().getSimpleName());
-			return false;
-		}
-		if (features.contains(feature)) {
-			log.warn("Feature {} is already registered", feature.getClass().getSimpleName());
-			return false;
+			return;
 		}
 
-		if (!feature.isEnabled()) {
-			log.debug("Feature {} is not enabled, cannot add", feature.getClass().getSimpleName());
-			return false;
+		if (features.contains(feature)) {
+			log.warn("Feature {} is already registered", feature.getClass().getSimpleName());
+			return;
 		}
 
 		features.add(feature);
 		log.debug("Feature {} added successfully", feature.getClass().getSimpleName());
-		return true;
 	}
 }

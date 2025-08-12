@@ -1,41 +1,40 @@
-package com.chatimproved.feature;
+package com.modernchat.feature;
 
-import com.chatimproved.ChatImprovedConfig;
+import com.modernchat.ModernChatConfig;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
 import javax.inject.Inject;
 
-import static com.chatimproved.feature.ExampleChatFeature.ExampleChatFeatureConfig;
+import static com.modernchat.feature.ExampleChatFeature.ExampleChatFeatureConfig;
 
 @Slf4j
 public class ExampleChatFeature extends AbstractChatFeature<ExampleChatFeatureConfig>
 {
-	public interface ExampleChatFeatureConfig extends ChatFeatureConfig
-	{
-		boolean featureExample_Enabled();
-	}
-
 	@Override
 	public String getConfigGroup() {
 		return "featureExample";
 	}
 
+	public interface ExampleChatFeatureConfig extends ChatFeatureConfig
+	{
+		boolean featureExample_Enabled();
+	}
+
 	@Inject private Client client;
 
 	@Inject
-	public ExampleChatFeature(ChatImprovedConfig config, EventBus eventBus) {
+	public ExampleChatFeature(ModernChatConfig config, EventBus eventBus) {
 		super(config, eventBus);
 	}
 
 	@Override
-	protected ExampleChatFeatureConfig extractConfig(ChatImprovedConfig config) {
+	protected ExampleChatFeatureConfig extractConfig(ModernChatConfig config) {
 		return new ExampleChatFeatureConfig()
 		{
 			@Override

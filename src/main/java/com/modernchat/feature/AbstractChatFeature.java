@@ -1,6 +1,6 @@
-package com.chatimproved.feature;
+package com.modernchat.feature;
 
-import com.chatimproved.ChatImprovedConfig;
+import com.modernchat.ModernChatConfig;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -12,12 +12,12 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
 
     private ConfigChangedHandler configChangeHandler;
 
-    protected AbstractChatFeature(ChatImprovedConfig config, EventBus eventBus) {
+    protected AbstractChatFeature(ModernChatConfig config, EventBus eventBus) {
         this.config = extractConfig(config);
         this.eventBus = eventBus;
     }
 
-    protected abstract T extractConfig(ChatImprovedConfig config);
+    protected abstract T extractConfig(ModernChatConfig config);
 
     @Override
     public T getConfig() {
@@ -50,26 +50,24 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
 
         @Subscribe
         public void onConfigChanged(ConfigChanged e) {
-            if (!e.getGroup().equals(ChatImprovedConfig.GROUP))
+            if (!e.getGroup().equals(ModernChatConfig.GROUP))
                 return;
 
             String configGroup = getConfigGroup();
-            if (!e.getKey().startsWith(configGroup + "_"))
+            String key = e.getKey();
+            if (!key.startsWith(configGroup + "_"))
                 return;
 
-            if (e.getKey().endsWith("_Enabled")) {
+            if (key.endsWith("_Enabled")) {
                 // If the feature is disabled, we can soft-shut it down
-                String newValue = e.getNewValue();
-                if (newValue == null || !isTrue(newValue) && isEnabled()) {
+                boolean currentlyEnabled = e.getOldValue() != null && Boolean.parseBoolean(e.getOldValue());
+                boolean enabling = e.getNewValue() != null && Boolean.parseBoolean(e.getNewValue());
+                if (!enabling && currentlyEnabled) {
                     shutDown();
-                } else if (isTrue(newValue) && !isEnabled()) {
+                } else if (enabling && !currentlyEnabled) {
                     startUp();
                 }
             }
-        }
-
-        private boolean isTrue(String value) {
-            return value != null && (value.equalsIgnoreCase("true") || value.equals("1"));
         }
     }
 }
