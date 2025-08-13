@@ -250,7 +250,7 @@ public interface ModernChatConfig extends Config,
 
     @ConfigItem(
         keyName = "featurePeek_PrefixChatTypes",
-        name = "Show Type Prefix",
+        name = "Show Type",
         description = "Prefix messages with their chat type in the peek overlay",
         position = 5,
         section = peekOverlaySection
