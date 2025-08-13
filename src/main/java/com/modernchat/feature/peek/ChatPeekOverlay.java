@@ -4,6 +4,7 @@ import com.modernchat.ModernChatConfig;
 import com.modernchat.common.RuneFontStyle;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.util.GeometryUtil;
+import lombok.Getter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
@@ -49,7 +50,7 @@ public class ChatPeekOverlay extends Overlay {
         final List<Seg> segs = new ArrayList<>();
     }
 
-    private static final int MAX_LINES = 20; // Maximum number of lines to cache
+    private static final int MAX_LINES = 25; // Maximum number of lines to cache
 
     private final Client client;
     private final ModernChatConfig config;
@@ -61,6 +62,7 @@ public class ChatPeekOverlay extends Overlay {
 
     private volatile float fadeAlpha = 1f;
     private volatile long fadeStartAtMs = Long.MAX_VALUE;
+    @Getter
     private volatile boolean fading = false;
 
     @Inject
