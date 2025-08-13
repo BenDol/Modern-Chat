@@ -201,8 +201,10 @@ public class ModernChatPlugin extends Plugin {
 
 		if (key.endsWith("AnchorPrivateChat")) {
 			if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
-				messageService.pushChatMessage(
-					"Please enable \"Split friends private chat\" in the OSRS settings for the 'Anchor Private Chat' feature.");
+				messageService.pushChatMessage(new ChatMessageBuilder()
+					.append("Please enable ")
+					.append(Color.ORANGE, "Split friends private chat")
+					.append(" in the OSRS settings for the 'Anchor Private Chat' feature."));
 			}
 		}
 	}
@@ -254,7 +256,8 @@ public class ModernChatPlugin extends Plugin {
 	private void maybeReanchor(boolean force)
 	{
 		if (!config.general_AnchorPrivateChat()) {
-			if (pmAnchor != null) resetSplitPmAnchor();
+			if (pmAnchor != null && !pmAnchor.isReset())
+				resetSplitPmAnchor();
 			return;
 		}
 
@@ -320,10 +323,6 @@ public class ModernChatPlugin extends Plugin {
 		if (pmAnchor != null) {
 			pmAnchor.reset(pmParent);
 		}
-
-		// we need to restart the features
-		shutDown();
-		startUp();
 	}
 
 	private Widget getPmWidget() {

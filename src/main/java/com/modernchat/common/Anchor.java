@@ -12,10 +12,13 @@ public abstract class Anchor {
     protected Client client;
     protected Class<?> widgetClass;
 
+
     @Getter @Setter
     protected int offsetX = 0;
     @Getter @Setter
     protected int offsetY = 0;
+
+    @Getter boolean isReset = false;
 
     protected Integer originalX;
     protected Integer originalY;
@@ -72,6 +75,8 @@ public abstract class Anchor {
         if (parent != null) {
             parent.revalidate();
         }
+
+        isReset = false;
     }
 
     public void reset(Widget widget) {
@@ -92,5 +97,7 @@ public abstract class Anchor {
         if (parent != null) {
             parent.revalidate();
         }
+
+        isReset = true;
     }
 }
