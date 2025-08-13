@@ -1,5 +1,6 @@
 package com.modernchat.service;
 
+import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.MessageService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
@@ -23,15 +24,20 @@ import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Singleton
 public class PrivateChatService implements ChatService, KeyListener {
 
-    private static final int PM_COOLDOWN_MS = 800;
+    private static final int PM_COOLDOWN_MS = 1000;
+    private static final int PM_HOT_MESSAGE_MAX = 2;
+    private static final int PM_LOCK_MS = 1500;
+    private static final int PM_LOCK_COUNT_RESET_MS = 60000;
 
     @Inject private Client client;
     @Inject private ClientThread clientThread;
@@ -39,13 +45,18 @@ public class PrivateChatService implements ChatService, KeyListener {
     @Inject private KeyManager keyManager;
     @Inject private MessageService messageService;
 
-    // Track last inbound PM sender (sanitized RuneScape name)
     private volatile String lastPmFrom;
-    private volatile long lastPmTimestamp = 0;
-    @Getter private String lastChatInput;
+    private volatile long lastPmTimestamp = 0L;
+    private volatile long lastPmLock = 0L;
+    private volatile long pmLockedUntil = 0L;
+    private volatile boolean canShowLockMessage = true;
+    @Getter private volatile String lastChatInput;
+
+    private final AtomicInteger pmHotMessageCount = new AtomicInteger(0);
+    private final AtomicInteger pmLockCount = new AtomicInteger(0);
 
     // Queue to execute scripts after the frame (avoids reentrancy)
-    @Getter @Setter
+    @Getter
     private String pmTarget = null;
     private String pendingPmTarget = null;
     private String pendingPrefill = null;
@@ -55,11 +66,7 @@ public class PrivateChatService implements ChatService, KeyListener {
         eventBus.register(this);
         keyManager.registerKeyListener(this);
 
-        lastPmFrom = null;
-        lastChatInput = null;
-        pmTarget = null;
-        pendingPmTarget = null;
-        pendingPrefill = null;
+        reset();
     }
 
     @Override
@@ -67,11 +74,24 @@ public class PrivateChatService implements ChatService, KeyListener {
         eventBus.unregister(this);
         keyManager.unregisterKeyListener(this);
 
+        reset();
+    }
+
+    protected void reset() {
         lastPmFrom = null;
         lastChatInput = null;
         pmTarget = null;
         pendingPmTarget = null;
         pendingPrefill = null;
+        lastPmTimestamp = 0L;
+        canShowLockMessage = true;
+    }
+
+    protected void resetLocks() {
+        lastPmLock = 0L;
+        pmLockedUntil = 0L;
+        pmLockCount.set(0);
+        pmHotMessageCount.set(0);
     }
 
     @Override
@@ -105,18 +125,42 @@ public class PrivateChatService implements ChatService, KeyListener {
             lastPmFrom = Text.toJagexName(Text.removeTags(e.getName()));
             log.debug("lastPmFrom = {}", lastPmFrom);
         } else if (t == ChatMessageType.PRIVATECHATOUT) {
-            if (System.currentTimeMillis() - lastPmTimestamp < PM_COOLDOWN_MS) {
-                messageService.pushChatMessage("You are sending PMs too quickly. Please wait a moment (reopening chat momentarily).", ChatMessageType.GAMEMESSAGE);
+            if (isCooldownActive()) {
+                pmHotMessageCount.incrementAndGet();
+                if (pmHotMessageCount.get() < PM_HOT_MESSAGE_MAX) {
+                    return;
+                }
+
+                if (System.currentTimeMillis() - lastPmLock >= PM_LOCK_COUNT_RESET_MS) {
+                    pmLockCount.set(0);
+                }
+                lastPmLock = System.currentTimeMillis();
+                long lockCount = pmLockCount.incrementAndGet();
+                long lockDelay = Math.min(lockCount * PM_LOCK_MS, PM_LOCK_COUNT_RESET_MS);
+                pmLockedUntil = lastPmLock + lockDelay;
+
                 String lastPmTarget = getPmTarget();
                 cancelPrivateMessage();
 
-                new Timer().schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        if (StringUtil.isNullOrEmpty(getPmTarget()))
-                            setPmTarget(lastPmTarget);
-                    }
-                }, 5000);
+                ChatMessageBuilder messageBuilder = new ChatMessageBuilder()
+                    .append("You are sending PMs too quickly. Please wait ")
+                    .append(Color.RED, String.valueOf((lockDelay / 1000.0)))
+                    .append(Color.RED, " seconds");
+
+                if (lockDelay < 10000) {
+                    messageBuilder.append(" (reopening chat momentarily)");
+                    new Timer().schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            if (StringUtil.isNullOrEmpty(getPmTarget()))
+                                setPmTarget(lastPmTarget);
+                        }
+                    }, lockDelay);
+                }
+
+                messageService.pushChatMessage(messageBuilder);
+            } else {
+                pmHotMessageCount.set(0); // Reset hot message count
             }
 
             lastPmTimestamp = System.currentTimeMillis();
@@ -155,12 +199,42 @@ public class PrivateChatService implements ChatService, KeyListener {
             return;
         }
 
+        if (isLocked()) {
+            if (canShowLockMessage) {
+                long remainingLock = pmLockedUntil - System.currentTimeMillis();
+                canShowLockMessage = false;
+                messageService.pushChatMessage(new ChatMessageBuilder()
+                    .append("You are sending PMs too quickly. Please wait ")
+                    .append(Color.RED, String.valueOf((remainingLock / 1000.0)))
+                    .append(Color.RED, " seconds."));
+            }
+            return;
+        }
+
+        canShowLockMessage = true;
+
         final String currentTarget = Text.toJagexName(target);
         final String body = pendingPrefill;
         pendingPmTarget = null;
         pendingPrefill = null;
 
         ClientUtil.startPrivateMessage(client, clientThread, currentTarget, body, () -> {});
+    }
+
+    public void setPmTarget(String pmTarget) {
+        this.pmTarget = pmTarget;
+        canShowLockMessage = true; // Reset lock message state
+    }
+
+    public void cancelPrivateMessage() {
+        String lastPmTarget = getPmTarget();
+        if (lastPmTarget == null || lastPmTarget.isEmpty()) {
+            return;
+        }
+
+        setPmTarget(null);
+
+        ClientUtil.cancelPrivateMessage(client, clientThread, ()-> {});
     }
 
     public void replyTo(String target) {
@@ -197,14 +271,11 @@ public class PrivateChatService implements ChatService, KeyListener {
         });
     }
 
-    public void cancelPrivateMessage() {
-        String lastPmTarget = getPmTarget();
-        if (lastPmTarget == null || lastPmTarget.isEmpty()) {
-            return;
-        }
+    public boolean isCooldownActive() {
+        return System.currentTimeMillis() - lastPmTimestamp < PM_COOLDOWN_MS;
+    }
 
-        setPmTarget(null);
-
-        ClientUtil.cancelPrivateMessage(client, clientThread, ()-> {});
+    public boolean isLocked() {
+        return System.currentTimeMillis() < pmLockedUntil;
     }
 }
