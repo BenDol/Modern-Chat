@@ -87,9 +87,6 @@ public class PrivateChatService implements ChatService, KeyListener {
         }
     }
 
-    /**
-     * Remember the last inbound PM sender.
-     */
     @Subscribe
     public void onChatMessage(ChatMessage e) {
         final ChatMessageType t = e.getType();

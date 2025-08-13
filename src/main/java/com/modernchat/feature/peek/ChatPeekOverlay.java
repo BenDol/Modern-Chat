@@ -59,6 +59,10 @@ public class ChatPeekOverlay extends Overlay {
     private Font font = null;
     private RuneFontStyle fontStyle = null;
 
+    private volatile float fadeAlpha = 1f;
+    private volatile long fadeStartAtMs = Long.MAX_VALUE;
+    private volatile boolean fading = false;
+
     @Inject
     public ChatPeekOverlay(Client client, ModernChatConfig config) {
         this.client = client;
@@ -100,80 +104,83 @@ public class ChatPeekOverlay extends Overlay {
             return null;
 
         Widget chatbox = getChatboxWidget();
-        if (chatbox == null || !canShow(chatbox))
+        if (chatbox == null || !canShow(chatbox)) {
+            noteMessageActivity(); // reset fade state if chatbox is visible
             return null;
+        }
+
+        updateFadeAlpha();
+        if (fadeAlpha <= 0.01f) {
+            return null; // fully faded; nothing to render
+        }
 
         Rectangle box = calculateBounds(chatbox);
         if (box == null)
-            return null; // Invalid bounds, do not render
+            return null;
 
-        // Background
-        g.setComposite(AlphaComposite.SrcOver);
-        g.setColor(config.featurePeek_BackgroundColor());
-        g.fillRoundRect(box.x, box.y, box.width, box.height, 8, 8);
+        // Save/restore composite
+        final java.awt.Composite old = g.getComposite();
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
+        try {
+            // Background
+            g.setColor(config.featurePeek_BackgroundColor());
+            g.fillRoundRect(box.x, box.y, box.width, box.height, 8, 8);
 
-        // Border
-        g.setComposite(AlphaComposite.SrcOver);
-        g.setColor(config.featurePeek_BorderColor());
-        g.drawRoundRect(box.x, box.y, box.width, box.height, 8, 8);
+            // Border
+            g.setColor(config.featurePeek_BorderColor());
+            g.drawRoundRect(box.x, box.y, box.width, box.height, 8, 8);
 
-        Font font = getFont();
+            // Text
+            Font font = getFont();
+            float fontSize = config.featurePeek_FontSize();
+            if (fontSize > 0) font = font.deriveFont(fontSize);
+            g.setFont(font);
+            FontMetrics fm = g.getFontMetrics();
 
-        float fontSize = config.featurePeek_FontSize();
-        if (fontSize > 0)
-            font = font.deriveFont(fontSize);
+            final int padding = config.featurePeek_Padding();
+            final int lineH = fm.getHeight();
+            final int xLeft = box.x + padding;
+            final int xRight = box.x + box.width - padding;
+            final int maxW = Math.max(1, xRight - xLeft);
+            int y = box.y + box.height - padding + 13;
 
-        g.setFont(font);
-        FontMetrics fm = g.getFontMetrics();
+            final int maxVisualLines = Math.max(1, (box.height - padding * 2) / lineH);
+            int drawn = 0;
 
-        final int padding = config.featurePeek_Padding();
-        final int lineH = fm.getHeight();
-        final int xLeft = box.x + padding;
-        final int xRight = box.x + box.width - padding;
-        final int maxW = Math.max(1, xRight - xLeft);
-        int y = box.y + box.height - padding;
+            Deque<RichLine> snapshot = new ArrayDeque<>(lines);
+            for (Iterator<RichLine> it = snapshot.descendingIterator(); it.hasNext(); ) {
+                RichLine rl = it.next();
+                ChatMessageType type = rl.type;
 
-        // Fit-by-height
-        final int maxVisualLines = Math.max(1, (box.height - padding * 2) / lineH);
-        int drawn = 0;
+                if (isPrivateMessage(type) && !config.featurePeek_ShowPrivateMessages()) {
+                    continue;
+                }
 
-        Deque<RichLine> snapshot = new ArrayDeque<>(lines);
-        for (Iterator<RichLine> it = snapshot.descendingIterator(); it.hasNext(); ) {
-            RichLine rl = it.next();
-            ChatMessageType type = rl.type;
+                List<VisualLine> wrapped = wrapRichLine(rl, fm, maxW);
+                for (int i = wrapped.size() - 1; i >= 0; i--) {
+                    y -= lineH;
+                    if (y < box.y + padding) return null;
+                    if (++drawn > maxVisualLines) return null;
 
-            if (isPrivateMessage(type) && !config.featurePeek_ShowPrivateMessages()) {
-                continue; // Skip private messages if configured
-            }
+                    int dx = xLeft;
+                    for (Seg seg : wrapped.get(i).segs) {
+                        if (dx == xLeft && seg.text.isBlank()) continue;
 
-            List<VisualLine> wrapped = wrapRichLine(rl, fm, maxW);
+                        int shadowOffset = config.featurePeek_TextShadow();
+                        if (shadowOffset > 0) {
+                            g.setColor(new Color(0, 0, 0, 200));
+                            g.drawString(seg.text, dx + shadowOffset, y + shadowOffset);
+                        }
 
-            for (int i = wrapped.size() - 1; i >= 0; i--) {
-                y -= lineH;
-                if (y < box.y + padding)
-                    return null;
-                if (++drawn > maxVisualLines)
-                    return null;
-
-                int dx = xLeft;
-                for (Seg seg : wrapped.get(i).segs) {
-                    if (dx == xLeft && seg.text.isBlank()) continue;
-
-                    // Shadow
-                    int shadowOffset = config.featurePeek_TextShadow();
-                    if (shadowOffset > 0) {
-                        g.setColor(new Color(0, 0, 0, 200));
-                        g.drawString(seg.text, dx + shadowOffset, y + shadowOffset);
+                        g.setColor(seg.color);
+                        g.drawString(seg.text, dx, y);
+                        dx += fm.stringWidth(seg.text);
+                        if (dx > xRight) break;
                     }
-
-                    // Colored text
-                    g.setColor(seg.color);
-                    g.drawString(seg.text, dx, y);
-
-                    dx += fm.stringWidth(seg.text);
-                    if (dx > xRight) break;
                 }
             }
+        } finally {
+            g.setComposite(old);
         }
         return null;
     }
@@ -269,12 +276,14 @@ public class ChatPeekOverlay extends Overlay {
         RichLine rl = parseColored(s == null ? "" : s, c == null ? Color.WHITE : c);
         rl.type = type;
         pushRich(rl);
+        noteMessageActivity();
     }
 
     private void pushRich(RichLine rl) {
         if (rl == null || rl.segs.isEmpty()) return;
         lines.addLast(rl);
         while (lines.size() > MAX_LINES) lines.removeFirst();
+        noteMessageActivity();
     }
 
     private int getMaxLines() {
@@ -506,5 +515,48 @@ public class ChatPeekOverlay extends Overlay {
             }
         }
         return Math.max(0, ans - start);
+    }
+
+    private int fadeDelaySeconds() {
+        return config.featurePeek_FadeDelay();
+    }
+
+    private int fadeDurationMs() {
+        return config.featurePeek_FadeDuration();
+    }
+
+    private void noteMessageActivity() {
+        fadeAlpha = 1f;
+        fading = false;
+        fadeStartAtMs = System.currentTimeMillis() + Math.max(0, fadeDelaySeconds() * 1000);
+    }
+
+    private void updateFadeAlpha() {
+        final long now = System.currentTimeMillis();
+
+        if (!config.featurePeek_FadeEnabled()) {
+            fadeAlpha = 1f;
+            fading = false;
+            return;
+        }
+
+        if (now < fadeStartAtMs) {
+            fadeAlpha = 1f;
+            fading = false;
+            return;
+        }
+
+        final int dur = Math.max(1, fadeDurationMs());
+        final long t = now - fadeStartAtMs;
+        if (t <= 0) {
+            fadeAlpha = 1f;
+            fading = false;
+            return;
+        }
+
+        fading = true;
+        float p = Math.min(1f, t / (float) dur);
+        p = 1f - (float)Math.pow(1f - p, 3); // easeOutCubic
+        fadeAlpha = 1f - p;
     }
 }

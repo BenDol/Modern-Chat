@@ -5,8 +5,6 @@ import com.modernchat.common.RuneFontStyle;
 import com.modernchat.feature.AbstractChatFeature;
 import com.modernchat.feature.ChatFeatureConfig;
 import com.modernchat.util.ClientUtil;
-import com.modernchat.util.StringUtil;
-import com.modernchat.util.WidgetUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -20,11 +18,10 @@ import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.config.ConfigItem;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import java.awt.Color;
@@ -59,6 +56,9 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		Color featurePeek_PrivateChatColor();
 		Color featurePeek_SystemChatColor();
 		boolean featurePeek_PrefixChatTypes();
+		boolean featurePeek_FadeEnabled();
+		int featurePeek_FadeDelay();
+		int featurePeek_FadeDuration();
 	}
 
 	@Inject private Client client;
@@ -94,6 +94,9 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Color featurePeek_PrivateChatColor() { return config.featurePeek_PrivateChatColor(); }
 			@Override public Color featurePeek_SystemChatColor() { return config.featurePeek_SystemChatColor(); }
 			@Override public boolean featurePeek_PrefixChatTypes() { return config.featurePeek_PrefixChatTypes(); }
+			@Override public boolean featurePeek_FadeEnabled() { return config.featurePeek_FadeEnabled(); }
+			@Override public int featurePeek_FadeDelay() { return config.featurePeek_FadeDelay(); }
+			@Override public int featurePeek_FadeDuration() { return config.featurePeek_FadeDuration(); }
 		};
 	}
 

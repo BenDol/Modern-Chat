@@ -59,7 +59,7 @@ public interface ModernChatConfig extends Config,
         name = "Chat Commands",
         description = "Custom chat commands for quick actions",
         position = 3,
-        closedByDefault = false
+        closedByDefault = true
     )
     String commandsSection = "commandsSection";
 
@@ -67,7 +67,7 @@ public interface ModernChatConfig extends Config,
         name = "Message History",
         description = "Cycle through your message history",
         position = 4,
-        closedByDefault = false
+        closedByDefault = true
     )
     String messageHistorySection = "messageHistorySection";
 
@@ -434,7 +434,44 @@ public interface ModernChatConfig extends Config,
     )
     @Override
     default Color featurePeek_SystemChatColor() {
-        return new Color(0xC0C0C0); // light gray
+        return new Color(0xCFCFCF); // light gray
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_FadeEnabled",
+        name = "Fade Enabled",
+        description = "Enable fade-in/out effect for the peek overlay",
+        position = 19,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_FadeEnabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_FadeDelay",
+        name = "Fade Delay (s)",
+        description = "Delay (seconds) of inactivity before fading in/out the peek overlay",
+        position = 20,
+        section = peekOverlaySection
+    )
+    @Override
+    default int featurePeek_FadeDelay() {
+        return 10;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_FadeDuration",
+        name = "Fade Duration (ms)",
+        description = "Duration (ms) for fade-in/out effect in the peek overlay",
+        position = 21,
+        section = peekOverlaySection
+    )
+    @Range(max = 10000)
+    @Override
+    default int featurePeek_FadeDuration() {
+        return 600;
     }
 
     /* ------------ Feature: Commands ------------ */

@@ -369,7 +369,7 @@ public class ModernChatPlugin extends Plugin {
 				.append("To learn about more features and create custom configurations, check the plugin settings."),
 				ChatMessageType.WELCOME);
 
-			//configManager.setConfiguration(ModernChatConfig.GROUP, "featureExample_Enabled", true);
+			configManager.setConfiguration(ModernChatConfig.GROUP, "featureExample_Enabled", true);
 		});
 	}
 }
