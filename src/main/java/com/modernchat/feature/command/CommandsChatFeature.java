@@ -6,6 +6,7 @@ import com.modernchat.feature.ChatFeatureConfig;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.util.ClientUtil;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.VarClientStr;
@@ -59,7 +60,8 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
     @Inject @Getter private ClientThread clientThread;
     @Inject @Getter private PrivateChatService privateChatService;
 
-    @Getter private String lastChatInput;
+    @Getter @Setter
+    private String lastChatInput;
 
     // "command" -> handler(args)
     private final Map<String, ChatCommandHandler> commandHandlers = new HashMap<>();
@@ -243,5 +245,10 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
             parts[i] = parts[i].trim();
         }
         return parts;
+    }
+
+    public boolean isCommand(String cmd) {
+        Pair<ChatCommandHandler, String[]> handler = getCommandHandler(cmd);
+        return handler != null && handler.getLeft() != null;
     }
 }

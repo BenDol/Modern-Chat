@@ -1,5 +1,6 @@
 package com.modernchat.service;
 
+import com.modernchat.common.MessageService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
@@ -23,18 +24,24 @@ import net.runelite.client.util.Text;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.awt.event.KeyEvent;
+import java.util.Timer;
+import java.util.TimerTask;
 
 @Slf4j
 @Singleton
 public class PrivateChatService implements ChatService, KeyListener {
 
+    private static final int PM_COOLDOWN_MS = 800;
+
     @Inject private Client client;
     @Inject private ClientThread clientThread;
     @Inject private EventBus eventBus;
     @Inject private KeyManager keyManager;
+    @Inject private MessageService messageService;
 
     // Track last inbound PM sender (sanitized RuneScape name)
     private volatile String lastPmFrom;
+    private volatile long lastPmTimestamp = 0;
     @Getter private String lastChatInput;
 
     // Queue to execute scripts after the frame (avoids reentrancy)
@@ -80,10 +87,14 @@ public class PrivateChatService implements ChatService, KeyListener {
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             cancelPrivateMessage();
         } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-            String lastInputText = ClientUtil.getSystemInputText(client);
-            if (StringUtil.isNullOrEmpty(lastInputText)) {
-                cancelPrivateMessage();
-            }
+            clientThread.invoke(() -> {
+                if (ClientUtil.isSystemTextEntryActive(client)) {
+                    String lastInputText = ClientUtil.getSystemInputText(client);
+                    if (StringUtil.isNullOrEmpty(lastInputText)) {
+                        cancelPrivateMessage();
+                    }
+                }
+            });
         }
     }
 
@@ -93,6 +104,22 @@ public class PrivateChatService implements ChatService, KeyListener {
         if (t == ChatMessageType.PRIVATECHAT || t == ChatMessageType.MODPRIVATECHAT) {
             lastPmFrom = Text.toJagexName(Text.removeTags(e.getName()));
             log.debug("lastPmFrom = {}", lastPmFrom);
+        } else if (t == ChatMessageType.PRIVATECHATOUT) {
+            if (System.currentTimeMillis() - lastPmTimestamp < PM_COOLDOWN_MS) {
+                messageService.pushChatMessage("You are sending PMs too quickly. Please wait a moment (reopening chat momentarily).", ChatMessageType.GAMEMESSAGE);
+                String lastPmTarget = getPmTarget();
+                cancelPrivateMessage();
+
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        if (StringUtil.isNullOrEmpty(getPmTarget()))
+                            setPmTarget(lastPmTarget);
+                    }
+                }, 3000);
+            }
+
+            lastPmTimestamp = System.currentTimeMillis();
         }
     }
 

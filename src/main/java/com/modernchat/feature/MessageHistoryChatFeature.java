@@ -3,6 +3,7 @@ package com.modernchat.feature;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.modernchat.ModernChatConfig;
+import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.util.ClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -61,6 +62,7 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
     @Inject private KeyManager keyManager;
     @Inject private ConfigManager configManager;
     @Inject private Gson gson;
+    @Inject private CommandsChatFeature commandsChatFeature;
 
     @Inject
     public MessageHistoryChatFeature(ModernChatConfig rootCfg, EventBus eventBus) {
@@ -154,14 +156,28 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         final String raw = ev.getValue();
         if (raw == null) return;
 
-        final String msg = Text.removeTags(raw).trim();
+        String msg = Text.removeTags(raw).trim();
         if (msg.isEmpty()) return;
 
-        // Skip slash commands if configured
-        if (!config.featureMessageHistory_IncludeCommands() && msg.startsWith("/")) {
-            resetNavState(); // still reset after a send
-            return;
+        if (commandsChatFeature.isEnabled()) {
+            int commandIndex = msg.indexOf(' ');
+            if (commandIndex != -1) {
+                String cmd = msg.substring(0, commandIndex);
+                if (commandsChatFeature.isCommand(cmd.startsWith("/") ? cmd : "/" + cmd)) {
+                    // Skip slash commands if configured
+                    if (!config.featureMessageHistory_IncludeCommands()) {
+                        resetNavState(); // still reset after a send
+                        return;
+                    }
+
+                    // Ensure it starts with a slash (client trims '/' from messages)
+                    if (!msg.startsWith("/"))
+                        msg = "/" + msg;
+                }
+            }
         }
+
+
 
         // Avoid consecutive duplicates if desired
         if (config.featureMessageHistory_SkipDuplicates()
@@ -282,6 +298,10 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
             try {
                 client.setVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT, v);
                 client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, v);
+
+                if (commandsChatFeature.isEnabled()) {
+                    commandsChatFeature.setLastChatInput(v);
+                }
             } catch (Throwable ex) {
                 log.debug("applyTypedText failed", ex);
             }
