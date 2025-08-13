@@ -8,7 +8,7 @@ _Note: Keystrokes are **NOT** captured in the chat input while the chat is hidde
 
 [Auto Hide](https://github.com/user-attachments/assets/2a254122-1151-438c-9f29-418739d6a2df)
 
-_Note: Auto-hide keybind can be changed in the settings, it defaults to **Enter**_
+_Note: Toggle keybind can be changed in the settings, it defaults to **Enter**_
 
 ---
 
@@ -41,6 +41,7 @@ _Note: Previous / next keybinds can be configured in the settings_
 _Note: Private chats can be closed using **Escape** key or submitting an empty message_
 
 ---
+
 
 
 
