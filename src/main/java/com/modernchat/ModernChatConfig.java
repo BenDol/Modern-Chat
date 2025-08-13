@@ -452,7 +452,7 @@ public interface ModernChatConfig extends Config,
     @ConfigItem(
         keyName = "featurePeek_FadeEnabled",
         name = "Fade Enabled",
-        description = "Enable fade-in/out effect for the peek overlay",
+        description = "Enable fade-in/out effect for the peek overlay (overlay will automatically reappear when a message is received)",
         position = 20,
         section = peekOverlaySection
     )
