@@ -241,7 +241,8 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
             String json = gson.toJson(toSave);
             // Per-account configuration
             configManager.setRSProfileConfiguration(ModernChatConfig.GROUP, ModernChatConfig.HISTORY_KEY, json);
-        } catch (Exception ex) {
+        }
+        catch (Exception ex) {
             log.warn("Failed to persist message history", ex);
         }
     }

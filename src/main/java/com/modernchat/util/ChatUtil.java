@@ -3,7 +3,7 @@ package com.modernchat.util;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.MenuAction;
 
-public class MessageUtil {
+public class ChatUtil {
 
     public static boolean isPrivateMessage(ChatMessageType t) {
         return t == ChatMessageType.PRIVATECHAT

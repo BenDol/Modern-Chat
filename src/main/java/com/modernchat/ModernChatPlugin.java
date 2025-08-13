@@ -12,7 +12,7 @@ import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.peek.PeekChatFeature;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.util.GeometryUtil;
-import com.modernchat.util.MessageUtil;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
@@ -154,7 +154,7 @@ public class ModernChatPlugin extends Plugin {
 			String option = entry.getOption();
 			String target = entry.getTarget();
 
-			if (!StringUtil.isNullOrEmpty(target) && MessageUtil.isPlayerType(entry.getType())) {
+			if (!StringUtil.isNullOrEmpty(target) && ChatUtil.isPlayerType(entry.getType())) {
 				playerTarget = entry.getTarget();
 			}
 
@@ -377,8 +377,8 @@ public class ModernChatPlugin extends Plugin {
 			ChatMessageBuilder builder = new ChatMessageBuilder()
 				.append("Plugin installed! This is the ")
 				.append(Color.CYAN, "Peek Overlay ")
-				.append("feature for a more subtle chat experience while playing. ")
-				.append("You can press \"Enter\" to send messages and hide/show the chat window. ");
+				.append("feature for a more subtle chat experience. ")
+				.append("You can press \"Enter\" to send messages and to hide/show the chat window. ");
 
 			boolean isSplitPmDisabled = client.getVarpValue(VarPlayerID.OPTION_PM) == 0;
 			if (isSplitPmDisabled) {
@@ -389,7 +389,7 @@ public class ModernChatPlugin extends Plugin {
 			}
 
 			messageService.pushChatMessage(builder
-				.append("To learn about more features and create custom configurations, check the plugin settings."),
+				.append("To learn more about the features and create custom configurations, check the plugin settings."),
 				ChatMessageType.WELCOME);
 
 			configManager.setConfiguration(ModernChatConfig.GROUP, "featureExample_Enabled", true);

@@ -27,8 +27,7 @@ public class ExampleChatFeature extends AbstractChatFeature<ExampleChatFeatureCo
         boolean featureExample_Enabled();
     }
 
-    @Inject
-    private Client client;
+    @Inject private Client client;
 
     @Inject
     public ExampleChatFeature(ModernChatConfig config, EventBus eventBus) {
