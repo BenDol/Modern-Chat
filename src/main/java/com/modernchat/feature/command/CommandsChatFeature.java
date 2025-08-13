@@ -21,11 +21,13 @@ import net.runelite.client.util.Text;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
 @Slf4j
+@Singleton
 public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature.CommandsChatConfig> {
 
     @Override
@@ -107,15 +109,14 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
 
         // /r and /reply
         commandHandlers.put("r", replyChatCommand);
-        commandHandlers.put("reply", commandHandlers.get("r"));
 
         // /w and /whisper
         commandHandlers.put("w", whisperChatCommand);
-        commandHandlers.put("whisper", commandHandlers.get("w"));
+        commandHandlers.put("whisper", new ChatCommandLink("w"));
 
         // /pm /private message
         commandHandlers.put("pm", privateMessageChatCommand);
-        commandHandlers.put("private", commandHandlers.get("pm"));
+        commandHandlers.put("private", new ChatCommandLink("pm"));
     }
 
     private void shutDownCommandHandlers() {
@@ -212,11 +213,21 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
 
         final String cmd = parts[0].substring(1).toLowerCase(Locale.ROOT);
         final String[] args = parts.length > 1 ? parseArgs(parts[1]) : new String[0];
-        final ChatCommandHandler handler = commandHandlers.get(cmd);
+        ChatCommandHandler handler = commandHandlers.get(cmd);
         if (handler == null) {
             log.debug("Unknown command: {}", cmd);
             return null; // Unknown command, ignore
         } else {
+            if (handler instanceof ChatCommandLink) {
+                String link = ((ChatCommandLink) handler).getLink();
+                handler = commandHandlers.get(link);
+
+                 if (handler == null) {
+                    log.debug("Unknown link command: {}", link);
+                    return null; // Unknown command, ignore
+                }
+            }
+
             log.debug("Chat command /{} with args: {}", cmd, String.join(", ", args));
             return Pair.of(handler, args); // Return handler and parsed args
         }

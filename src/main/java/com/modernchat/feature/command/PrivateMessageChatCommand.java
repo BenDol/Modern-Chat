@@ -1,16 +1,22 @@
 package com.modernchat.feature.command;
 
+import com.modernchat.ModernChatConfig;
+import com.modernchat.common.MessageService;
 import com.modernchat.feature.command.CommandsChatFeature.CommandsChatConfig;
 import com.modernchat.service.PrivateChatService;
-import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ChatboxInput;
+import net.runelite.client.events.ConfigChanged;
 
-import java.awt.event.KeyEvent;
+import javax.inject.Inject;
 
 @Slf4j
 public class PrivateMessageChatCommand extends AbstractChatCommand {
+
+    @Inject private MessageService messageService;
 
     @Override
     public void startUp(CommandsChatFeature feature) {
@@ -47,5 +53,23 @@ public class PrivateMessageChatCommand extends AbstractChatCommand {
         PrivateChatService privateChatService = feature.getPrivateChatService();
         privateChatService.setPmTarget(target);
         privateChatService.clearChatInput();
+    }
+
+    @Subscribe
+    public void onConfigChanged(ConfigChanged e) {
+        if (!e.getGroup().equals(ModernChatConfig.GROUP))
+            return;
+
+        String key = e.getKey();
+        if (key == null)
+            return;
+
+        if (key.endsWith("PrivateMessageEnabled")) {
+            if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
+                messageService.showWarningMessageBox("Private Message Command",
+                    "We recommend using \"Split friends private chat\" setting in the OSRS settings\n" +
+                    "to see responses above the chat window when using the /pm command.");
+            }
+        }
     }
 }

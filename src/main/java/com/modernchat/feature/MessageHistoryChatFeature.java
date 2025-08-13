@@ -24,6 +24,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.awt.event.KeyEvent;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
 import static com.modernchat.feature.MessageHistoryChatFeature.MessageHistoryChatFeatureConfig;
 
 @Slf4j
+@Singleton
 public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistoryChatFeatureConfig>
     implements KeyListener {
 

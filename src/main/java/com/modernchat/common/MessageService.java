@@ -1,5 +1,6 @@
 package com.modernchat.common;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.client.Notifier;
@@ -8,6 +9,7 @@ import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.Notification;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import javax.swing.Icon;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -16,6 +18,8 @@ import java.awt.TrayIcon;
 import java.awt.Window;
 import java.util.function.Consumer;
 
+@Slf4j
+@Singleton
 public class MessageService {
 
     public static final String MODERN_CHAT_TAG = "[ModernChat]";

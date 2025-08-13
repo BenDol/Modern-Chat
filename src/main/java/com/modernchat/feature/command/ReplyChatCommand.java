@@ -2,7 +2,9 @@ package com.modernchat.feature.command;
 
 import com.modernchat.feature.command.CommandsChatFeature.CommandsChatConfig;
 import com.modernchat.service.PrivateChatService;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ReplyChatCommand extends AbstractChatCommand {
 
     @Override

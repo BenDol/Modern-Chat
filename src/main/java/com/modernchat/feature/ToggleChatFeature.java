@@ -22,6 +22,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.awt.Canvas;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
@@ -29,6 +30,7 @@ import java.awt.event.KeyEvent;
 import static com.modernchat.feature.ToggleChatFeature.ToggleChatFeatureConfig;
 
 @Slf4j
+@Singleton
 public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConfig>
 	implements KeyListener
 {

@@ -10,10 +10,12 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
 import static com.modernchat.feature.ExampleChatFeature.ExampleChatFeatureConfig;
 
 @Slf4j
+@Singleton
 public class ExampleChatFeature extends AbstractChatFeature<ExampleChatFeatureConfig> {
 
     @Override

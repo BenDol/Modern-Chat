@@ -14,9 +14,7 @@ import net.runelite.client.callback.ClientThread;
 @Slf4j
 public class ClientUtil {
 
-    /**
-     * MUST be on client thread.
-     */
+    /** MUST be on client thread. */
     public static boolean isSystemTextEntryActive(Client client) {
         // Reliable for "Add Friend", "Enter amount", etc.
         int type = client.getVarbitValue(VarClientInt.INPUT_TYPE);

@@ -24,11 +24,13 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.awt.Color;
 
 import static com.modernchat.feature.peek.PeekChatFeature.PeekChatFeatureConfig;
 
 @Slf4j
+@Singleton
 public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 {
 	@Override

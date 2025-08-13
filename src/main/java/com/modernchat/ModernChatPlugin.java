@@ -31,7 +31,6 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
-import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -96,7 +95,6 @@ public class ModernChatPlugin extends Plugin {
 		lastChatBounds = null;
 
 		if (!config.featureExample_Enabled()) {
-			//configManager.setConfiguration(ModernChatConfig.GROUP, "featureExample_Enabled", true);
 			toggleChatFeature.scheduleDeferredHide();
 
 			Player localPlayer = client.getLocalPlayer();
@@ -205,13 +203,6 @@ public class ModernChatPlugin extends Plugin {
 			if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
 				messageService.pushChatMessage(
 					"Please enable \"Split friends private chat\" in the OSRS settings for the 'Anchor Private Chat' feature.");
-			}
-		}
-		else if (key.endsWith("PrivateMessageEnabled")) {
-			if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
-				messageService.showWarningMessageBox("Private Message Command",
-					"We recommend using \"Split friends private chat\" setting in the OSRS settings\n" +
-					"to see responses above the chat window when using the /pm command.");
 			}
 		}
 	}
