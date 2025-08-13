@@ -74,8 +74,8 @@ public class ModernChatPlugin extends Plugin {
 	private Set<ChatFeature<?>> features;
 	private Widget chatWidget = null;
 	private Widget pmWidget = null;
-	private Anchor pmAnchor = null;
-	private Rectangle lastChatBounds;
+	private volatile Anchor pmAnchor = null;
+	private volatile Rectangle lastChatBounds;
 
 	@Provides
 	ModernChatConfig provideConfig(ConfigManager configManager) {
@@ -253,7 +253,9 @@ public class ModernChatPlugin extends Plugin {
 		if (e.getGroupId() == InterfaceID.CHATBOX) {
 			chatWidget = null;
 			lastChatBounds = null;
-			maybeReanchor(true); // force once loaded
+
+			// force once loaded
+			clientThread.invokeAtTickEnd(() -> maybeReanchor(true));
 		}
 		if (e.getGroupId() == InterfaceID.PM_CHAT) {
 			pmWidget = null;
@@ -298,9 +300,12 @@ public class ModernChatPlugin extends Plugin {
 		if (chat == null)
 			return;
 
-		final Rectangle cur = chat.getBounds();
-		if (cur == null || cur.height <= 0 || cur.width <= 0)
+		Rectangle cur = chat.getBounds();
+		if (cur == null)
 			return;
+
+		if (chat.isHidden())
+			cur = new Rectangle(cur.x, cur.y, cur.width, 0); // hide height if chat is hidden
 
 		int offsetX = config.general_AnchorPrivateChatOffsetX();
 		int offsetY = config.general_AnchorPrivateChatOffsetY();
@@ -311,12 +316,13 @@ public class ModernChatPlugin extends Plugin {
 			}
 		}
 
-		if (GeometryUtil.isInvalidChatBounds(cur)) {
+		if (!chat.isHidden() && GeometryUtil.isInvalidChatBounds(cur)) {
 			return; // invalid bounds, skip re-anchoring for now
 		}
 
 		lastChatBounds = new Rectangle(cur);
-		anchorSplitPm(offsetX, offsetY);
+
+		clientThread.invokeLater(() -> anchorSplitPm(offsetX, offsetY));
 	}
 
 	private void anchorSplitPm(int offsetX, int offsetY)
