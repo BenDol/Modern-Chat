@@ -26,7 +26,7 @@ _Note: When the **Fade** setting is enabled the peek overlay will reappear when 
 
 [Chat Commands](https://github.com/user-attachments/assets/d59f1c79-1163-4835-bd35-e24d4a5a8abe)
 
-_Note: Chat commands can be disabled in the settings_
+_Note: /pm chats can be closed using **Escape** key or submitting an empty message_
 
 ---
 
@@ -38,4 +38,7 @@ _Note: Previous / next keybinds can be configured in the settings_
 
 [Menu Entries.webm](https://github.com/user-attachments/assets/49da2342-94ff-43c2-883d-1c9dbfa5d0ee)
 
+_Note: Private chats can be closed using **Escape** key or submitting an empty message_
+
 ---
+
