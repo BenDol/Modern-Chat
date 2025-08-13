@@ -14,69 +14,60 @@ import javax.inject.Inject;
 import static com.modernchat.feature.ExampleChatFeature.ExampleChatFeatureConfig;
 
 @Slf4j
-public class ExampleChatFeature extends AbstractChatFeature<ExampleChatFeatureConfig>
-{
-	@Override
-	public String getConfigGroup() {
-		return "featureExample";
-	}
+public class ExampleChatFeature extends AbstractChatFeature<ExampleChatFeatureConfig> {
 
-	public interface ExampleChatFeatureConfig extends ChatFeatureConfig
-	{
-		boolean featureExample_Enabled();
-	}
+    @Override
+    public String getConfigGroup() {
+        return "featureExample";
+    }
 
-	@Inject private Client client;
+    public interface ExampleChatFeatureConfig extends ChatFeatureConfig {
+        boolean featureExample_Enabled();
+    }
 
-	@Inject
-	public ExampleChatFeature(ModernChatConfig config, EventBus eventBus) {
-		super(config, eventBus);
-	}
+    @Inject
+    private Client client;
 
-	@Override
-	protected ExampleChatFeatureConfig extractConfig(ModernChatConfig config) {
-		return new ExampleChatFeatureConfig()
-		{
-			@Override
-			public boolean featureExample_Enabled() {
-				return config.featureExample_Enabled();
-			}
-		};
-	}
+    @Inject
+    public ExampleChatFeature(ModernChatConfig config, EventBus eventBus) {
+        super(config, eventBus);
+    }
 
-	@Override
-	public boolean isEnabled() {
-		return config.featureExample_Enabled();
-	}
+    @Override
+    protected ExampleChatFeatureConfig partitionConfig(ModernChatConfig config) {
+        return new ExampleChatFeatureConfig() {
+            @Override public boolean featureExample_Enabled() { return config.featureExample_Enabled(); }
+        };
+    }
 
-	@Override
-	public void startUp()
-	{
-		super.startUp();
+    @Override
+    public boolean isEnabled() {
+        return config.featureExample_Enabled();
+    }
 
-		// Example: Register a key listener to toggle chat visibility
-	}
+    @Override
+    public void startUp() {
+        super.startUp();
 
-	@Override
-	public void shutDown(boolean fullShutdown)
-	{
-		super.shutDown(fullShutdown);
+        // Example: Register a key listener to toggle chat visibility
+    }
 
-		// Example: Unregister any listeners or clean up resources
-	}
+    @Override
+    public void shutDown(boolean fullShutdown) {
+        super.shutDown(fullShutdown);
 
-	@Subscribe
-	public void onGameStateChanged(GameStateChanged e)
-	{
-		if (e.getGameState() == GameState.LOGGED_IN)
-		{
-			// Example: Perform actions when the player logs in
-		}
-	}
+        // Example: Unregister any listeners or clean up resources
+    }
 
-	@Subscribe
-	public void onGameTick(GameTick tick)
-	{
-		// Example: Handle game ticks for periodic updates
-	}
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged e) {
+        if (e.getGameState() == GameState.LOGGED_IN) {
+            // Example: Perform actions when the player logs in
+        }
+    }
+
+    @Subscribe
+    public void onGameTick(GameTick tick) {
+        // Example: Handle game ticks for periodic updates
+    }
 }

@@ -1,6 +1,7 @@
 package com.modernchat.feature.command;
 
 import com.modernchat.feature.command.CommandsChatFeature.CommandsChatConfig;
+import com.modernchat.service.PrivateChatService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -12,8 +13,13 @@ import java.awt.event.KeyEvent;
 public class PrivateMessageChatCommand extends AbstractChatCommand {
 
     @Override
+    public void startUp(CommandsChatFeature feature) {
+        super.startUp(feature);
+    }
+
+    @Override
     public void shutDown(CommandsChatFeature feature) {
-        feature.cancelPrivateMessageCompose();
+        feature.getPrivateChatService().cancelPrivateMessage();
 
         super.shutDown(feature);
     }
@@ -38,21 +44,8 @@ public class PrivateMessageChatCommand extends AbstractChatCommand {
             ev.consume(); // Prevent default chat submission
         }
 
-        feature.setPmTarget(target);
-        feature.clearChatInput();
-    }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-        super.keyPressed(e);
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-            feature.cancelPrivateMessageCompose();
-        }
-        else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-            String lastInputText = ClientUtil.getSystemInputText(client);
-            if (StringUtil.isNullOrEmpty(lastInputText)) {
-                feature.cancelPrivateMessageCompose();
-            }
-        }
+        PrivateChatService privateChatService = feature.getPrivateChatService();
+        privateChatService.setPmTarget(target);
+        privateChatService.clearChatInput();
     }
 }

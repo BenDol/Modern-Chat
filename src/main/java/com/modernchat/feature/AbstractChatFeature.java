@@ -13,11 +13,11 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
     private ConfigChangedHandler configChangeHandler;
 
     protected AbstractChatFeature(ModernChatConfig config, EventBus eventBus) {
-        this.config = extractConfig(config);
+        this.config = partitionConfig(config);
         this.eventBus = eventBus;
     }
 
-    protected abstract T extractConfig(ModernChatConfig config);
+    protected abstract T partitionConfig(ModernChatConfig config);
 
     @Override
     public T getConfig() {
@@ -60,8 +60,8 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
 
             if (key.endsWith("_Enabled")) {
                 // If the feature is disabled, we can soft-shut it down
-                boolean currentlyEnabled = e.getOldValue() != null && Boolean.parseBoolean(e.getOldValue());
-                boolean enabling = e.getNewValue() != null && Boolean.parseBoolean(e.getNewValue());
+                boolean currentlyEnabled = Boolean.parseBoolean(e.getOldValue());
+                boolean enabling = Boolean.parseBoolean(e.getNewValue());
                 if (!enabling && currentlyEnabled) {
                     shutDown();
                 } else if (enabling && !currentlyEnabled) {

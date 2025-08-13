@@ -16,7 +16,6 @@ public abstract class AbstractChatCommand implements CommandsChatFeature.ChatCom
     public CommandsChatFeature feature;
 
     @Inject protected Client client;
-    @Inject protected ClientThread clientThread;
     @Inject protected EventBus eventBus;
     @Inject protected KeyManager keyManager;
 
@@ -36,9 +35,17 @@ public abstract class AbstractChatCommand implements CommandsChatFeature.ChatCom
         keyManager.unregisterKeyListener(this);
     }
 
-    @Override public void keyTyped(KeyEvent e) {}
-    @Override public void keyPressed(KeyEvent e) {}
-    @Override public void keyReleased(KeyEvent e) {}
+    @Override
+    public void keyTyped(KeyEvent e) {
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+    }
 
     protected String getTargetNameFromArgs(String[] args) {
         // Example: /w <name> - whisper to a player

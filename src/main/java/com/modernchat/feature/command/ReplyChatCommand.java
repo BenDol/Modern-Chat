@@ -1,6 +1,7 @@
 package com.modernchat.feature.command;
 
 import com.modernchat.feature.command.CommandsChatFeature.CommandsChatConfig;
+import com.modernchat.service.PrivateChatService;
 
 public class ReplyChatCommand extends AbstractChatCommand {
 
@@ -10,7 +11,8 @@ public class ReplyChatCommand extends AbstractChatCommand {
         if (!config.featureCommands_ReplyEnabled())
             return;
 
-        feature.replyToLastPm(/*body*/ null);
-        feature.clearChatInput();
+        PrivateChatService privateChatService = feature.getPrivateChatService();
+        privateChatService.replyToLastPm(/*body*/ null);
+        feature.getPrivateChatService().clearChatInput();
     }
 }

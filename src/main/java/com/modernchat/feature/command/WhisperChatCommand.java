@@ -1,6 +1,7 @@
 package com.modernchat.feature.command;
 
 import com.modernchat.feature.command.CommandsChatFeature.CommandsChatConfig;
+import com.modernchat.service.PrivateChatService;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.events.ChatboxInput;
@@ -28,7 +29,8 @@ public class WhisperChatCommand extends AbstractChatCommand {
             ev.consume(); // Prevent default chat submission
         }
 
-        feature.replyTo(target);
-        feature.clearChatInput();
+        PrivateChatService privateChatService = feature.getPrivateChatService();
+        privateChatService.replyTo(target);
+        privateChatService.clearChatInput();
     }
 }

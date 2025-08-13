@@ -1,13 +1,11 @@
 package com.modernchat;
 
-import java.awt.Color;
-import java.awt.event.KeyEvent;
-
 import com.modernchat.common.RuneFontStyle;
 import com.modernchat.feature.ExampleChatFeature;
-import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
+import com.modernchat.feature.peek.PeekChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
+import com.modernchat.feature.command.CommandsChatFeature;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -17,10 +15,14 @@ import net.runelite.client.config.Keybind;
 import net.runelite.client.config.Range;
 import net.runelite.client.config.Units;
 
+import java.awt.Color;
+import java.awt.event.KeyEvent;
+
 @ConfigGroup(ModernChatConfig.GROUP)
 public interface ModernChatConfig extends Config,
     ExampleChatFeature.ExampleChatFeatureConfig,
     ToggleChatFeature.ToggleChatFeatureConfig,
+    PeekChatFeature.PeekChatFeatureConfig,
     CommandsChatFeature.CommandsChatConfig,
     MessageHistoryChatFeature.MessageHistoryChatFeatureConfig
 {
@@ -30,17 +32,33 @@ public interface ModernChatConfig extends Config,
     /* ------------ Sections ------------ */
 
     @ConfigSection(
+        name = "General",
+        description = "General settings for Modern Chat",
+        position = 0,
+        closedByDefault = false
+    )
+    String generalSection = "generalSection";
+
+    @ConfigSection(
         name = "Chat Toggle",
         description = "Show/hide chat with a hotkey",
-        position = 0,
+        position = 1,
         closedByDefault = false
     )
     String toggleChatSection = "toggleChatSection";
 
     @ConfigSection(
+        name = "Peek Overlay",
+        description = "Show a peek overlay when chat is hidden",
+        position = 2,
+        closedByDefault = true
+    )
+    String peekOverlaySection = "peekOverlaySection";
+
+    @ConfigSection(
         name = "Chat Commands",
         description = "Custom chat commands for quick actions",
-        position = 1,
+        position = 3,
         closedByDefault = false
     )
     String commandsSection = "commandsSection";
@@ -48,7 +66,7 @@ public interface ModernChatConfig extends Config,
     @ConfigSection(
         name = "Message History",
         description = "Cycle through your message history",
-        position = 2,
+        position = 4,
         closedByDefault = false
     )
     String messageHistorySection = "messageHistorySection";
@@ -56,16 +74,54 @@ public interface ModernChatConfig extends Config,
     /* ------------ Feature: Example ------------ */
 
     @ConfigItem(
-        keyName = "featureToggle_Enabled",
+        keyName = "featureExample_Enabled",
         name = "Enable",
         description = "Enable the chat toggle feature",
         position = 0,
         hidden = true // This is just an example, not a real feature
     )
     @Override
-    default boolean featureExample_Enabled()
-    {
+    default boolean featureExample_Enabled() {
         return false;
+    }
+
+    /* ------------ General Settings ------------ */
+
+    @ConfigItem(
+        keyName = "general_AnchorPrivateChat",
+        name = "Anchor Private Chat",
+        description = "Anchor the split private chat window to the top of the chatbox",
+        position = 0,
+        section = generalSection
+    )
+    default boolean general_AnchorPrivateChat() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "general_AnchorPrivateChatOffsetX",
+        name = "Anchor Offset X",
+        description = "Horizontal offset for the private chat anchor",
+        position = 1,
+        section = generalSection
+    )
+    @Range(min = -500, max = 500)
+    @Units(Units.PIXELS)
+    default int general_AnchorPrivateChatOffsetX() {
+        return 0;
+    }
+
+    @ConfigItem(
+        keyName = "general_AnchorPrivateChatOffsetY",
+        name = "Anchor Offset Y",
+        description = "Vertical offset for the private chat anchor",
+        position = 2,
+        section = generalSection
+    )
+    @Range(min = -500, max = 500)
+    @Units(Units.PIXELS)
+    default int general_AnchorPrivateChatOffsetY() {
+        return 0;
     }
 
     /* ------------ Feature: Toggle Chat ------------ */
@@ -78,161 +134,307 @@ public interface ModernChatConfig extends Config,
         section = toggleChatSection
     )
     @Override
-    default boolean featureToggle_Enabled()
-    {
+    default boolean featureToggle_Enabled() {
         return true;
     }
 
     @ConfigItem(
-        keyName = "featureToggle_toggleKey",
+        keyName = "featureToggle_ToggleKey",
         name = "Toggle hotkey",
         description = "Key used to show/hide the chatbox",
         position = 1,
         section = toggleChatSection
     )
     @Override
-    default Keybind featureToggle_ToggleKey()
-    {
-        // Default to Enter. Modify if you prefer another default.
+    default Keybind featureToggle_ToggleKey() {
         return new Keybind(KeyEvent.VK_ENTER, 0);
     }
 
     @ConfigItem(
-        keyName = "featureToggle_autoHideOnSend",
+        keyName = "featureToggle_AutoHideOnSend",
         name = "Auto-hide on send",
         description = "Hide chat automatically after sending a message",
         position = 2,
         section = toggleChatSection
     )
     @Override
-    default boolean featureToggle_autoHideOnSend()
-    {
+    default boolean featureToggle_AutoHideOnSend() {
         return true;
     }
 
     @ConfigItem(
-        keyName = "featureToggle_startHidden",
+        keyName = "featureToggle_StartHidden",
         name = "Start hidden",
         description = "Hide the chatbox when the plugin starts",
         position = 3,
         section = toggleChatSection
     )
     @Override
-    default boolean featureToggle_StartHidden()
-    {
-        return false;
+    default boolean featureToggle_StartHidden() {
+        return true;
     }
 
     @ConfigItem(
-        keyName = "featureToggle_lockCameraWhenVisible",
+        keyName = "featureToggle_LockCameraWhenVisible",
         name = "Lock camera keys",
         description = "Lock the camera key arrows when chat is visible",
         position = 4,
         section = toggleChatSection
     )
     @Override
-    default boolean featureToggle_lockCameraWhenVisible()
-    {
+    default boolean featureToggle_LockCameraWhenVisible() {
         return false;
     }
 
+    /* ------------ Feature: Peek Overlay ------------ */
+
     @ConfigItem(
-        keyName = "featureToggle_peekOverlayEnabled",
-        name = "Peek Enabled",
-        description = "Show the peek overlay when the chat is hidden to see messages",
-        position = 5,
-        section = toggleChatSection
+        keyName = "featurePeek_Enabled",
+        name = "Enable",
+        description = "Enable the peek overlay feature",
+        position = 0,
+        section = peekOverlaySection
     )
     @Override
-    default boolean featureToggle_peekOverlayEnabled()
-    {
+    default boolean featurePeek_Enabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_ShowPrivateMessages",
+        name = "Show Private Messages",
+        description = "Show private messages in the peek overlay",
+        position = 1,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_ShowPrivateMessages() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_HideSplitPrivateMessages",
+        name = "Hide Split Private Messages",
+        description = "Hide split private messages when peek overlay is visible",
+        position = 2,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_HideSplitPrivateMessages() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_PrefixChatTypes",
+        name = "Prefix Chat Types",
+        description = "Prefix messages with their chat type in the peek overlay",
+        position = 3,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_PrefixChatTypes() {
         return true;
     }
 
     @Alpha
     @ConfigItem(
-        keyName = "featureToggle_peekBgColor",
-        name = "Peek Background Color",
+        keyName = "featurePeek_BackgroundColor",
+        name = "Background Color",
         description = "Background color for the peek overlay",
-        position = 6,
-        section = toggleChatSection
+        position = 4,
+        section = peekOverlaySection
     )
     @Override
-    default Color featureToggle_peekBgColor()
-    {
+    default Color featurePeek_BackgroundColor() {
         return new Color(12, 12, 12, 0);
     }
 
     @Alpha
     @ConfigItem(
-        keyName = "featureToggle_peekBorderColor",
-        name = "Peek Border Color",
+        keyName = "featurePeek_BorderColor",
+        name = "Border Color",
         description = "Border color for the peek overlay",
-        position = 7,
-        section = toggleChatSection
+        position = 5,
+        section = peekOverlaySection
     )
     @Override
-    default Color featureToggle_peekBorderColor()
-    {
+    default Color featurePeek_BorderColor() {
         return new Color(12, 12, 12, 0);
     }
 
     @ConfigItem(
-        keyName = "featureToggle_peekFontStyle",
-        name = "Peek Font Style",
+        keyName = "featurePeek_FontStyle",
+        name = "Font Style",
         description = "Font style for the peek overlay",
-        position = 9,
-        section = toggleChatSection
+        position = 6,
+        section = peekOverlaySection
     )
     @Units(Units.PIXELS)
     @Override
-    default RuneFontStyle featureToggle_peekFontStyle()
-    {
+    default RuneFontStyle featurePeek_FontStyle() {
         return RuneFontStyle.NORMAL;
     }
 
     @ConfigItem(
-        keyName = "featureToggle_peekFontSize",
-        name = "Peek Font Size",
+        keyName = "featurePeek_FontSize",
+        name = "Font Size",
         description = "Show an overlay when the chat is hidden to peek at messages",
-        position = 10,
-        section = toggleChatSection
+        position = 7,
+        section = peekOverlaySection
     )
     @Units(Units.PIXELS)
     @Override
-    default int featureToggle_peekFontSize()
-    {
-        return 14;
+    default int featurePeek_FontSize() {
+        return 16;
     }
 
     @ConfigItem(
-        keyName = "featureToggle_peekOffsetX",
-        name = "Peek Offset X",
+        keyName = "featurePeek_TextShadow",
+        name = "Text Shadow",
+        description = "Shadow offset for text in the peek overlay",
+        position = 8,
+        section = peekOverlaySection
+    )
+    @Range(min = 0, max = 10)
+    @Units(Units.PIXELS)
+    @Override
+    default int featurePeek_TextShadow() {
+        return 1;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_OffsetX",
+        name = "Offset X",
         description = "Horizontal offset for the peek overlay",
-        position = 11,
-        section = toggleChatSection
+        position = 9,
+        section = peekOverlaySection
     )
     @Range(min = -500, max = 500)
     @Units(Units.PIXELS)
     @Override
-    default int featureToggle_peekOffsetX()
-    {
+    default int featurePeek_OffsetX() {
         return 0;
     }
 
     @ConfigItem(
-        keyName = "featureToggle_peekOffsetY",
-        name = "Peek Offset Y",
+        keyName = "featurePeek_OffsetY",
+        name = "Offset Y",
         description = "Vertical offset for the peek overlay",
-        position = 12,
-        section = toggleChatSection
+        position = 10,
+        section = peekOverlaySection
     )
     @Range(min = -500, max = 500)
     @Units(Units.PIXELS)
     @Override
-    default int featureToggle_peekOffsetY()
-    {
-        return -40;
+    default int featurePeek_OffsetY() {
+        return -55;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_Padding",
+        name = "Padding",
+        description = "Padding around the text in the peek overlay",
+        position = 11,
+        section = peekOverlaySection
+    )
+    @Range(min = 0, max = 100)
+    @Units(Units.PIXELS)
+    @Override
+    default int featurePeek_Padding() {
+        return 8;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_MarginRight",
+        name = "Margin Right",
+        description = "Right margin for the peek overlay (apply a background color to see effect)",
+        position = 12,
+        section = peekOverlaySection
+    )
+    @Range(min = -500, max = 500)
+    @Units(Units.PIXELS)
+    @Override
+    default int featurePeek_MarginRight() {
+        return 0;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_MarginBottom",
+        name = "Margin Bottom",
+        description = "Bottom margin for the peek overlay (apply a background color to see effect)",
+        position = 13,
+        section = peekOverlaySection
+    )
+    @Range(min = -500, max = 500)
+    @Units(Units.PIXELS)
+    @Override
+    default int featurePeek_MarginBottom() {
+        return 0;
+    }
+
+    @Alpha
+    @ConfigItem(
+        keyName = "featurePeek_PublicChatColor",
+        name = "Public Chat Color",
+        description = "Color for public chat messages in the peek overlay",
+        position = 14,
+        section = peekOverlaySection
+    )
+    @Override
+    default Color featurePeek_PublicChatColor() {
+        return Color.WHITE;
+    }
+
+    @Alpha
+    @ConfigItem(
+        keyName = "featurePeek_FriendsChatColor",
+        name = "Friends Chat Color",
+        description = "Color for friends chat messages in the peek overlay",
+        position = 15,
+        section = peekOverlaySection
+    )
+    @Override
+    default Color featurePeek_FriendsChatColor() {
+        return new Color(0x00FF80); // light green
+    }
+
+    @Alpha
+    @ConfigItem(
+        keyName = "featurePeek_ClanChatColor",
+        name = "Clan Chat Color",
+        description = "Color for clan chat messages in the peek overlay",
+        position = 16,
+        section = peekOverlaySection
+    )
+    @Override
+    default Color featurePeek_ClanChatColor() {
+        return new Color(0x80C0FF); // light blue
+    }
+
+    @Alpha
+    @ConfigItem(
+        keyName = "featurePeek_PrivateChatColor",
+        name = "Private Chat Color",
+        description = "Color for private chat messages in the peek overlay",
+        position = 17,
+        section = peekOverlaySection
+    )
+    @Override
+    default Color featurePeek_PrivateChatColor() {
+        return new Color(0xFF80FF); // light purple
+    }
+
+    @Alpha
+    @ConfigItem(
+        keyName = "featurePeek_SystemChatColor",
+        name = "System Chat Color",
+        description = "Color for system chat messages in the peek overlay",
+        position = 18,
+        section = peekOverlaySection
+    )
+    @Override
+    default Color featurePeek_SystemChatColor() {
+        return new Color(0xC0C0C0); // light gray
     }
 
     /* ------------ Feature: Commands ------------ */
@@ -245,9 +447,8 @@ public interface ModernChatConfig extends Config,
         section = commandsSection
     )
     @Override
-    default boolean featureCommands_Enabled()
-    {
-        return  true;
+    default boolean featureCommands_Enabled() {
+        return true;
     }
 
     @ConfigItem(
@@ -258,8 +459,7 @@ public interface ModernChatConfig extends Config,
         section = commandsSection
     )
     @Override
-    default boolean featureCommands_ReplyEnabled()
-    {
+    default boolean featureCommands_ReplyEnabled() {
         return true;
     }
 
@@ -271,8 +471,7 @@ public interface ModernChatConfig extends Config,
         section = commandsSection
     )
     @Override
-    default boolean featureCommands_WhisperEnabled()
-    {
+    default boolean featureCommands_WhisperEnabled() {
         return true;
     }
 
@@ -283,16 +482,12 @@ public interface ModernChatConfig extends Config,
             "Enable the /pm command to quickly private message players holding the " +
             "player's message prompt until cancelled (Esc or empty message). Avoids " +
             "having use commands each message.",
-        warning =
-            "We recommend using \"Split friends private chat\" setting in the OSRS settings\n" +
-            "to see responses above the chat window when using the /pm command.",
         position = 3,
         section = commandsSection
     )
     @Override
-    default boolean featureCommands_PrivateMessageEnabled()
-    {
-        return false;
+    default boolean featureCommands_PrivateMessageEnabled() {
+        return true;
     }
 
     /* ------------ Feature: Message History ------------ */
@@ -305,9 +500,8 @@ public interface ModernChatConfig extends Config,
         section = messageHistorySection
     )
     @Override
-    default boolean featureMessageHistory_Enabled()
-    {
-        return  true;
+    default boolean featureMessageHistory_Enabled() {
+        return true;
     }
 
     @ConfigItem(
@@ -318,8 +512,7 @@ public interface ModernChatConfig extends Config,
         section = messageHistorySection
     )
     @Override
-    default int featureMessageHistory_MaxEntries()
-    {
+    default int featureMessageHistory_MaxEntries() {
         return 50;
     }
 
@@ -331,8 +524,7 @@ public interface ModernChatConfig extends Config,
         section = messageHistorySection
     )
     @Override
-    default boolean featureMessageHistory_IncludeCommands()
-    {
+    default boolean featureMessageHistory_IncludeCommands() {
         return true;
     }
 
@@ -344,8 +536,7 @@ public interface ModernChatConfig extends Config,
         section = messageHistorySection
     )
     @Override
-    default boolean featureMessageHistory_SkipDuplicates()
-    {
+    default boolean featureMessageHistory_SkipDuplicates() {
         return true;
     }
 
@@ -357,8 +548,7 @@ public interface ModernChatConfig extends Config,
         section = messageHistorySection
     )
     @Override
-    default Keybind featureMessageHistory_PrevKey()
-    {
+    default Keybind featureMessageHistory_PrevKey() {
         return new Keybind(KeyEvent.VK_PAGE_UP, 0);
     }
 
@@ -370,8 +560,7 @@ public interface ModernChatConfig extends Config,
         section = messageHistorySection
     )
     @Override
-    default Keybind featureMessageHistory_NextKey()
-    {
+    default Keybind featureMessageHistory_NextKey() {
         return new Keybind(KeyEvent.VK_PAGE_DOWN, 0);
     }
 }
