@@ -12,11 +12,13 @@ import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.peek.PeekChatFeature;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.util.GeometryUtil;
+import com.modernchat.util.MessageUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Menu;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
@@ -34,7 +36,6 @@ import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.Text;
@@ -42,7 +43,9 @@ import net.runelite.client.util.Text;
 import javax.inject.Inject;
 import java.awt.Color;
 import java.awt.Rectangle;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -56,7 +59,6 @@ public class ModernChatPlugin extends Plugin {
 
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
-	@Inject private MenuManager menuManager;
 	@Inject private ConfigManager configManager;
 	@Inject private ChatMessageManager chatMessageManager;
 	@Inject private MessageService messageService;
@@ -143,40 +145,71 @@ public class ModernChatPlugin extends Plugin {
 	}
 
 	private boolean tryAddPrivateMessageMenuOption(MenuEntry[] entries) {
+		List<MenuEntry> targetEntries = new ArrayList<>();
+		String playerTarget = null;
 		int order = 0;
-		String target = null;
-		for (MenuEntry entry : entries) {
-			order++;
-			String option = entry.getOption();
-			if (option == null || !option.equalsIgnoreCase("Message"))
-				continue;
 
-			target = entry.getTarget();
-			if (!StringUtil.isNullOrEmpty(target)) {
-				target = Text.removeTags(target);
-				if (!StringUtil.isNullOrEmpty(target)) {
-					// If we find a valid target, we can stop looking
-					break;
-				}
+		for (int i = entries.length - 1; i >= 0; --i) {
+			MenuEntry entry = entries[i];
+			String option = entry.getOption();
+			String target = entry.getTarget();
+
+			if (!StringUtil.isNullOrEmpty(target) && MessageUtil.isPlayerType(entry.getType())) {
+				playerTarget = entry.getTarget();
+			}
+
+			// try find sub-menu entry for private message first
+			if (!StringUtil.isNullOrEmpty(target) && StringUtil.isNullOrEmpty(option) && entry.getType() == MenuAction.RUNELITE) {
+				targetEntries.add(entry);
+			}
+			else if (!StringUtil.isNullOrEmpty(option) && option.equalsIgnoreCase("Message")) {
+				playerTarget = target;
+				order = i; // insert before this entry
 			}
 		}
 
-		final String cleanedTarget = target;
-		if (StringUtil.isNullOrEmpty(cleanedTarget))
-			return false;
+		boolean addedToSubMenu = false;
 
-		client.getMenu().createMenuEntry(order - 1) // insert at top
-			.setOption("Chat with")
-			.setTarget(cleanedTarget)
-			.setType(MenuAction.RUNELITE_HIGH_PRIORITY)
-			.setIdentifier(0)
-			.onClick(me -> onPrivateMessageRightClick(cleanedTarget));
+		for (MenuEntry targetEntry : targetEntries) {
+			String target = targetEntry.getTarget();
+			if (StringUtil.isNullOrEmpty(target)) {
+				continue;
+			}
+
+			Menu menu = targetEntry.getSubMenu();
+			if (menu == null)
+				continue;
+
+			menu.createMenuEntry(1)
+				.setOption("Chat with")
+				.setTarget(target)
+				.setType(MenuAction.RUNELITE_PLAYER)
+				.setIdentifier(0)
+				.onClick(me -> onPrivateMessageRightClick(target));
+			addedToSubMenu = true;
+		}
+
+		if (!addedToSubMenu && !StringUtil.isNullOrEmpty(playerTarget)) {
+			String finalTarget = playerTarget;
+			client.getMenu().createMenuEntry(order)
+				.setOption("Chat with")
+				.setTarget(playerTarget)
+				.setType(MenuAction.RUNELITE_PLAYER)
+				.setIdentifier(0)
+				.onClick(me -> onPrivateMessageRightClick(finalTarget));
+		}
+
 		return true;
 	}
 
 	private void onPrivateMessageRightClick(String target) {
 		log.info("Private message right-clicked: {}", target);
-		privateChatService.setPmTarget(target);
+		String cleanedTarget = Text.removeTags(target);
+		int index = cleanedTarget.indexOf(" (");
+		if (index != -1)
+			cleanedTarget = cleanedTarget.substring(0, index - 1);
+
+		privateChatService.setPmTarget(cleanedTarget);
 		privateChatService.clearChatInput();
 	}
 
