@@ -3,7 +3,9 @@ package com.modernchat.feature.peek;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.RuneFontStyle;
 import com.modernchat.feature.ToggleChatFeature;
+import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
+import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -17,6 +19,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import javax.inject.Inject;
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -33,6 +36,7 @@ public class ChatPeekOverlay extends Overlay {
     private static final class Seg {
         final String text;
         final Color color;
+        String textCache = null;
 
         Seg(String t, Color c) {
             text = t;
@@ -43,7 +47,12 @@ public class ChatPeekOverlay extends Overlay {
     private static final class RichLine {
         final List<Seg> segs = new ArrayList<>();
         ChatMessageType type;
+        long timestamp;
+
+        // Cached values for performance
+        List<VisualLine> lineCache = null;
         String prefixCache = null;
+        String timestampCache = null;
     }
 
     private static final class VisualLine {
@@ -121,7 +130,7 @@ public class ChatPeekOverlay extends Overlay {
             return null;
 
         // Save/restore composite
-        final java.awt.Composite old = g.getComposite();
+        final Composite old = g.getComposite();
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
         try {
             // Background
@@ -158,14 +167,17 @@ public class ChatPeekOverlay extends Overlay {
                     continue;
                 }
 
-                List<VisualLine> wrapped = wrapRichLine(rl, fm, maxW);
-                for (int i = wrapped.size() - 1; i >= 0; i--) {
+                if (rl.lineCache == null) {
+                    rl.lineCache = wrapRichLine(rl, fm, maxW);
+                }
+
+                for (int i = rl.lineCache.size() - 1; i >= 0; i--) {
                     y -= lineH;
                     if (y < box.y + padding) return null;
                     if (++drawn > maxVisualLines) return null;
 
                     int dx = xLeft;
-                    for (Seg seg : wrapped.get(i).segs) {
+                    for (Seg seg : rl.lineCache.get(i).segs) {
                         if (dx == xLeft && seg.text.isBlank()) continue;
 
                         int shadowOffset = config.featurePeek_TextShadow();
@@ -275,10 +287,11 @@ public class ChatPeekOverlay extends Overlay {
         return c == null ? Color.WHITE : c;
     }
 
-    public void pushLine(String s, ChatMessageType type) {
+    public void pushLine(String s, ChatMessageType type, long timestamp) {
         Color c = getColor(type);
         RichLine rl = parseColored(s == null ? "" : s, c == null ? Color.WHITE : c);
         rl.type = type;
+        rl.timestamp = timestamp;
         pushRich(rl);
         noteMessageActivity();
     }
@@ -388,15 +401,28 @@ public class ChatPeekOverlay extends Overlay {
             rl.prefixCache = getPrefix(rl.type);
         }
 
-        for (Seg s : rl.segs) {
-            String txt = s.text;
-            if (segIndex == 0)
-                hasPrefix = txt.startsWith("[");
+        if (rl.timestampCache == null && rl.timestamp > 0) {
+            rl.timestampCache = "[" + FormatUtil.toHmTime(rl.timestamp) + "]";
+        }
 
-            if (segIndex == 0 && !hasPrefix && config.featurePeek_PrefixChatTypes())
-                txt = rl.prefixCache + txt;
+        for (Seg s : rl.segs) {
+            if (s.textCache == null) {
+                if (segIndex == 0)
+                    hasPrefix = s.text.startsWith("[");
+
+                if (segIndex == 0) {
+                    if (!hasPrefix && config.featurePeek_PrefixChatTypes())
+                        s.textCache = rl.prefixCache + s.text;
+                    else
+                        s.textCache = s.text;
+
+                    if (!StringUtil.isNullOrEmpty(rl.timestampCache) && config.featurePeek_ShowTimestamp())
+                        s.textCache = rl.timestampCache + " " + s.textCache;
+                }
+            }
             int i = 0;
             segIndex++;
+            String txt = s.textCache != null ? s.textCache : s.text;
 
             while (i < txt.length()) {
                 int nextSpace = -1;
@@ -521,15 +547,15 @@ public class ChatPeekOverlay extends Overlay {
         return Math.max(0, ans - start);
     }
 
-    private int fadeDelaySeconds() {
+    public int fadeDelaySeconds() {
         return config.featurePeek_FadeDelay();
     }
 
-    private int fadeDurationMs() {
+    public int fadeDurationMs() {
         return config.featurePeek_FadeDuration();
     }
 
-    private void noteMessageActivity() {
+    public void noteMessageActivity() {
         fadeAlpha = 1f;
         fading = false;
         fadeStartAtMs = System.currentTimeMillis() + Math.max(0, fadeDelaySeconds() * 1000);
@@ -562,5 +588,18 @@ public class ChatPeekOverlay extends Overlay {
         float p = Math.min(1f, t / (float) dur);
         p = 1f - (float)Math.pow(1f - p, 3); // easeOutCubic
         fadeAlpha = 1f - p;
+    }
+
+    public void dirty() {
+        for (RichLine line : lines) {
+            if (line.lineCache != null) {
+                line.lineCache.clear();
+            }
+            line.lineCache = null;
+
+            for (Seg seg : line.segs) {
+                seg.textCache = null;
+            }
+        }
     }
 }

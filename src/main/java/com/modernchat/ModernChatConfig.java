@@ -237,10 +237,22 @@ public interface ModernChatConfig extends Config,
     }
 
     @ConfigItem(
-        keyName = "featurePeek_PrefixChatTypes",
-        name = "Prefix Chat Types",
-        description = "Prefix messages with their chat type in the peek overlay",
+        keyName = "featurePeek_ShowTimestamp",
+        name = "Show Timestamp",
+        description = "Show timestamps in the peek overlay",
         position = 4,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_ShowTimestamp() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_PrefixChatTypes",
+        name = "Show Type Prefix",
+        description = "Prefix messages with their chat type in the peek overlay",
+        position = 5,
         section = peekOverlaySection
     )
     @Override
@@ -253,7 +265,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_BackgroundColor",
         name = "Background Color",
         description = "Background color for the peek overlay",
-        position = 5,
+        position = 6,
         section = peekOverlaySection
     )
     @Override
@@ -266,7 +278,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_BorderColor",
         name = "Border Color",
         description = "Border color for the peek overlay",
-        position = 6,
+        position = 7,
         section = peekOverlaySection
     )
     @Override
@@ -278,7 +290,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_FontStyle",
         name = "Font Style",
         description = "Font style for the peek overlay",
-        position = 7,
+        position = 8,
         section = peekOverlaySection
     )
     @Units(Units.PIXELS)
@@ -291,7 +303,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_FontSize",
         name = "Font Size",
         description = "Show an overlay when the chat is hidden to peek at messages",
-        position = 8,
+        position = 9,
         section = peekOverlaySection
     )
     @Units(Units.PIXELS)
@@ -304,7 +316,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_TextShadow",
         name = "Text Shadow",
         description = "Shadow offset for text in the peek overlay",
-        position = 9,
+        position = 10,
         section = peekOverlaySection
     )
     @Range(min = 0, max = 10)
@@ -318,7 +330,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_OffsetX",
         name = "Offset X",
         description = "Horizontal offset for the peek overlay",
-        position = 10,
+        position = 11,
         section = peekOverlaySection
     )
     @Range(min = -500, max = 500)
@@ -332,7 +344,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_OffsetY",
         name = "Offset Y",
         description = "Vertical offset for the peek overlay",
-        position = 11,
+        position = 12,
         section = peekOverlaySection
     )
     @Range(min = -500, max = 500)
@@ -346,7 +358,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_Padding",
         name = "Padding",
         description = "Padding around the text in the peek overlay",
-        position = 12,
+        position = 13,
         section = peekOverlaySection
     )
     @Range(min = 0, max = 100)
@@ -360,7 +372,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_MarginRight",
         name = "Margin Right",
         description = "Right margin for the peek overlay (apply a background color to see effect)",
-        position = 13,
+        position = 14,
         section = peekOverlaySection
     )
     @Range(min = -500, max = 500)
@@ -374,7 +386,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_MarginBottom",
         name = "Margin Bottom",
         description = "Bottom margin for the peek overlay (apply a background color to see effect)",
-        position = 14,
+        position = 15,
         section = peekOverlaySection
     )
     @Range(min = -500, max = 500)
@@ -389,7 +401,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_PublicChatColor",
         name = "Public Chat Color",
         description = "Color for public chat messages in the peek overlay",
-        position = 15,
+        position = 16,
         section = peekOverlaySection
     )
     @Override
@@ -402,7 +414,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_FriendsChatColor",
         name = "Friends Chat Color",
         description = "Color for friends chat messages in the peek overlay",
-        position = 16,
+        position = 17,
         section = peekOverlaySection
     )
     @Override
@@ -415,7 +427,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_ClanChatColor",
         name = "Clan Chat Color",
         description = "Color for clan chat messages in the peek overlay",
-        position = 17,
+        position = 18,
         section = peekOverlaySection
     )
     @Override
@@ -428,7 +440,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_PrivateChatColor",
         name = "Private Chat Color",
         description = "Color for private chat messages in the peek overlay",
-        position = 18,
+        position = 19,
         section = peekOverlaySection
     )
     @Override
@@ -441,7 +453,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_SystemChatColor",
         name = "System Chat Color",
         description = "Color for system chat messages in the peek overlay",
-        position = 19,
+        position = 20,
         section = peekOverlaySection
     )
     @Override
@@ -453,7 +465,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_FadeEnabled",
         name = "Fade Enabled",
         description = "Enable fade-in/out effect for the peek overlay (overlay will automatically reappear when a message is received)",
-        position = 20,
+        position = 21,
         section = peekOverlaySection
     )
     @Override
@@ -465,7 +477,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_FadeDelay",
         name = "Fade Delay (s)",
         description = "Delay (seconds) of inactivity before fading in/out the peek overlay",
-        position = 21,
+        position = 22,
         section = peekOverlaySection
     )
     @Override
@@ -477,7 +489,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featurePeek_FadeDuration",
         name = "Fade Duration (ms)",
         description = "Duration (ms) for fade-in/out effect in the peek overlay",
-        position = 22,
+        position = 23,
         section = peekOverlaySection
     )
     @Range(max = 10000)

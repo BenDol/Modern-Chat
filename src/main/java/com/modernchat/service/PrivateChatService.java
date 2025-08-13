@@ -45,7 +45,7 @@ public class PrivateChatService implements ChatService, KeyListener {
     @Inject private KeyManager keyManager;
     @Inject private MessageService messageService;
 
-    private volatile String lastPmFrom;
+    private volatile String lastPmFrom = null;
     private volatile long lastPmTimestamp = 0L;
     private volatile long lastPmLock = 0L;
     private volatile long pmLockedUntil = 0L;

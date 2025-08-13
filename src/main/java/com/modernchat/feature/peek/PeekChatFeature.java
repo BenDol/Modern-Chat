@@ -20,6 +20,7 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -41,6 +42,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		boolean featurePeek_Enabled();
 		boolean featurePeek_FollowChatBox();
 		boolean featurePeek_ShowPrivateMessages();
+		boolean featurePeek_ShowTimestamp();
 		boolean featurePeek_HideSplitPrivateMessages();
 		Color featurePeek_BackgroundColor();
 		Color featurePeek_BorderColor();
@@ -80,6 +82,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_Enabled() { return config.featurePeek_Enabled(); }
 			@Override public boolean featurePeek_FollowChatBox() { return config.featurePeek_FollowChatBox(); }
 			@Override public boolean featurePeek_ShowPrivateMessages() { return config.featurePeek_ShowPrivateMessages(); }
+			@Override public boolean featurePeek_ShowTimestamp() { return config.featurePeek_ShowTimestamp(); }
 			@Override public boolean featurePeek_HideSplitPrivateMessages() { return config.featurePeek_HideSplitPrivateMessages(); }
 			@Override public Color featurePeek_BackgroundColor() { return config.featurePeek_BackgroundColor(); }
 			@Override public Color featurePeek_BorderColor() { return config.featurePeek_BorderColor(); }
@@ -160,6 +163,21 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	}
 
 	@Subscribe
+	public void onConfigChanged(ConfigChanged e) {
+		if (!e.getGroup().equals(ModernChatConfig.GROUP))
+			return;
+
+		String key = e.getKey();
+		if (key == null || !key.startsWith(getConfigGroup() + "_"))
+			return;
+
+		if (chatPeekOverlay != null) {
+			chatPeekOverlay.dirty();
+			chatPeekOverlay.noteMessageActivity();
+		}
+	}
+
+	@Subscribe
 	public void onChatMessage(ChatMessage e) {
 		Player localPlayer = client.getLocalPlayer();
 		ChatMessageType type = e.getType();
@@ -168,8 +186,9 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			: e.getName());
 		String msg = e.getMessage();
 		String line = (name != null && !name.isEmpty()) ? name + ": " + msg : msg;
+		long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() : System.currentTimeMillis();
 
-		chatPeekOverlay.pushLine(line, type);
+		chatPeekOverlay.pushLine(line, type, timestamp);
 	}
 
 	@Subscribe
