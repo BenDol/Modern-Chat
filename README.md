@@ -2,7 +2,7 @@
 
 [Chat Toggle](https://github.com/user-attachments/assets/60398bed-d005-4f74-91b9-3988c2187ce2)
 
-_Note: Keystrokes are **NOT** captured while the chat is hidden_
+_Note: Keystrokes are **NOT** captured in the chatbox while the chat is hidden_
 
 ---
 
@@ -41,4 +41,5 @@ _Note: Previous / next keybinds can be configured in the settings_
 _Note: Private chats can be closed using **Escape** key or submitting an empty message_
 
 ---
+
 
