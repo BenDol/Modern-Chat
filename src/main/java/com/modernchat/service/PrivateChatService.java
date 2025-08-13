@@ -116,7 +116,7 @@ public class PrivateChatService implements ChatService, KeyListener {
                         if (StringUtil.isNullOrEmpty(getPmTarget()))
                             setPmTarget(lastPmTarget);
                     }
-                }, 3000);
+                }, 5000);
             }
 
             lastPmTimestamp = System.currentTimeMillis();
