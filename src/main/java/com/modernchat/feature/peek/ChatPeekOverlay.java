@@ -232,11 +232,13 @@ public class ChatPeekOverlay extends Overlay {
         int marginRight = config.featurePeek_MarginRight();
         int marginBottom = config.featurePeek_MarginBottom();
 
+        int width = r.width - marginRight;
+        int height = r.height - marginBottom;
+
         return new Rectangle(
-            r.x + offsetX,
-            r.y + offsetY,
-            r.width - marginRight,
-            r.height - marginBottom);
+            (config.featurePeek_FollowChatBox() ? r.x : 0) + offsetX,
+            (config.featurePeek_FollowChatBox() ? r.y : (client.getCanvasHeight() - height)) + offsetY,
+            width, height);
     }
 
     private boolean isPrivateMessage(ChatMessageType type) {

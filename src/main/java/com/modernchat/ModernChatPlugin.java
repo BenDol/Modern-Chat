@@ -306,7 +306,7 @@ public class ModernChatPlugin extends Plugin {
 		int offsetY = config.general_AnchorPrivateChatOffsetY();
 
 		if (!force && Objects.equals(cur, lastChatBounds)) {
-			if (pmAnchor != null && pmAnchor.getOffsetX() == offsetX && pmAnchor.getOffsetY() == offsetY) {
+			if (pmAnchor != null && !pmAnchor.isReset() && pmAnchor.getOffsetX() == offsetX && pmAnchor.getOffsetY() == offsetY) {
 				return; // nothing changed
 			}
 		}

@@ -39,6 +39,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	public interface PeekChatFeatureConfig extends ChatFeatureConfig {
 		boolean featurePeek_Enabled();
+		boolean featurePeek_FollowChatBox();
 		boolean featurePeek_ShowPrivateMessages();
 		boolean featurePeek_HideSplitPrivateMessages();
 		Color featurePeek_BackgroundColor();
@@ -77,6 +78,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	protected PeekChatFeatureConfig partitionConfig(ModernChatConfig config) {
 		return new PeekChatFeatureConfig() {
 			@Override public boolean featurePeek_Enabled() { return config.featurePeek_Enabled(); }
+			@Override public boolean featurePeek_FollowChatBox() { return config.featurePeek_FollowChatBox(); }
 			@Override public boolean featurePeek_ShowPrivateMessages() { return config.featurePeek_ShowPrivateMessages(); }
 			@Override public boolean featurePeek_HideSplitPrivateMessages() { return config.featurePeek_HideSplitPrivateMessages(); }
 			@Override public Color featurePeek_BackgroundColor() { return config.featurePeek_BackgroundColor(); }
