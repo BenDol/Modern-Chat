@@ -3,8 +3,12 @@ package com.modernchat.feature;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.modernchat.ModernChatConfig;
+import com.modernchat.common.ChatProxy;
+import com.modernchat.event.NavigateHistoryEvent;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.util.ClientUtil;
+import lombok.Data;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -57,6 +61,7 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
     @Inject private KeyManager keyManager;
     @Inject private ConfigManager configManager;
     @Inject private Gson gson;
+    @Inject private ChatProxy chatProxy;
     @Inject private CommandsChatFeature commandsChatFeature;
 
     @Inject
@@ -192,12 +197,22 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         resetNavState();
     }
 
+    @Subscribe
+    public void onNavigateHistoryEvent(NavigateHistoryEvent e) {
+        if (!isEnabled()) return;
+
+        int delta = e.getDelta();
+        if (delta == 0) return; // No navigation requested
+
+        clientThread.invoke(() -> navigateHistory(delta));
+    }
+
     private void navigateHistory(int delta) {
         if (history.isEmpty()) return;
 
         // When starting, stash current draft and set index just past newest
         if (navIndex == -1) {
-            stashedDraft = ClientUtil.getChatInputText(client);
+            stashedDraft = chatProxy.getInputText();
             navIndex = history.size();
         }
 
@@ -207,12 +222,12 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
             navIndex++;  // newer
 
         if (navIndex >= 0 && navIndex < history.size()) {
-            ClientUtil.setChatInputText(client, history.get(navIndex));
+            chatProxy.setInputText(history.get(navIndex));
         } else {
             // Past newest, restore the original draft
             String value = stashedDraft != null ? stashedDraft : "";
             clientThread.invoke(() -> {
-                ClientUtil.setChatInputText(client, value);
+                chatProxy.setInputText(value);
 
                 if (commandsChatFeature.isEnabled()) {
                     commandsChatFeature.setLastChatInput(value);
@@ -272,6 +287,4 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         navIndex = -1;
         stashedDraft = null;
     }
-
-
 }

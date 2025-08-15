@@ -4,19 +4,24 @@ import com.modernchat.common.ChatMode;
 import com.modernchat.common.ClanType;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Padding;
+import com.modernchat.draw.Tab;
 import com.modernchat.event.ChatOverlayVisibilityChangeEvent;
+import com.modernchat.event.NavigateHistoryEvent;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.FriendsChatManager;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
+import net.runelite.api.VarClientStr;
+import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.widgets.WidgetSizeMode;
@@ -34,9 +39,14 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.util.Text;
+import org.apache.commons.lang3.tuple.Pair;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.inject.Provider;
+import javax.inject.Singleton;
 import java.awt.AlphaComposite;
+import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -47,9 +57,15 @@ import java.awt.Shape;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
+@Singleton
 public class ChatOverlay extends OverlayPanel
 {
     @Inject private Client client;
@@ -59,17 +75,26 @@ public class ChatOverlay extends OverlayPanel
     @Inject private MouseManager mouseManager;
     @Inject private KeyManager keyManager;
     @Inject private WidgetBucket widgetBucket;
-    @Inject @Getter private MessageContainer messageContainer;
     @Inject @Getter private ResizePanel resizePanel;
+    @Inject private Provider<MessageContainer> messageContainerProvider;
 
     private ChatOverlayConfig config;
     private final ChatMouse mouse = new ChatMouse();
     private final InputKeys keys = new InputKeys();
 
-    private Rectangle lastViewport = null;
-    @Getter @Setter private ChatMode currentMode = ChatMode.PUBLIC;
-    @Getter @Setter private ClanType currentClanType = ClanType.NORMAL;
-    @Getter @Setter private String currentTarget = null; // for private messages
+    private final List<Tab> tabOrder = new ArrayList<>();
+    @Getter private Tab activeTab = null;
+    @Getter private final Map<String, Tab> tabsByKey = new ConcurrentHashMap<>();
+    @Getter private final Map<ChatMode, String> defaultTabNames = new ConcurrentHashMap<>();
+    private final Rectangle tabsBarBounds = new Rectangle();
+    private int lastTabBarHeight = 0;
+
+    @Getter private final Map<String, MessageContainer> messageContainers = new ConcurrentHashMap<>();
+    @Getter private final Map<String, MessageContainer> privateContainers = new ConcurrentHashMap<>();
+    @Getter @Nullable private MessageContainer messageContainer = null;
+    @Getter private EnumSet<ChatMode> availableChatModes = EnumSet.noneOf(ChatMode.class);
+
+    @Getter private Rectangle lastViewport = null;
 
     // Input box state
     private final Rectangle inputBounds = new Rectangle();
@@ -89,6 +114,11 @@ public class ChatOverlay extends OverlayPanel
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ALWAYS_ON_TOP);
         setClearChildren(false);
+
+        defaultTabNames.put(ChatMode.PUBLIC, "Public");
+        defaultTabNames.put(ChatMode.FRIENDS_CHAT, "Friends Chat");
+        defaultTabNames.put(ChatMode.CLAN_MAIN, "Clan");
+        defaultTabNames.put(ChatMode.CLAN_GUEST, "Clan Guest");
     }
 
     public boolean isEnabled() {
@@ -111,9 +141,23 @@ public class ChatOverlay extends OverlayPanel
         registerMouseListener();
         registerKeyboardListener();
 
-        messageContainer.setChromeEnabled(true);
-        messageContainer.startUp(containerConfig);
-        messageContainer.pushLines(Arrays.asList("Welcome to ModernChat!", "This is a redesigned chatbox with custom features.", "Use the input below; Left/Right move the caret, Enter sends.", "Esc unfocuses the input. Backspace/Delete/Home/End supported.", "Scroll with the mouse wheel, or drag the scrollbar on the right.", "You can customize the appearance in the settings.", "Enjoy your chat experience!", "This is a sample message to fill the chat buffer and demonstrate scrolling.", "Feel free to type here and see how the chat behaves.", "You can also resize the window to see how it adapts.", "Remember, this is just a demo; you can modify the code to suit your needs.", "Have fun exploring the features of ModernChat!", "This is another message to ensure the buffer has enough content for scrolling.", "Keep typing to see how the chatbox handles new messages.", "Here's a longer message to test the wrapping and scrolling behavior of the chatbox.", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.", "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." ));
+        messageContainers.putAll(Map.of(
+            ChatMode.PUBLIC.name(), messageContainerProvider.get(),
+            ChatMode.FRIENDS_CHAT.name(), messageContainerProvider.get(),
+            ChatMode.CLAN_MAIN.name(), messageContainerProvider.get(),
+            ChatMode.CLAN_GUEST.name(), messageContainerProvider.get()
+        ));
+
+        messageContainers.forEach((mode, container) -> {
+            container.setChromeEnabled(true);
+            container.startUp(containerConfig, ChatMode.valueOf(mode));
+            container.pushLines(Arrays.asList("Welcome to ModernChat!", "This is a redesigned chatbox with custom features.", "Use the input below; Left/Right move the caret, Enter sends.", "Esc unfocuses the input. Backspace/Delete/Home/End supported.", "Scroll with the mouse wheel, or drag the scrollbar on the right.", "You can customize the appearance in the settings.", "Enjoy your chat experience!", "This is a sample message to fill the chat buffer and demonstrate scrolling.", "Feel free to type here and see how the chat behaves.", "You can also resize the window to see how it adapts.", "Remember, this is just a demo; you can modify the code to suit your needs.", "Have fun exploring the features of ModernChat!", "This is another message to ensure the buffer has enough content for scrolling.", "Keep typing to see how the chatbox handles new messages.", "Here's a longer message to test the wrapping and scrolling behavior of the chatbox.", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.", "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", mode));
+        });
+
+        refreshTabs();
+
+        if (config.isStartHidden())
+            setHidden(true);
     }
 
     public void shutDown() {
@@ -123,8 +167,15 @@ public class ChatOverlay extends OverlayPanel
 
         eventBus.unregister(this);
 
+        messageContainer = null;
+        messageContainers.values().forEach(MessageContainer::shutDown);
+        messageContainers.clear();
+        privateContainers.values().forEach(MessageContainer::shutDown);
+        privateContainers.clear();
+
+        lastViewport = null;
+
         resizePanel.shutDown();
-        messageContainer.shutDown();
         overlayManager.remove(resizePanel);
         panelComponent.getChildren().clear();
     }
@@ -143,6 +194,13 @@ public class ChatOverlay extends OverlayPanel
             return null;
 
         lastViewport = new Rectangle(vp);
+
+        if (messageContainer == null) {
+            selectTab(config.getDefaultChatMode());
+
+            if (messageContainer == null)
+                return null;
+        }
 
         // Panel chrome (style only)
         Composite oc = g.getComposite();
@@ -163,16 +221,17 @@ public class ChatOverlay extends OverlayPanel
         final int inputPadX = 8;
         final int inputPadY = 6;
         final int inputHeight = lineH + inputPadY * 2;
-        final int gapAboveInput = 3;
+        final int gapAboveInput = 1;
 
         final int left = vp.x + pad.getLeft();
         final int top = vp.y + pad.getTop();
         final int bottom = vp.y + vp.height - pad.getBottom();
         final int innerW = Math.max(1, vp.width - pad.getWidth());
 
-        // Message area gives up space for the input box
+        lastTabBarHeight = drawTabBar(g, fm, left, top, innerW);
+        final int msgAreaTop = top + lastTabBarHeight + 3; // gap under tabs
         final int msgBottom = bottom - inputHeight - gapAboveInput;
-        final Rectangle msgArea = new Rectangle(left, top, innerW, Math.max(1, msgBottom - top));
+        final Rectangle msgArea = new Rectangle(left, msgAreaTop, innerW, Math.max(1, msgBottom - msgAreaTop));
 
         // Inject the msg area into the MessageContainer
         messageContainer.setBoundsProvider(() -> msgArea);
@@ -192,6 +251,111 @@ public class ChatOverlay extends OverlayPanel
 
         g.setComposite(oc);
         return super.render(g);
+    }
+
+    public void selectTab(ChatMode chatMode) {
+        selectTab(chatMode, false);
+    }
+
+    public void selectTab(ChatMode chatMode, boolean autoCreate) {
+        String key = tabKey(chatMode);
+        if (StringUtil.isNullOrEmpty(key)) {
+            log.warn("Attempted to select tab with null or empty key for chat mode: {}", chatMode);
+            return;
+        }
+
+        if (!tabsByKey.containsKey(key)) {
+            log.debug("No tab found for chat mode: {}", chatMode);
+            if (autoCreate) {
+                // Create a new tab if it doesn't exist
+                Tab newTab = new Tab(key, defaultTabNames.getOrDefault(chatMode, chatMode.name()), false);
+                addTab(newTab);
+            } else {
+                return;
+            }
+        }
+
+        selectTabByKey(key);
+    }
+
+    private int drawTabBar(Graphics2D g, FontMetrics fm, int x, int y, int width) {
+        final int padX = 10;
+        final int padY = 3;
+        final int h = fm.getHeight() + padY * 2;
+
+        // Bar background (subtle)
+        g.setColor(new Color(0, 0, 0, 80));
+        g.fillRoundRect(x, y, width, h, 8, 8);
+
+        int cx = x + 4; // running x
+        final int r = 7; // corner radius
+
+        for (Tab t : tabOrder) {
+            String label = t.getTitle();
+            int textW = fm.stringWidth(label);
+            int badgeW = (t.getUnread() > 0) ? (Math.max(15, fm.stringWidth(String.valueOf(t.getUnread())) + 2)) : 0;
+            int closeW = t.isCloseable() ? (fm.getHeight() - 2) : 0;
+
+            int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0) + (t.isCloseable() ? (6 + closeW) : 0) + padX;
+
+            t.getBounds().setBounds(cx, y, w, h);
+            boolean selected = isTabSelected(t);
+
+            // Tab background
+            Rectangle bounds = t.getBounds();
+            g.setColor(selected ? new Color(60, 60, 60, 220) : new Color(35, 35, 35, 180));
+            g.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
+            g.setColor(new Color(255, 255, 255, selected ? 140 : 70));
+            g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
+
+            // Text (shadow + label)
+            int textBase = y + padY + fm.getAscent() + 1;
+            int tx = bounds.x + padX;
+            g.setColor(new Color(0, 0, 0, 180));
+            g.drawString(label, tx + 1, textBase + 1);
+            g.setColor(Color.WHITE);
+            g.drawString(label, tx, textBase);
+
+            int advanceX = tx + textW;
+
+            // Unread badge
+            if (badgeW > 0) {
+                int bx = advanceX + 4;
+                int by = y + ((h - fm.getHeight()) / 2) + 1;
+                int bH = fm.getHeight() - 2;
+
+                g.setColor(new Color(200, 60, 60, 230));
+                g.fillRoundRect(bx, by, badgeW, bH, bH, bH);
+                g.setColor(Color.WHITE);
+                String n = String.valueOf(t.getUnread());
+                int nx = bx + (badgeW - fm.stringWidth(n)) / 2;
+                int ny = by + fm.getAscent();
+                g.drawString(n, nx, ny);
+
+                advanceX = bx + badgeW;
+            }
+
+            if (t.isCloseable()) {
+                int closeX = advanceX + 6;
+                int closeY = (y + (h - fm.getHeight()) / 2) + 1;
+                int closeH = fm.getHeight() - 2;
+
+                g.setColor(new Color(200, 60, 60, 230));
+                g.fillRoundRect(closeX, closeY, closeH, closeH, closeH, closeH);
+                g.setColor(Color.WHITE);
+                int xSize = 4;
+                g.drawLine(closeX + xSize - 1, closeY + xSize, closeX + closeH - xSize - 1, closeY + closeH - xSize);
+                g.drawLine(closeX + closeH - xSize - 1, closeY + xSize, closeX + xSize - 1, closeY + closeH - xSize);
+
+                advanceX += (closeH + 6);
+                t.setCloseBounds(new Rectangle(closeX, closeY, closeH, closeH));
+            }
+
+            cx = bounds.x + bounds.width + 4; // spacing between tabs
+        }
+
+        tabsBarBounds.setBounds(x, y, width, h);
+        return h;
     }
 
     @SuppressWarnings({"SameParameterValue", "UnnecessaryLocalVariable"})
@@ -262,6 +426,236 @@ public class ChatOverlay extends OverlayPanel
             int caretBottom = baseline + fm.getDescent();
             g.fillRect(caretScreenX, caretTop, 1, caretBottom - caretTop);
         }
+    }
+
+    private String selectPrivateContainer(String targetName) {
+        if (StringUtil.isNullOrEmpty(targetName)) {
+            log.warn("Attempted to select private container with null or empty target name");
+            return null;
+        }
+
+        if (targetName.startsWith("private_")) {
+            log.warn("Attempted to select private container with contained name starting with 'private_'");
+        }
+
+        String tabKey = "private_" + targetName;
+        // Create a new tab for this private chat
+        if (!tabsByKey.containsKey(tabKey)) {
+            Tab tab = createPrivateTab(tabKey, targetName);
+            addTab(tab);
+        }
+
+        MessageContainer privateContainer = privateContainers.get(targetName);
+        if (privateContainer == null) {
+            privateContainer = messageContainerProvider.get();
+            privateContainer.setPrivate(true);
+            privateContainer.startUp(config.getMessageContainerConfig(), ChatMode.PRIVATE);
+            privateContainers.put(targetName, privateContainer);
+        }
+
+        messageContainer = privateContainer;
+        messageContainer.setHidden(false);
+        messageContainer.setAlpha(1f);
+        return tabKey;
+    }
+
+    private Tab createPrivateTab(String key, String targetName) {
+        return new Tab(key, targetName, true);
+    }
+
+    private void selectMessageContainer(ChatMode chatMode) {
+        if (messageContainer != null) {
+            messageContainer.setHidden(true);
+        }
+
+        messageContainer = messageContainers.get(chatMode.name());
+        if (messageContainer == null) {
+            log.debug("No message container found for chat mode: {}", chatMode);
+            return;
+        }
+
+        messageContainer.setHidden(false);
+        messageContainer.setAlpha(1f);
+    }
+
+    public void refreshTabs() {
+        availableChatModes.forEach((mode) -> {
+            if (mode == ChatMode.PRIVATE) return;
+            removeTab(mode);
+        });
+
+        recomputeAvailableModes();
+
+        availableChatModes.forEach((mode) -> {
+            if (mode == ChatMode.PRIVATE) return;
+
+            String tabKey = tabKey(mode);
+            if (!tabsByKey.containsKey(tabKey)) {
+                String tabName = defaultTabNames.getOrDefault(mode, mode.name());
+                addTab(new Tab(tabKey, tabName, false));
+            }
+        });
+    }
+
+    private void removeTab(Tab t) {
+        removeTab(t, true);
+    }
+
+    private void removeTab(Tab t, boolean keepContainer) {
+        if (t == null) {
+            log.warn("Attempted to remove null tab");
+            return;
+        }
+
+        if (t.isPrivate()) {
+            removePrivateTab(t.getKey(), keepContainer);
+        } else {
+            removeTab(t.getKey(), keepContainer);
+        }
+    }
+
+    public void removePrivateTab(String targetName) {
+        removePrivateTab(targetName, true);
+    }
+
+    public void removePrivateTab(String targetName, boolean keepContainer) {
+        if (StringUtil.isNullOrEmpty(targetName)) {
+            log.warn("Attempted to remove private tab with null or empty target name");
+            return;
+        }
+
+        String key = targetName.startsWith("private_") ? targetName : "private_" + targetName;
+        removeTab(key, keepContainer);
+    }
+
+    public void removeTab(ChatMode chatMode) {
+        if (chatMode == ChatMode.PRIVATE) {
+            log.warn("Attempted to remove tab for private chat mode, use removePrivateTab instead");
+            return;
+        }
+
+        String key = tabKey(chatMode);
+        if (StringUtil.isNullOrEmpty(key)) {
+            log.warn("Attempted to remove tab with null or empty key for chat mode: {}", chatMode);
+            return;
+        }
+
+        removeTab(key, true);
+    }
+
+    public void removeTab(String key) {
+        removeTab(key, true);
+    }
+
+    public void removeTab(String key, boolean keepContainer) {
+        if (StringUtil.isNullOrEmpty(key)) {
+            log.warn("Attempted to remove tab with null or empty key");
+            return;
+        }
+
+        Tab nextTab = null;
+        Tab tab = tabsByKey.remove(key);
+        if (tab != null) {
+            int tabIndex = tabOrder.indexOf(tab);
+            if (tabIndex >= 0 && tabIndex < tabOrder.size() - 1) {
+                nextTab = tabOrder.get(tabIndex + 1);
+            } else if (tabIndex > 0) {
+                nextTab = tabOrder.get(tabIndex - 1);
+            }
+            tabOrder.remove(tab);
+        } else {
+            log.warn("Attempted to remove non-existing tab for key {}", key);
+        }
+
+        Map<String, MessageContainer> containers = null;
+        String containerKey = key;
+
+        if (key.startsWith("private_")) {
+            containers = privateContainers;
+            containerKey = key.substring("private_".length());
+        } else {
+            containers = messageContainers;
+        }
+
+        if (containers != null) {
+            if (!keepContainer) {
+                MessageContainer container = containers.remove(containerKey);
+                if (container != null) {
+                    container.shutDown();
+                } else {
+                    log.warn("Attempted to remove non-existing container for key: {}", containerKey);
+                }
+            }
+        }
+
+        if (nextTab != null) {
+            selectTab(nextTab);
+        }
+    }
+
+    public void recomputeAvailableModes() {
+        EnumSet<ChatMode> set = EnumSet.of(ChatMode.PUBLIC); // always if logged in
+
+        FriendsChatManager friendsChatManager = client.getFriendsChatManager();
+        String friendsChatName = friendsChatManager != null ? friendsChatManager.getName() : null;
+        if (friendsChatManager != null && friendsChatManager.getName() != null) {
+            set.add(ChatMode.FRIENDS_CHAT);
+        }
+
+        if (client.getClanChannel() != null)
+            set.add(ChatMode.CLAN_MAIN);
+        if (client.getGuestClanChannel() != null)
+            set.add(ChatMode.CLAN_GUEST);
+        if (client.getClanChannel(ClanID.GROUP_IRONMAN) != null)
+            set.add(ChatMode.CLAN_GIM);
+
+        availableChatModes = set;
+    }
+
+    private void addTab(Tab t) {
+        tabOrder.add(t);
+        try {
+            tabsByKey.put(t.getKey(), t);
+        } catch (Exception e) {
+            log.error("Failed to add tab for key '{}': {}", t.getKey(), e.getMessage());
+        }
+    }
+
+    public void selectTabByKey(String key) {
+        // Clear unread on select
+        Tab t = tabsByKey.get(key);
+        if (t == null) {
+            log.warn("Attempted to select non-existing tab with key: {}", key);
+            return;
+        }
+
+        activeTab = t;
+
+        t.setUnread(0);
+        if (t.isPrivate()) {
+            selectPrivateContainer(t.getTargetName());
+        } else {
+            // Switch containers
+            ChatMode mode = ChatMode.valueOf(key);
+            selectMessageContainer(mode);
+        }
+
+        if (messageContainer != null) {
+            messageContainer.setUserScrolled(false);
+            messageContainer.setScrollOffsetPx(Integer.MAX_VALUE);
+            messageContainer.setAlpha(1f);
+        }
+
+        if (!inputFocused)
+            focusInput(); // auto-focus input when switching tabs
+    }
+
+    public boolean isTabSelected(Tab t) {
+        return activeTab != null && t.getKey().equals(activeTab.getKey());
+    }
+
+    public static String tabKey(ChatMode mode) {
+        return mode.name();
     }
 
     @Subscribe
@@ -357,15 +751,23 @@ public class ChatOverlay extends OverlayPanel
         keyManager.unregisterKeyListener(keys);
     }
 
+    public String getInputText() {
+        return inputBuf.toString();
+    }
+
     private void commitInput() {
-        final String text = inputBuf.toString().trim();
+        final String text = getInputText().trim();
         if (!text.isEmpty()) {
             Player player = client.getLocalPlayer();
             if (player != null)
                 sendChat(text);
 
-            messageContainer.setUserScrolled(false);
-            messageContainer.setScrollOffsetPx(Integer.MAX_VALUE); // snap to bottom
+            if (messageContainer != null) {
+                messageContainer.setUserScrolled(false);
+                messageContainer.setScrollOffsetPx(Integer.MAX_VALUE); // snap to bottom
+            } else {
+                log.warn("Attempted to send chat message to null message container, likely a bug");
+            }
         }
 
         inputBuf.setLength(0);
@@ -373,8 +775,18 @@ public class ChatOverlay extends OverlayPanel
         inputScrollPx = 0;
     }
 
+    public @Nullable String getCurrentTarget() {
+        return activeTab != null && activeTab.isPrivate() ? activeTab.getTargetName() : null;
+    }
+
     public void sendPrivateChat(String text) {
-        sendPrivateChat(text, currentTarget);
+        String targetName = getCurrentTarget();
+        if (StringUtil.isNullOrEmpty(targetName)) {
+            log.warn("Attempted to send private chat without a target name");
+            return;
+        }
+
+        sendPrivateChat(text, targetName);
     }
 
     public void sendPrivateChat(String text, String targetName) {
@@ -388,18 +800,17 @@ public class ChatOverlay extends OverlayPanel
             return;
         }
 
-        client.runScript(ScriptID.PRIVMSG, targetName, text);
+        clientThread.invoke(() -> client.runScript(ScriptID.PRIVMSG, targetName, text));
     }
 
     public void sendChat(String text) {
-        sendChat(text, currentMode, currentClanType);
+        sendChat(text, getCurrentMode());
     }
 
     public void sendChat(String text, ChatMode mode) {
-        sendChat(text, mode, currentClanType);
-    }
+        ClanType clanType = ClanType.NORMAL; // default clan type
+        ChatMode selectedMode = mode;
 
-    public void sendChat(String text, ChatMode mode, ClanType clanType) {
         switch (mode) {
             case PUBLIC:
                 break;
@@ -409,6 +820,15 @@ public class ChatOverlay extends OverlayPanel
                 break;
             case CLAN_GUEST:
                 break;
+
+            // Custom
+            case CLAN_GIM:
+                clanType = ClanType.IRONMAN;
+                selectedMode = ChatMode.CLAN_MAIN;
+                break;
+            case PRIVATE:
+                sendPrivateChat(text, getCurrentTarget());
+                return; // skip the rest of the logic
         }
 
         /* - String Message to send
@@ -417,13 +837,111 @@ public class ChatOverlay extends OverlayPanel
          * - int (boolean) use target
          * - int set target
          * */
+        final int modeValue = selectedMode.getValue();
+        final int clanTypeValue = clanType.getValue();
+
         clientThread.invoke(() -> {
-            client.runScript(ScriptID.CHAT_SEND, text, mode.getValue(), clanType.getValue(), 0, 0);
+            client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
         });
     }
 
-    public void addMessage(String line, ChatMessageType type, long timestamp) {
-        messageContainer.pushLine(line, type, timestamp);
+    public ChatMode getCurrentMode() {
+        return messageContainer != null ? messageContainer.getChatMode() : config.getDefaultChatMode();
+    }
+
+    public void addMessage(String line, ChatMessageType type, long timestamp, String senderName, String receiverName) {
+        Tab tab;
+        MessageContainer container;
+        ChatMode mode = ChatUtil.toChatMode(type);
+
+        String targetName = type == ChatMessageType.PRIVATECHATOUT
+            ? receiverName
+            : (type == ChatMessageType.PRIVATECHAT ? senderName : null);
+
+        if (mode == ChatMode.PRIVATE) {
+            if (StringUtil.isNullOrEmpty(targetName)) {
+                log.warn("Attempted to add private message without a receiver name");
+                return;
+            }
+
+            Pair<Tab, MessageContainer> pair = openTabForPrivateChat(targetName);
+            if (pair == null) {
+                log.warn("Failed to open tab for private chat with target: {}", targetName);
+                return;
+            }
+
+            tab = pair.getLeft();
+            container = pair.getRight();
+        } else {
+            container = messageContainers.get(mode.name());
+            tab = tabsByKey.get(tabKey(mode));
+        }
+
+        if (container == null) {
+            log.warn("No message container found for chat type: {}", type);
+            return;
+        }
+
+        container.pushLine(line, type, timestamp);
+
+        if (messageContainer != container) {
+            if (tab != null) {
+                // Cap to avoid huge badges
+                if (tab.getUnread() < 99)
+                    tab.incrementUnread();
+            } else {
+                log.warn("No tab found for chat mode: {}", mode);
+            }
+        }
+    }
+
+    public Tab selectPrivateTab(String targetName) {
+        if (StringUtil.isNullOrEmpty(targetName)) {
+            log.warn("Attempted to select private tab with null or empty target name");
+            return null;
+        }
+
+        Pair<Tab, MessageContainer> pair = openTabForPrivateChat(targetName);
+        Tab tab = pair.getLeft();
+
+        selectTab(tab);
+        return tab;
+    }
+
+    public void selectTab(Tab tab) {
+        selectTabByKey(tab.getKey());
+    }
+
+    public Pair<Tab, MessageContainer> openTabForPrivateChat(String targetName) {
+        if (StringUtil.isNullOrEmpty(targetName)) {
+            log.warn("Attempted to open private chat tab with null or empty target name");
+            return null;
+        }
+
+        Tab tab = null;
+        String tabKey = "private_" + targetName;
+        if (!tabsByKey.containsKey(tabKey)) {
+            tab = createPrivateTab(tabKey, targetName);
+            addTab(tab);
+            //selectTabByKey(tabKey); // TODO: config for this
+        } else {
+            tab = tabsByKey.get(tabKey);
+        }
+
+        // For private messages we need to create a container if it doesn't exist
+        MessageContainer container = privateContainers.get(targetName);
+        if (container == null) {
+            container = messageContainerProvider.get();
+            container.setPrivate(true);
+            container.startUp(config.getMessageContainerConfig(), ChatMode.PRIVATE);
+            privateContainers.put(targetName, container);
+        }
+        return Pair.of(tab, container);
+    }
+
+    private String getLocalPlayerName() {
+        Player localPlayer = client.getLocalPlayer();
+        return localPlayer != null && localPlayer.getName() != null ? Text.removeTags(localPlayer.getName()) : "You";
     }
 
     private void setDesiredChatSize(int newW, int newH) {
@@ -437,18 +955,18 @@ public class ChatOverlay extends OverlayPanel
         if (width <= 0 || height <= 0)
             return;
 
-        if (width == lastViewport.width && height == lastViewport.height)
+        if (lastViewport == null || (width == lastViewport.width && height == lastViewport.height))
             return;
 
         Widget chatViewport = widgetBucket.getChatboxViewportWidget();
         if (chatViewport == null)
             return;
 
-        Widget chatFrame = client.getWidget(ComponentID.CHATBOX_FRAME);
+        Widget chatFrame = widgetBucket.getChatBoxArea();
         if (chatFrame == null)
             return;
 
-        Widget chatboxParent = client.getWidget(ComponentID.CHATBOX_PARENT);
+        Widget chatboxParent = widgetBucket.getChatParentWidget();
         if (chatboxParent == null)
             return;
 
@@ -465,24 +983,50 @@ public class ChatOverlay extends OverlayPanel
         chatFrame.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
         chatFrame.setOriginalWidth(chatViewport.getOriginalWidth());
 
+        chatboxParent.revalidate();
+        chatFrame.revalidate();
         chatViewport.revalidate();
+
         client.refreshChat();
 
-        messageContainer.dirty();
+        if (messageContainer != null) {
+            messageContainer.dirty();
+        }
     }
 
     public void showLegacyChat() {
+        showLegacyChat(true);
+    }
+
+    public void showLegacyChat(boolean hideOverlay) {
         ClientUtil.setChatHidden(client, false);
-        setHidden(true);
+
+        if (hideOverlay)
+            setHidden(true);
     }
 
     public void hideLegacyChat() {
+        hideLegacyChat(true);
+    }
+
+    public void hideLegacyChat(boolean showOverlay) {
+        if (ClientUtil.isSystemTextEntryActive(client))
+            return;
+
         ClientUtil.setChatHidden(client, true);
-        setHidden(false);
+        if (showOverlay)
+            setHidden(false);
     }
 
     public void clear() {
-        messageContainer.clear();
+        messageContainer = null;
+        messageContainers.forEach((chatMode, container) -> {
+            container.clear();
+        });
+        privateContainers.forEach((targetName, container) -> {
+            container.clear();
+        });
+
         inputBuf.setLength(0);
         caret = 0;
         inputScrollPx = 0;
@@ -490,6 +1034,36 @@ public class ChatOverlay extends OverlayPanel
         caretOn = true;
         lastBlinkMs = 0;
         lastViewport = null;
+
+        activeTab = null;
+        tabsByKey.clear();
+        tabOrder.clear();
+        availableChatModes.clear();
+
+        refreshTabs(); // reinitialize tabs
+    }
+
+    public void clearInputText() {
+        setInputText("");
+    }
+
+    public void setInputText(String value) {
+        if (value == null) {
+            log.warn("Attempted to set input text to null");
+            return;
+        }
+
+        inputBuf.setLength(0);
+        inputBuf.append(value);
+        caret = inputBuf.length();
+        inputScrollPx = 0;
+        inputFocused = true;
+        caretOn = true;
+        lastBlinkMs = System.currentTimeMillis();
+        eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
+        clientThread.invokeLater(() -> {
+            ClientUtil.setChatInputText(client, value);
+        });
     }
 
     private final class ChatMouse implements MouseListener, MouseWheelListener
@@ -509,6 +1083,32 @@ public class ChatOverlay extends OverlayPanel
             if (!isEnabled() || isHidden()) return e;
             if (lastViewport == null || !lastViewport.contains(e.getPoint()))
                 return e;
+
+            if (lastViewport != null && lastViewport.contains(e.getPoint()) && tabsBarBounds.contains(e.getPoint())) {
+                for (Tab t : tabOrder) {
+                    if (!t.getBounds().contains(e.getPoint())) {
+                        continue;
+                    }
+
+                    if (t.isCloseable() && t.getCloseBounds().contains(e.getPoint())) {
+                        // Close tab on click
+                        if (e.getButton() == MouseEvent.BUTTON1) {
+                            if (t.getUnread() > 0)
+                                t.setUnread(0); // clear unread on close
+
+                            removeTab(t);
+                            e.consume();
+                            return e;
+                        }
+                    } else {
+                        if (t.getUnread() > 0)
+                            t.setUnread(0);
+                    }
+                    selectTabByKey(t.getKey());
+                    e.consume();
+                    return e;
+                }
+            }
 
             // Focus handling: click inside input => focus; outside => unfocus
             if (inputBounds.contains(e.getPoint())) {
@@ -559,6 +1159,22 @@ public class ChatOverlay extends OverlayPanel
                     if (caret < inputBuf.length()) caret++;
                     e.consume();
                     break;
+                case KeyEvent.VK_UP:
+                    if (!inputFocused) return;
+
+                    if (e.isShiftDown()) {
+                        eventBus.post(new NavigateHistoryEvent(NavigateHistoryEvent.PREV));
+                        e.consume();
+                    }
+                    break;
+                case KeyEvent.VK_DOWN:
+                    if (!inputFocused) return;
+
+                    if (e.isShiftDown()) {
+                        eventBus.post(new NavigateHistoryEvent(NavigateHistoryEvent.NEXT));
+                        e.consume();
+                    }
+                    break;
                 case KeyEvent.VK_HOME:
                     if (!inputFocused) return;
                     caret = 0;
@@ -585,19 +1201,45 @@ public class ChatOverlay extends OverlayPanel
                     e.consume();
                     break;
                 case KeyEvent.VK_ENTER:
+                    if (!inputFocused) {
+                        focusInput();
+                        return;
+                    }
                     commitInput();
                     if (config.isHideOnSend())
                         setHidden(true);
-                    if (inputFocused)
-                        e.consume();
+                    e.consume();
                     break;
                 case KeyEvent.VK_ESCAPE:
                     if (config.isHideOnEscape())
                         setHidden(true);
-                    //e.consume();
+                    e.consume();
+                    break;
+                case KeyEvent.VK_TAB:
+                    if (!inputFocused) return;
+
+                    if (activeTab != null && !tabOrder.isEmpty()) {
+                        final int size = tabOrder.size();
+                        final int dir = e.isShiftDown() ? -1 : 1;
+                        int currentIndex = tabOrder.indexOf(activeTab);
+                        if (currentIndex < 0) currentIndex = 0;
+
+                        // wrap properly even when dir is -1
+                        int nextIndex = Math.floorMod(currentIndex + dir, size);
+                        selectTab(tabOrder.get(nextIndex));
+                    }
+                    e.consume();
                     break;
                 default:
                     // allow other keys to pass if not handled
+                    if (inputFocused) {
+                        clientThread.invokeLater(() -> {
+                            ClientUtil.setChatInputText(client, getInputText());
+
+                            // Seems this event isn't posted when the chat is hidden
+                            eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
+                        });
+                    }
                     break;
             }
             // keep caret visible after nav/edit

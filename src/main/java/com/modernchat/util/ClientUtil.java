@@ -168,7 +168,7 @@ public class ClientUtil {
         final String v = value == null ? "" : value;
         try {
             client.setVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT, v);
-            client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, v);
+            client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, "");
         }
         catch (Throwable ex) {
             log.debug("setChatInputText failed", ex);

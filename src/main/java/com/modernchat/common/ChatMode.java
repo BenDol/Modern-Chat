@@ -5,6 +5,8 @@ import lombok.Getter;
 @Getter
 public enum ChatMode
 {
+    CLAN_GIM(-2),
+    PRIVATE(-1),
     PUBLIC(0),
     DEVELOP(1),
     FRIENDS_CHAT(2),

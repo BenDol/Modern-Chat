@@ -92,7 +92,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		super.startUp();
 
 		keyManager.registerKeyListener(this);
-		chatHidden = false;
+		chatHidden = config.featureToggle_StartHidden();
 
 		clientThread.invoke(() -> {
 			if (chatHidden && ClientUtil.isSystemTextEntryActive(client)) {
@@ -142,13 +142,12 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		Keybind kb = config.featureToggle_ToggleKey();
 		if (kb == null || !kb.matches(e)) {
 			if (config.featureToggle_EscapeHides()) {
-				Keybind escapeKey = new Keybind(KeyEvent.VK_ESCAPE, 0);
-				if (!escapeKey.matches(e))
-					return;
-			} else {
-				return;
-			}
-		}
+				if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+					hide();
+				}
+            }
+            return;
+        }
 
 		clientThread.invoke(() -> {
 			// If we are currently typing in a system prompt,

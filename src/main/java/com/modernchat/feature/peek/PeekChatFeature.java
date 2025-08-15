@@ -184,7 +184,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		Player localPlayer = client.getLocalPlayer();
 		ChatMessageType type = e.getType();
 		String name = (type == ChatMessageType.PRIVATECHATOUT
-			? (localPlayer != null ? localPlayer.getName() : "Me")
+			? (localPlayer != null ? localPlayer.getName() : "You")
 			: e.getName());
 		String msg = e.getMessage();
 		String line = (name != null && !name.isEmpty()) ? name + ": " + msg : msg;

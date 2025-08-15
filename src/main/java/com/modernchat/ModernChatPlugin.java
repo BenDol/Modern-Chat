@@ -3,10 +3,11 @@ package com.modernchat;
 import com.google.inject.Provides;
 import com.modernchat.common.Anchor;
 import com.modernchat.common.ChatMessageBuilder;
+import com.modernchat.common.ChatProxy;
 import com.modernchat.common.MessageService;
 import com.modernchat.common.PrivateChatAnchor;
 import com.modernchat.common.WidgetBucket;
-import com.modernchat.event.ChatVisibilityChangeEvent;
+import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
 import com.modernchat.feature.ChatFeature;
@@ -29,6 +30,7 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOpened;
@@ -76,6 +78,7 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private ModernChatConfig config;
 	@Inject private PrivateChatService privateChatService;
 	@Inject private WidgetBucket widgetBucket;
+	@Inject private ChatProxy chatProxy;
 
 	//@Inject private ExampleChatFeature exampleChatFeature;
 	@Inject private ToggleChatFeature toggleChatFeature;
@@ -278,7 +281,7 @@ public class ModernChatPlugin extends Plugin {
 		boolean visible = chatWidget != null && !chatWidget.isHidden() && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());
 		if (chatVisible != visible) {
 			chatVisible = visible;
-			eventBus.post(new ChatVisibilityChangeEvent(chatWidget, chatVisible));
+			eventBus.post(new LegacyChatVisibilityChangeEvent(chatWidget, chatVisible));
 		}
 	}
 
@@ -324,6 +327,13 @@ public class ModernChatPlugin extends Plugin {
 		}
 	}
 
+	@Subscribe
+	public void onChatMessage(ChatMessage e) {
+		if (ChatUtil.isPrivateMessage(e.getType())) {
+			clientThread.invoke(() -> maybeReanchor(true));
+		}
+	}
+
 	private void maybeReanchor(boolean force) {
 		if (!config.general_AnchorPrivateChat()) {
 			if (pmAnchor != null && !pmAnchor.isReset())
@@ -335,11 +345,11 @@ public class ModernChatPlugin extends Plugin {
 		if (chat == null)
 			return;
 
-		Rectangle cur = chat.getBounds();
+		Rectangle cur = chatProxy.getBounds();
 		if (cur == null)
 			return;
 
-		if (chat.isHidden())
+		if (chatProxy.isHidden())
 			cur = new Rectangle(cur.x, cur.y, cur.width, 0); // hide height if chat is hidden
 
 		int offsetX = config.general_AnchorPrivateChatOffsetX();
@@ -351,7 +361,7 @@ public class ModernChatPlugin extends Plugin {
 			}
 		}
 
-		if (!chat.isHidden() && GeometryUtil.isInvalidChatBounds(cur)) {
+		if (!chatProxy.isHidden() && GeometryUtil.isInvalidChatBounds(cur)) {
 			return; // invalid bounds, skip re-anchoring for now
 		}
 

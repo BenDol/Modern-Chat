@@ -1,5 +1,6 @@
 package com.modernchat.overlay;
 
+import com.modernchat.common.ChatMode;
 import com.modernchat.draw.Padding;
 
 import java.awt.Color;
@@ -7,6 +8,8 @@ import java.awt.Color;
 public interface ChatOverlayConfig
 {
     boolean isEnabled();
+
+    boolean isStartHidden();
 
     boolean isHideOnSend();
 
@@ -34,12 +37,19 @@ public interface ChatOverlayConfig
 
     Color getInputCaretColor();
 
+    ChatMode getDefaultChatMode();
+
     MessageContainerConfig getMessageContainerConfig();
 
     class Default implements ChatOverlayConfig
     {
         @Override
         public boolean isEnabled() {
+            return true;
+        }
+
+        @Override
+        public boolean isStartHidden() {
             return true;
         }
 
@@ -106,6 +116,11 @@ public interface ChatOverlayConfig
         @Override
         public Color getInputCaretColor() {
             return Color.WHITE;
+        }
+
+        @Override
+        public ChatMode getDefaultChatMode() {
+            return ChatMode.PUBLIC;
         }
 
         @Override

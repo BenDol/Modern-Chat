@@ -45,12 +45,12 @@ public class PrivateChatAnchor extends Anchor {
 
     @Override
     public Integer width(Widget widget, Widget target) {
-        return Math.max(1, client.getCanvasWidth() - Math.max(0, target.getBounds().x + getOffsetX()));
+        return Math.max(300, client.getCanvasWidth() - Math.max(0, target.getBounds().x + getOffsetX()));
     }
 
     @Override
     public Integer height(Widget widget, Widget target) {
-        return client.getCanvasHeight();
+        return Math.max(400, client.getCanvasHeight());
     }
 
     protected int getLiftFromBottom(Widget targetWidget) {

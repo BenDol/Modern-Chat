@@ -1,6 +1,7 @@
 package com.modernchat.feature.command;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.common.ChatProxy;
 import com.modernchat.feature.AbstractChatFeature;
 import com.modernchat.feature.ChatFeatureConfig;
 import com.modernchat.service.PrivateChatService;
@@ -59,6 +60,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
     @Inject @Getter private Client client;
     @Inject @Getter private ClientThread clientThread;
     @Inject @Getter private PrivateChatService privateChatService;
+    @Inject @Getter private ChatProxy chatProxy;
 
     @Getter @Setter
     private String lastChatInput;
@@ -133,8 +135,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         if (e.getIndex() != VarClientStr.CHATBOX_TYPED_TEXT)
             return;
 
-        Widget input = ClientUtil.getChatInputWidget(client);
-        if (input == null || input.isHidden())
+        if (chatProxy.isHidden())
             return;
 
         if (ClientUtil.isSystemTextEntryActive(client)) {

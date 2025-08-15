@@ -34,7 +34,7 @@ public interface ModernChatConfig extends Config,
     /* ------------ Sections ------------ */
 
     @ConfigSection(
-        name = "Modern Chat Design",
+        name = "Modern Design (beta)",
         description = "Modern Chat redesign settings",
         position = 0,
         closedByDefault = false

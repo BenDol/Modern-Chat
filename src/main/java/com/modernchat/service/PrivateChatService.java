@@ -1,6 +1,7 @@
 package com.modernchat.service;
 
 import com.modernchat.common.ChatMessageBuilder;
+import com.modernchat.common.ChatProxy;
 import com.modernchat.common.MessageService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
@@ -44,6 +45,7 @@ public class PrivateChatService implements ChatService, KeyListener {
     @Inject private EventBus eventBus;
     @Inject private KeyManager keyManager;
     @Inject private MessageService messageService;
+    @Inject private ChatProxy chatProxy;
 
     private volatile String lastPmFrom = null;
     private volatile long lastPmTimestamp = 0L;
@@ -172,8 +174,7 @@ public class PrivateChatService implements ChatService, KeyListener {
         if (e.getIndex() != VarClientStr.CHATBOX_TYPED_TEXT)
             return;
 
-        Widget input = ClientUtil.getChatInputWidget(client);
-        if (input == null || input.isHidden())
+        if (chatProxy.isHidden())
             return;
 
         if (ClientUtil.isSystemTextEntryActive(client)) {
@@ -199,7 +200,7 @@ public class PrivateChatService implements ChatService, KeyListener {
             return;
         }
 
-        if (isLocked()) {
+         if (isLocked()) {
             if (canShowLockMessage) {
                 long remainingLock = pmLockedUntil - System.currentTimeMillis();
                 canShowLockMessage = false;
@@ -218,7 +219,7 @@ public class PrivateChatService implements ChatService, KeyListener {
         pendingPmTarget = null;
         pendingPrefill = null;
 
-        ClientUtil.startPrivateMessage(client, clientThread, currentTarget, body, () -> {});
+        chatProxy.startPrivateMessage(currentTarget, body, () -> {});
     }
 
     public void setPmTarget(String pmTarget) {
@@ -266,7 +267,7 @@ public class PrivateChatService implements ChatService, KeyListener {
     }
 
     public void clearChatInput() {
-        ClientUtil.clearChatInput(client, clientThread, ()-> {
+        chatProxy.clearInput(()-> {
             lastChatInput = null; // Clear last chat input
         });
     }

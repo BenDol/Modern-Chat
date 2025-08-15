@@ -1,5 +1,6 @@
 package com.modernchat.overlay;
 
+import com.modernchat.common.ChatMode;
 import com.modernchat.common.RuneFontStyle;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
@@ -52,12 +53,14 @@ public class MessageContainer extends Overlay
 
     // Config
     @Getter private MessageContainerConfig config;
+    @Getter private ChatMode chatMode;
     @Getter @Setter private boolean chromeEnabled = true;
     @Getter @Setter private Supplier<Rectangle> boundsProvider;
     @Getter @Setter private Function<MessageContainer, Boolean> canDrawDecider = mc -> true;
 
     // State
     @Getter @Setter private boolean hidden = false;
+    @Getter @Setter private boolean isPrivate = false;
     @Getter @Setter private volatile float alpha = 1f;
 
     private final Deque<RichLine> lines = new ArrayDeque<>();
@@ -90,8 +93,9 @@ public class MessageContainer extends Overlay
         return config.isEnabled();
     }
 
-    public void startUp(MessageContainerConfig config) {
+    public void startUp(MessageContainerConfig config, ChatMode chatMode) {
         this.config = config;
+        this.chatMode = chatMode;
 
         registerMouseListener();
     }
