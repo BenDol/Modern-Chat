@@ -2,6 +2,10 @@ package com.modernchat.feature.peek;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.RuneFontStyle;
+import com.modernchat.common.WidgetBucket;
+import com.modernchat.draw.RichLine;
+import com.modernchat.draw.TextSegment;
+import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
@@ -9,7 +13,6 @@ import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
@@ -31,40 +34,14 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 
-public class ChatPeekOverlay extends Overlay {
-
-    private static final class Seg {
-        final String text;
-        final Color color;
-        String textCache = null;
-
-        Seg(String t, Color c) {
-            text = t;
-            color = c;
-        }
-    }
-
-    private static final class RichLine {
-        final List<Seg> segs = new ArrayList<>();
-        ChatMessageType type;
-        long timestamp;
-
-        // Cached values for performance
-        List<VisualLine> lineCache = null;
-        String prefixCache = null;
-        String timestampCache = null;
-    }
-
-    private static final class VisualLine {
-        final List<Seg> segs = new ArrayList<>();
-    }
-
-    private static final int MAX_LINES = 25; // Maximum number of lines to cache
+public class ChatPeekOverlay extends Overlay
+{
+    private static final int MAX_LINES = 20; // Maximum number of lines to cache
 
     private final Client client;
+    private final WidgetBucket widgetBucket;
     private final ModernChatConfig config;
     private final Deque<RichLine> lines = new ArrayDeque<>();
-    private Widget chatboxWidget = null;
     private Rectangle lastBounds = null;
     private Font font = null;
     private RuneFontStyle fontStyle = null;
@@ -75,20 +52,14 @@ public class ChatPeekOverlay extends Overlay {
     private volatile boolean fading = false;
 
     @Inject
-    public ChatPeekOverlay(Client client, ModernChatConfig config) {
+    public ChatPeekOverlay(Client client, ModernChatConfig config, WidgetBucket widgetBucket) {
         this.client = client;
         this.config = config;
+        this.widgetBucket = widgetBucket;
 
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
         setPriority(Overlay.PRIORITY_HIGH);
-    }
-
-    public Widget getChatboxWidget() {
-        if (chatboxWidget == null) {
-            chatboxWidget = client.getWidget(InterfaceID.CHATBOX, 0);
-        }
-        return chatboxWidget;
     }
 
     public void clearMessages() {
@@ -97,12 +68,12 @@ public class ChatPeekOverlay extends Overlay {
     }
 
     public void clearChatWidget() {
-        chatboxWidget = null;
+        widgetBucket.clearChatWidget();
         lastBounds = null;
     }
 
     public boolean canShow() {
-        return canShow(getChatboxWidget());
+        return canShow(widgetBucket.getChatWidget());
     }
 
     public boolean canShow(Widget chatbox) {
@@ -114,7 +85,7 @@ public class ChatPeekOverlay extends Overlay {
         if (!config.featurePeek_Enabled())
             return null;
 
-        Widget chatbox = getChatboxWidget();
+        Widget chatbox = widgetBucket.getChatWidget();
         if (chatbox == null || !canShow(chatbox)) {
             noteMessageActivity(); // reset fade state if chatbox is visible
             return null;
@@ -161,34 +132,36 @@ public class ChatPeekOverlay extends Overlay {
             Deque<RichLine> snapshot = new ArrayDeque<>(lines);
             for (Iterator<RichLine> it = snapshot.descendingIterator(); it.hasNext(); ) {
                 RichLine rl = it.next();
-                ChatMessageType type = rl.type;
+                ChatMessageType type = rl.getType();
 
                 if (isPrivateMessage(type) && !config.featurePeek_ShowPrivateMessages()) {
                     continue;
                 }
 
-                if (rl.lineCache == null) {
-                    rl.lineCache = wrapRichLine(rl, fm, maxW);
+                if (rl.getLineCache() == null) {
+                    rl.setLineCache(wrapRichLine(rl, fm, maxW));
                 }
 
-                for (int i = rl.lineCache.size() - 1; i >= 0; i--) {
+                final List<VisualLine> lineCache = rl.getLineCache();
+
+                for (int i = lineCache.size() - 1; i >= 0; i--) {
                     y -= lineH;
                     if (y < box.y + padding) return null;
                     if (++drawn > maxVisualLines) return null;
 
                     int dx = xLeft;
-                    for (Seg seg : rl.lineCache.get(i).segs) {
-                        if (dx == xLeft && seg.text.isBlank()) continue;
+                    for (TextSegment seg : lineCache.get(i).getSegs()) {
+                        if (dx == xLeft && seg.getText().isBlank()) continue;
 
                         int shadowOffset = config.featurePeek_TextShadow();
                         if (shadowOffset > 0) {
                             g.setColor(new Color(0, 0, 0, 200));
-                            g.drawString(seg.text, dx + shadowOffset, y + shadowOffset);
+                            g.drawString(seg.getText(), dx + shadowOffset, y + shadowOffset);
                         }
 
-                        g.setColor(seg.color);
-                        g.drawString(seg.text, dx, y);
-                        dx += fm.stringWidth(seg.text);
+                        g.setColor(seg.getColor());
+                        g.drawString(seg.getText(), dx, y);
+                        dx += fm.stringWidth(seg.getText());
                         if (dx > xRight) break;
                     }
                 }
@@ -203,15 +176,15 @@ public class ChatPeekOverlay extends Overlay {
         if (fontStyle == null || fontStyle != config.featurePeek_FontStyle()) {
             fontStyle = config.featurePeek_FontStyle();
             switch (fontStyle) {
-                case NORMAL:
-                    font = FontManager.getRunescapeFont();
-                    break;
-                case SMALL:
-                    font = FontManager.getRunescapeSmallFont();
-                    break;
-                case BOLD:
-                    font = FontManager.getRunescapeBoldFont();
-                    break;
+            case NORMAL:
+                font = FontManager.getRunescapeFont();
+                break;
+            case SMALL:
+                font = FontManager.getRunescapeSmallFont();
+                break;
+            case BOLD:
+                font = FontManager.getRunescapeBoldFont();
+                break;
             }
         }
         if (font == null) {
@@ -221,7 +194,7 @@ public class ChatPeekOverlay extends Overlay {
     }
 
     private Rectangle calculateBounds() {
-        return calculateBounds(getChatboxWidget());
+        return calculateBounds(widgetBucket.getChatWidget());
     }
 
     private Rectangle calculateBounds(Widget chatbox) {
@@ -290,14 +263,14 @@ public class ChatPeekOverlay extends Overlay {
     public void pushLine(String s, ChatMessageType type, long timestamp) {
         Color c = getColor(type);
         RichLine rl = parseColored(s == null ? "" : s, c == null ? Color.WHITE : c);
-        rl.type = type;
-        rl.timestamp = timestamp;
+        rl.setType(type);
+        rl.setTimestamp(timestamp);
         pushRich(rl);
         noteMessageActivity();
     }
 
     private void pushRich(RichLine rl) {
-        if (rl == null || rl.segs.isEmpty()) return;
+        if (rl == null || rl.getSegs().isEmpty()) return;
         lines.addLast(rl);
         while (lines.size() > MAX_LINES) lines.removeFirst();
         noteMessageActivity();
@@ -342,7 +315,7 @@ public class ChatPeekOverlay extends Overlay {
                 }
 
                 if (buf.length() > 0) {
-                    out.segs.add(new Seg(buf.toString(), cur));
+                    out.getSegs().add(new TextSegment(buf.toString(), cur));
                     buf.setLength(0);
                 }
 
@@ -352,8 +325,8 @@ public class ChatPeekOverlay extends Overlay {
                 } else if (tag.equals("/col")) {
                     cur = stack.isEmpty() ? base : stack.pop();
                 } else if (tag.equals("br")) {
-                    if (out.segs.isEmpty())
-                        out.segs.add(new Seg("", cur));
+                    if (out.getSegs().isEmpty())
+                        out.getSegs().add(new TextSegment("", cur));
                     pushRich(out);
                     out = new RichLine();
                 }
@@ -365,7 +338,7 @@ public class ChatPeekOverlay extends Overlay {
             }
         }
         if (buf.length() > 0)
-            out.segs.add(new Seg(buf.toString(), cur));
+            out.getSegs().add(new TextSegment(buf.toString(), cur));
         return out;
     }
 
@@ -397,32 +370,30 @@ public class ChatPeekOverlay extends Overlay {
         int segIndex = 0;
         boolean hasPrefix = false;
 
-        if (rl.prefixCache == null) {
-            rl.prefixCache = getPrefix(rl.type);
-        }
+        if (rl.getPrefixCache() == null)
+            rl.setPrefixCache(getPrefix(rl.getType()));
 
-        if (rl.timestampCache == null && rl.timestamp > 0) {
-            rl.timestampCache = "[" + FormatUtil.toHmTime(rl.timestamp) + "]";
-        }
+        if (rl.getTimestampCache() == null && rl.getTimestamp() > 0)
+            rl.setTimestampCache("[" + FormatUtil.toHmTime(rl.getTimestamp()) + "] ");
 
-        for (Seg s : rl.segs) {
-            if (s.textCache == null) {
+        for (TextSegment s : rl.getSegs()) {
+            if (s.getTextCache() == null) {
                 if (segIndex == 0)
-                    hasPrefix = s.text.startsWith("[");
+                    hasPrefix = s.getText().startsWith("[");
 
                 if (segIndex == 0) {
                     if (!hasPrefix && config.featurePeek_PrefixChatTypes())
-                        s.textCache = rl.prefixCache + s.text;
+                        s.setTextCache(rl.getPrefixCache() + s.getText());
                     else
-                        s.textCache = s.text;
+                        s.setTextCache(s.getText());
 
-                    if (!StringUtil.isNullOrEmpty(rl.timestampCache) && config.featurePeek_ShowTimestamp())
-                        s.textCache = rl.timestampCache + " " + s.textCache;
+                    if (!StringUtil.isNullOrEmpty(rl.getTimestampCache()) && config.featurePeek_ShowTimestamp())
+                        s.setTextCache(rl.getTimestampCache() + s.getTextCache());
                 }
             }
             int i = 0;
             segIndex++;
-            String txt = s.textCache != null ? s.textCache : s.text;
+            String txt = s.getTextCache() != null ? s.getTextCache() : s.getText();
 
             while (i < txt.length()) {
                 int nextSpace = -1;
@@ -444,7 +415,7 @@ public class ChatPeekOverlay extends Overlay {
                     while (start < word.length()) {
                         int fit = fitCharsForWidth(fm, word, start, maxWidth - curW);
                         if (fit == 0) {
-                            if (!cur.segs.isEmpty()) {
+                            if (!cur.getSegs().isEmpty()) {
                                 out.add(cur);
                                 cur = new VisualLine();
                                 curW = 0;
@@ -453,7 +424,7 @@ public class ChatPeekOverlay extends Overlay {
                             fit = Math.max(1, fitCharsForWidth(fm, word, start, maxWidth));
                         }
                         String part = word.substring(start, start + fit);
-                        cur.segs.add(new Seg(part, s.color));
+                        cur.getSegs().add(new TextSegment(part, s.getColor()));
                         curW += fm.stringWidth(part);
                         start += fit;
 
@@ -471,7 +442,7 @@ public class ChatPeekOverlay extends Overlay {
                     }
 
                     if (!word.isEmpty()) {
-                        cur.segs.add(new Seg(word, s.color));
+                        cur.getSegs().add(new TextSegment(word, s.getColor()));
                         curW += wordW;
                     }
                 }
@@ -483,7 +454,7 @@ public class ChatPeekOverlay extends Overlay {
                         cur = new VisualLine();
                         curW = 0;
                     }
-                    cur.segs.add(new Seg(space, s.color));
+                    cur.getSegs().add(new TextSegment(space, s.getColor()));
                     curW += spW;
                 }
 
@@ -491,7 +462,7 @@ public class ChatPeekOverlay extends Overlay {
             }
         }
 
-        if (!cur.segs.isEmpty())
+        if (!cur.getSegs().isEmpty())
             out.add(cur);
         return out;
     }
@@ -592,14 +563,7 @@ public class ChatPeekOverlay extends Overlay {
 
     public void dirty() {
         for (RichLine line : lines) {
-            if (line.lineCache != null) {
-                line.lineCache.clear();
-            }
-            line.lineCache = null;
-
-            for (Seg seg : line.segs) {
-                seg.textCache = null;
-            }
+            line.resetCache();
         }
     }
 }

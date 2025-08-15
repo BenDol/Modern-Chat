@@ -133,7 +133,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         if (e.getIndex() != VarClientStr.CHATBOX_TYPED_TEXT)
             return;
 
-        Widget input = client.getWidget(InterfaceID.Chatbox.INPUT);
+        Widget input = ClientUtil.getChatInputWidget(client);
         if (input == null || input.isHidden())
             return;
 

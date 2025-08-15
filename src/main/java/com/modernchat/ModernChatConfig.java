@@ -163,10 +163,22 @@ public interface ModernChatConfig extends Config,
     }
 
     @ConfigItem(
+        keyName = "featureToggle_EscapeHides",
+        name = "Escape hides",
+        description = "Hide the chatbox when pressing Escape",
+        position = 3,
+        section = toggleChatSection
+    )
+    @Override
+    default boolean featureToggle_EscapeHides() {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "featureToggle_StartHidden",
         name = "Start hidden",
         description = "Hide the chatbox when the plugin starts",
-        position = 3,
+        position = 4,
         section = toggleChatSection
     )
     @Override
@@ -178,7 +190,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureToggle_LockCameraWhenVisible",
         name = "Lock camera keys",
         description = "Lock the camera key arrows when chat is visible",
-        position = 4,
+        position = 5,
         section = toggleChatSection
     )
     @Override

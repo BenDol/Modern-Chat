@@ -5,12 +5,18 @@ import com.modernchat.common.Anchor;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.MessageService;
 import com.modernchat.common.PrivateChatAnchor;
+import com.modernchat.common.WidgetBucket;
+import com.modernchat.event.ChatVisibilityChangeEvent;
+import com.modernchat.event.MessageLayerClosedEvent;
+import com.modernchat.event.MessageLayerOpenedEvent;
 import com.modernchat.feature.ChatFeature;
+import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.peek.PeekChatFeature;
 import com.modernchat.service.PrivateChatService;
+import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.StringUtil;
@@ -22,9 +28,12 @@ import net.runelite.api.Menu;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
+import net.runelite.api.ScriptID;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
@@ -34,6 +43,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
@@ -59,21 +69,23 @@ public class ModernChatPlugin extends Plugin {
 
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
+	@Inject private EventBus eventBus;
 	@Inject private ConfigManager configManager;
 	@Inject private ChatMessageManager chatMessageManager;
 	@Inject private MessageService messageService;
 	@Inject private ModernChatConfig config;
 	@Inject private PrivateChatService privateChatService;
+	@Inject private WidgetBucket widgetBucket;
 
 	//@Inject private ExampleChatFeature exampleChatFeature;
 	@Inject private ToggleChatFeature toggleChatFeature;
 	@Inject private PeekChatFeature peekChatFeature;
 	@Inject private CommandsChatFeature commandsChatFeature;
 	@Inject private MessageHistoryChatFeature messageHistoryChatFeature;
+	@Inject private ChatRedesignFeature chatRedesignFeature;
 
 	private Set<ChatFeature<?>> features;
-	private Widget chatWidget = null;
-	private Widget pmWidget = null;
+	private volatile boolean chatVisible = false;
 	private volatile Anchor pmAnchor = null;
 	private volatile Rectangle lastChatBounds;
 
@@ -90,6 +102,7 @@ public class ModernChatPlugin extends Plugin {
 		addFeature(peekChatFeature);
 		addFeature(commandsChatFeature);
 		addFeature(messageHistoryChatFeature);
+		addFeature(chatRedesignFeature);
 
 		features.forEach(ChatFeature::startUp);
 
@@ -216,6 +229,9 @@ public class ModernChatPlugin extends Plugin {
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged e) {
 		if (e.getVarpId() == VarPlayerID.OPTION_PM) {
+			if (!ClientUtil.isOnline(client))
+				return;
+
 			if (e.getValue() == 0 && config.general_AnchorPrivateChat()) {
 				messageService.pushChatMessage("Split PM chat was disabled, resetting anchor.");
 				resetSplitPmAnchor();
@@ -243,6 +259,32 @@ public class ModernChatPlugin extends Plugin {
 	}
 
 	@Subscribe
+	public void onScriptPostFired(ScriptPostFired e)
+	{
+		Widget messageWidget = widgetBucket.getMessageLayerWidget();
+
+		switch (e.getScriptId())
+		{
+			case ScriptID.MESSAGE_LAYER_OPEN:
+				eventBus.post(new MessageLayerOpenedEvent(messageWidget, widgetBucket.isPmWidget(messageWidget)));
+				break;
+			case ScriptID.MESSAGE_LAYER_CLOSE:
+				eventBus.post(new MessageLayerClosedEvent(messageWidget, widgetBucket.isPmWidget(messageWidget)));
+				break;
+		}
+	}
+
+	@Subscribe
+	public void onClientTick(ClientTick e) {
+		Widget chatWidget = widgetBucket.getChatWidget();
+		boolean visible = chatWidget != null && !chatWidget.isHidden() && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());
+		if (chatVisible != visible) {
+			chatVisible = visible;
+			eventBus.post(new ChatVisibilityChangeEvent(chatWidget, chatVisible));
+		}
+	}
+
+	@Subscribe
 	public void onPostClientTick(PostClientTick e) {
 		// Poll once per tick but do nothing unless bounds changed
 		maybeReanchor(false);
@@ -251,14 +293,12 @@ public class ModernChatPlugin extends Plugin {
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded e) {
 		if (e.getGroupId() == InterfaceID.CHATBOX) {
-			chatWidget = null;
 			lastChatBounds = null;
 
 			// force once loaded
 			clientThread.invokeAtTickEnd(() -> maybeReanchor(true));
 		}
 		if (e.getGroupId() == InterfaceID.PM_CHAT) {
-			pmWidget = null;
 			maybeReanchor(true);
 		}
 	}
@@ -266,11 +306,9 @@ public class ModernChatPlugin extends Plugin {
 	@Subscribe
 	public void onWidgetClosed(WidgetClosed e) {
 		if (e.getGroupId() == InterfaceID.CHATBOX) {
-			chatWidget = null;
 			lastChatBounds = null;
 		} else if (e.getGroupId() == InterfaceID.PM_CHAT) {
 			resetSplitPmAnchor();
-			pmWidget = null;
 		}
 	}
 
@@ -296,7 +334,7 @@ public class ModernChatPlugin extends Plugin {
 			return;
 		}
 
-		final Widget chat = getChatWidget();
+		final Widget chat = widgetBucket.getChatWidget();
 		if (chat == null)
 			return;
 
@@ -327,7 +365,7 @@ public class ModernChatPlugin extends Plugin {
 
 	private void anchorSplitPm(int offsetX, int offsetY)
 	{
-		Widget pm = getPmWidget();
+		Widget pm = widgetBucket.getPmWidget();
 		if (pm == null || pm.isHidden())
 			return;
 
@@ -335,7 +373,7 @@ public class ModernChatPlugin extends Plugin {
 		if (pmParent == null || pmParent.isHidden())
 			return;
 
-		Widget chat = getChatWidget();
+		Widget chat = widgetBucket.getChatWidget();
 		if (chat == null)
 			return;
 
@@ -349,7 +387,7 @@ public class ModernChatPlugin extends Plugin {
 	}
 
 	private void resetSplitPmAnchor() {
-		Widget pm = getPmWidget();
+		Widget pm = widgetBucket.getPmWidget();
 		if (pm == null) {
 			return;
 		}
@@ -362,18 +400,6 @@ public class ModernChatPlugin extends Plugin {
 		if (pmAnchor != null) {
 			pmAnchor.reset(pmParent);
 		}
-	}
-
-	private Widget getPmWidget() {
-		if (pmWidget == null)
-			pmWidget = client.getWidget(InterfaceID.PM_CHAT, 0);
-		return pmWidget;
-	}
-
-	private Widget getChatWidget() {
-		if (chatWidget == null)
-			chatWidget = client.getWidget(InterfaceID.CHATBOX, 0);
-		return chatWidget;
 	}
 
 	private void showInstallMessage() {

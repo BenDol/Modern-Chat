@@ -20,8 +20,8 @@ import java.util.function.Consumer;
 
 @Slf4j
 @Singleton
-public class MessageService {
-
+public class MessageService
+{
     public static final String MODERN_CHAT_TAG = "[ModernChat]";
 
     @Inject private Client client;

@@ -8,12 +8,7 @@ import com.modernchat.util.ClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.ScriptID;
-import net.runelite.api.VarClientInt;
-import net.runelite.api.VarClientStr;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Keybind;
@@ -124,7 +119,7 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
             if (!isPrev && !isNext)
                 return;
 
-            if (!isChatInputEditableCT())
+            if (!ClientUtil.isChatInputEditable(client))
                 return;
 
             e.consume();
@@ -177,8 +172,6 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
             }
         }
 
-
-
         // Avoid consecutive duplicates if desired
         if (config.featureMessageHistory_SkipDuplicates()
             && !history.isEmpty()
@@ -204,7 +197,7 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
 
         // When starting, stash current draft and set index just past newest
         if (navIndex == -1) {
-            stashedDraft = getCurrentTypedTextCT();
+            stashedDraft = ClientUtil.getChatInputText(client);
             navIndex = history.size();
         }
 
@@ -214,10 +207,17 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
             navIndex++;  // newer
 
         if (navIndex >= 0 && navIndex < history.size()) {
-            applyTypedTextCT(history.get(navIndex));
+            ClientUtil.setChatInputText(client, history.get(navIndex));
         } else {
-            // Past newest -> restore the original draft
-            applyTypedTextCT(stashedDraft != null ? stashedDraft : "");
+            // Past newest, restore the original draft
+            String value = stashedDraft != null ? stashedDraft : "";
+            clientThread.invoke(() -> {
+                ClientUtil.setChatInputText(client, value);
+
+                if (commandsChatFeature.isEnabled()) {
+                    commandsChatFeature.setLastChatInput(value);
+                }
+            });
         }
     }
 
@@ -273,38 +273,5 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         stashedDraft = null;
     }
 
-    private boolean isChatInputEditableCT() {
-        // Not during system prompts
-        if (client.getVarbitValue(VarClientInt.INPUT_TYPE) != 0)
-            return false;
 
-        Widget w = client.getWidget(InterfaceID.Chatbox.INPUT);
-        return w != null && !w.isHidden();
-    }
-
-    private String getCurrentTypedTextCT() {
-        try {
-            String s = client.getVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT);
-            return s != null ? Text.removeTags(s) : "";
-        } catch (Throwable t) {
-            return "";
-        }
-    }
-
-    private void applyTypedTextCT(String value) {
-        final String v = value == null ? "" : value;
-        // Schedule after frame to avoid "scripts are not reentrant"
-        clientThread.invoke(() -> {
-            try {
-                client.setVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT, v);
-                client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, v);
-
-                if (commandsChatFeature.isEnabled()) {
-                    commandsChatFeature.setLastChatInput(v);
-                }
-            } catch (Throwable ex) {
-                log.debug("applyTypedText failed", ex);
-            }
-        });
-    }
 }

@@ -2,9 +2,9 @@ package com.modernchat.feature.peek;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.RuneFontStyle;
+import com.modernchat.common.WidgetBucket;
 import com.modernchat.feature.AbstractChatFeature;
 import com.modernchat.feature.ChatFeatureConfig;
-import com.modernchat.util.ClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -14,7 +14,6 @@ import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
-import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -68,8 +67,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private Client client;
 	@Inject private OverlayManager overlayManager;
 	@Inject private ChatPeekOverlay chatPeekOverlay;
-
-	private Widget pmWidget = null;
+	@Inject private WidgetBucket widgetBucket;
 
 	@Inject
 	public PeekChatFeature(ModernChatConfig config, EventBus eventBus) {
@@ -124,9 +122,9 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 		overlayManager.remove(chatPeekOverlay);
 
+		Widget pmWidget = widgetBucket.getPmWidget();
 		if (pmWidget != null) {
 			pmWidget.setHidden(false);
-			pmWidget = null;
 		}
 	}
 
@@ -193,29 +191,19 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Subscribe
 	public void onPostClientTick(PostClientTick e) {
-		pmWidget = pmWidget == null ? ClientUtil.getSplitPmWidget(client) : pmWidget;
-		if (pmWidget != null) {
-			pmWidget.setHidden(chatPeekOverlay == null ||
-				(chatPeekOverlay.canShow() && config.featurePeek_HideSplitPrivateMessages()));
+		Widget pmWidget = widgetBucket.getPmWidget();
+		boolean visible = chatPeekOverlay == null || (chatPeekOverlay.canShow() && config.featurePeek_HideSplitPrivateMessages());
+		if (pmWidget != null && visible != pmWidget.isHidden()) {
+			pmWidget.setHidden(visible);
 		}
 	}
 
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded e) {
-		if (e.getGroupId() == InterfaceID.PM_CHAT) {
-			pmWidget = null;
-		}
-		else if (e.getGroupId() == InterfaceID.CHATBOX) {
+		if (e.getGroupId() == InterfaceID.CHATBOX) {
 			if (chatPeekOverlay != null) {
 				chatPeekOverlay.clearChatWidget();
 			}
-		}
-	}
-
-	@Subscribe
-	public void onWidgetClosed(WidgetClosed e) {
-		if (e.getGroupId() == InterfaceID.PM_CHAT) {
-			pmWidget = null;
 		}
 	}
 }

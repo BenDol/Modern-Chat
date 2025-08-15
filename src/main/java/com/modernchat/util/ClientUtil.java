@@ -4,12 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatLineBuffer;
 import net.runelite.api.Client;
 import net.runelite.api.MessageNode;
+import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
 import net.runelite.api.VarClientInt;
 import net.runelite.api.VarClientStr;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.util.Text;
 
 @Slf4j
 public class ClientUtil {
@@ -44,24 +46,6 @@ public class ClientUtil {
         return false;
     }
 
-    public static Widget getSplitPmWidget(Client client) {
-        Widget pm = client.getWidget(InterfaceID.PM_CHAT, 0);
-        if (pm == null || pm.isHidden())
-            return null;
-        return pm;
-    }
-
-    public static Widget getSplitPmParentWidget(Client client) {
-        Widget pm = getSplitPmWidget(client);
-        if (pm == null || pm.isHidden())
-            return null;
-
-        Widget pmParent = pm.getParent();
-        if (pmParent == null || pmParent.isHidden())
-            return null;
-        return pmParent;
-    }
-
     public static String getSystemInputText(Client client) {
         try {
             return client.getVarcStrValue(VarClientStr.INPUT_TEXT);
@@ -70,8 +54,16 @@ public class ClientUtil {
         return null;
     }
 
+    public static Widget getChatWidget(Client client) {
+        return client.getWidget(InterfaceID.CHATBOX, 0);
+    }
+
+    public static Widget getChatInputWidget(Client  client) {
+        return client.getWidget(InterfaceID.Chatbox.INPUT);
+    }
+
     public static boolean isChatHidden(Client client) {
-        Widget root = client.getWidget(InterfaceID.CHATBOX, 0);
+        Widget root = getChatWidget(client);
         if (root != null) {
             return root.isHidden();
         }
@@ -144,5 +136,46 @@ public class ClientUtil {
                 log.warn("Failed to open PM to {} via chat command", currentTarget, ex);
             }
         });
+    }
+
+    public static boolean isOnline(Client client) {
+        Player player = client.getLocalPlayer();
+        return player != null &&
+            player.getWorldLocation() != null &&
+            player.getWorldLocation().getRegionID() != 0;
+    }
+
+    public static void hideWidget(Client client, int componentId)
+    {
+        Widget w = client.getWidget(componentId);
+        if (w != null) w.setHidden(true);
+    }
+
+    public static void setChatInputText(Client client, String value) {
+        final String v = value == null ? "" : value;
+        try {
+            client.setVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT, v);
+            client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, v);
+        }
+        catch (Throwable ex) {
+            log.debug("setChatInputText failed", ex);
+        }
+    }
+
+    public static boolean isChatInputEditable(Client client) {
+        if (client.getVarbitValue(VarClientInt.INPUT_TYPE) != 0)
+            return false;
+
+        Widget w = ClientUtil.getChatInputWidget(client);
+        return w != null && !w.isHidden();
+    }
+
+    public static String getChatInputText(Client client) {
+        try {
+            String s = client.getVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT);
+            return s != null ? Text.removeTags(s) : "";
+        } catch (Throwable t) {
+            return "";
+        }
     }
 }

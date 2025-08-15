@@ -1,6 +1,7 @@
 package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.common.WidgetBucket;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -10,8 +11,6 @@ import net.runelite.api.VarClientStr;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.VarClientStrChanged;
-import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
@@ -43,6 +42,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	{
 		boolean featureToggle_Enabled();
 		Keybind featureToggle_ToggleKey();
+		boolean featureToggle_EscapeHides();
 		boolean featureToggle_StartHidden();
 		boolean featureToggle_AutoHideOnSend();
 		boolean featureToggle_LockCameraWhenVisible();
@@ -55,9 +55,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
 	@Inject private KeyManager keyManager;
+	@Inject private WidgetBucket widgetBucket;
 
 	private boolean chatHidden = false;
-	private Widget chatWidget = null;
 
 	// Deferred hide state
 	private boolean autoHide = false;
@@ -75,6 +75,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		return new ToggleChatFeatureConfig() {
 			@Override public boolean featureToggle_Enabled() { return config.featureToggle_Enabled(); }
 			@Override public Keybind featureToggle_ToggleKey() { return config.featureToggle_ToggleKey(); }
+			@Override public boolean featureToggle_EscapeHides() { return config.featureToggle_EscapeHides(); }
 			@Override public boolean featureToggle_StartHidden() { return config.featureToggle_StartHidden(); }
 			@Override public boolean featureToggle_AutoHideOnSend() { return config.featureToggle_AutoHideOnSend(); }
 			@Override public boolean featureToggle_LockCameraWhenVisible() { return config.featureToggle_LockCameraWhenVisible(); }
@@ -139,8 +140,15 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			return;
 
 		Keybind kb = config.featureToggle_ToggleKey();
-		if (kb == null || !kb.matches(e))
-			return;
+		if (kb == null || !kb.matches(e)) {
+			if (config.featureToggle_EscapeHides()) {
+				Keybind escapeKey = new Keybind(KeyEvent.VK_ESCAPE, 0);
+				if (!escapeKey.matches(e))
+					return;
+			} else {
+				return;
+			}
+		}
 
 		clientThread.invoke(() -> {
 			// If we are currently typing in a system prompt,
@@ -161,13 +169,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			chatHidden = !chatHidden;
 			applyVisibilityNow();
 		});
-	}
-
-	@Subscribe
-	public void onWidgetLoaded(WidgetLoaded e) {
-		if (e.getGroupId() == InterfaceID.CHATBOX) {
-			chatWidget = null; // Reset widget reference
-		}
 	}
 
 	@Subscribe
@@ -234,7 +235,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		}
 
 		// After delay, wait until the chat input has cleared (message sent)
-		Widget chatWidget = getChatWidget();
+		Widget chatWidget = widgetBucket.getChatWidget();
 		if (chatWidget != null) {
 			LAST_CHAT_BOUNDS = chatWidget.getBounds();
 		}
@@ -283,7 +284,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	/** MUST be on client thread: apply the current chat visibility state. */
 	private void applyVisibilityNow() {
-		Widget root = getChatWidget();
+		Widget root = widgetBucket.getChatWidget();
 		if (root != null) {
 			LAST_CHAT_BOUNDS = root.getBounds();
 			root.setHidden(chatHidden);
@@ -295,19 +296,12 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		return canvas != null && canvas.hasFocus();
 	}
 
-	private Widget getChatWidget() {
-		if (chatWidget == null) {
-			chatWidget = client.getWidget(InterfaceID.CHATBOX, 0);
-		}
-		return chatWidget;
-	}
-
 	/** MUST be on client thread: true if the chat input line contains a real message to send. */
 	private boolean hasPendingChatInputCT() {
 		if (chatHidden)
 			return false;
 
-		Widget input = client.getWidget(InterfaceID.Chatbox.INPUT);
+		Widget input = ClientUtil.getChatInputWidget(client);
 		if (input == null || input.isHidden())
 			return false;
 
