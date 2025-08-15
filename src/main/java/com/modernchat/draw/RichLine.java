@@ -10,7 +10,7 @@ import java.util.List;
 public final class RichLine
 {
     private final List<TextSegment> segs = new ArrayList<>();
-    private ChatMessageType type;
+    private ChatMessageType type = ChatMessageType.GAMEMESSAGE;
     private long timestamp;
 
     // Cached values for performance

@@ -259,12 +259,10 @@ public class ModernChatPlugin extends Plugin {
 	}
 
 	@Subscribe
-	public void onScriptPostFired(ScriptPostFired e)
-	{
+	public void onScriptPostFired(ScriptPostFired e) {
 		Widget messageWidget = widgetBucket.getMessageLayerWidget();
 
-		switch (e.getScriptId())
-		{
+		switch (e.getScriptId()) {
 			case ScriptID.MESSAGE_LAYER_OPEN:
 				eventBus.post(new MessageLayerOpenedEvent(messageWidget, widgetBucket.isPmWidget(messageWidget)));
 				break;
@@ -326,8 +324,7 @@ public class ModernChatPlugin extends Plugin {
 		}
 	}
 
-	private void maybeReanchor(boolean force)
-	{
+	private void maybeReanchor(boolean force) {
 		if (!config.general_AnchorPrivateChat()) {
 			if (pmAnchor != null && !pmAnchor.isReset())
 				resetSplitPmAnchor();

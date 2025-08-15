@@ -2,11 +2,13 @@ package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.draw.Padding;
 import com.modernchat.event.ChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
 import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatOverlayConfig;
+import com.modernchat.overlay.MessageContainerConfig;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -28,6 +30,8 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import java.awt.Color;
+
 import static com.modernchat.feature.ChatRedesignFeature.ChatRedesignFeatureConfig;
 
 @Slf4j
@@ -46,22 +50,78 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private OverlayManager overlayManager;
     @Inject private WidgetBucket widgetBucket;
     @Inject private ChatOverlay overlay;
+    private ModernChatConfig mainConfig;
 
     @Inject
     public ChatRedesignFeature(ModernChatConfig config, EventBus eventBus) {
         super(config, eventBus);
+        mainConfig = config;
     }
 
     @Override
     protected ChatRedesignFeatureConfig partitionConfig(ModernChatConfig cfg) {
         return new ChatRedesignFeatureConfig() {
-            @Override public boolean featureRedesign_Enabled() { return true;/*cfg.featureRedesign_Enabled();*/ }
+            @Override public boolean featureRedesign_Enabled() { return cfg.featureRedesign_Enabled(); }
         };
     }
 
     protected ChatOverlayConfig partitionConfig(ChatRedesignFeatureConfig cfg) {
         return new ChatOverlayConfig.Default() {
             @Override public boolean isEnabled() { return cfg.featureRedesign_Enabled(); }
+            @Override public boolean isHideOnSend() { return mainConfig.featureToggle_AutoHideOnSend(); }
+            @Override public boolean isHideOnEscape() { return mainConfig.featureToggle_EscapeHides(); }
+            @Override public Padding getPadding() { return super.getPadding();}
+            @Override public int getInputLineSpacing() { return super.getInputLineSpacing(); }
+
+            @Override
+            public int getInputFontSize() {
+                return super.getInputFontSize();
+            }
+
+            @Override
+            public Color getBackdropColor() {
+                return super.getBackdropColor();
+            }
+
+            @Override
+            public Color getBorderColor() {
+                return super.getBorderColor();
+            }
+
+            @Override
+            public Color getInputPrefixColor() {
+                return super.getInputPrefixColor();
+            }
+
+            @Override
+            public Color getInputBackgroundColor() {
+                return super.getInputBackgroundColor();
+            }
+
+            @Override
+            public Color getInputBorderColor() {
+                return super.getInputBorderColor();
+            }
+
+            @Override
+            public Color getInputShadowColor() {
+                return super.getInputShadowColor();
+            }
+
+            @Override
+            public Color getInputTextColor() {
+                return super.getInputTextColor();
+            }
+
+            @Override
+            public Color getInputCaretColor() {
+                return super.getInputCaretColor();
+            }
+
+            @Override
+            public MessageContainerConfig getMessageContainerConfig() {
+                return super.getMessageContainerConfig();
+            }
         };
     }
 
@@ -95,10 +155,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Subscribe
     public void onChatVisibilityChangeEvent(ChatVisibilityChangeEvent e) {
         if (e.isVisible()) {
-            clientThread.invoke(() -> {
-                hideLegacyChat();
-                overlay.focusInput();
-            });
+            hideLegacyChat();
+            overlay.focusInput();
         }
     }
 
@@ -153,27 +211,11 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         overlay.addMessage(line, type, timestamp);
     }
 
-    private boolean isLegacyChatVisible() {
-        Widget chatArea = widgetBucket.getChatBoxArea();
-        return chatArea != null && !chatArea.isHidden();
-    }
-
     public void showLegacyChat() {
-        setLegacyChatAreaHidden(false);
-        overlay.setHidden(true);
+        overlay.showLegacyChat();
     }
 
     public void hideLegacyChat() {
-        setLegacyChatAreaHidden(true);
-        overlay.setHidden(false);
+        overlay.hideLegacyChat();
     }
-
-    private void setLegacyChatAreaHidden(boolean hidden) {
-        Widget frame = widgetBucket.getChatBoxArea();
-        if (frame != null) {
-            frame.setHidden(hidden);
-        }
-    }
-
-
 }

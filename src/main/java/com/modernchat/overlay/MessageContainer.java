@@ -124,7 +124,7 @@ public class MessageContainer extends Overlay
         final int top = lastViewport.y + pad.getTop();
         final int bottom = lastViewport.y + lastViewport.height - pad.getBottom();
 
-        // Our message viewport (full height for now; if you add an input box, reduce bottom)
+        // Our message viewport (full height for now, if you add an input box, reduce bottom)
         msgViewport.setBounds(left, top, innerW, bottom - top);
 
         // Respect external alpha
@@ -327,6 +327,7 @@ public class MessageContainer extends Overlay
     }
 
     public void pushLine(String s, ChatMessageType type, long timestamp) {
+        type = type == null ? ChatMessageType.GAMEMESSAGE : type;
         Color c = getColor(type);
         RichLine rl = parseColored(s == null ? "" : s, c == null ? Color.WHITE : c);
         rl.setType(type);
@@ -595,7 +596,7 @@ public class MessageContainer extends Overlay
 
         @Override
         public MouseWheelEvent mouseWheelMoved(MouseWheelEvent e) {
-            if (!isEnabled())
+            if (!isEnabled() || isHidden())
                 return e;
             if (!config.isScrollable())
                 return e;
@@ -619,7 +620,7 @@ public class MessageContainer extends Overlay
 
         @Override
         public MouseEvent mousePressed(MouseEvent e) {
-            if (!isEnabled())
+            if (!isEnabled() || isHidden())
                 return e;
             if (lastViewport == null || !lastViewport.contains(e.getPoint()))
                 return e;
@@ -635,7 +636,7 @@ public class MessageContainer extends Overlay
 
         @Override
         public MouseEvent mouseDragged(MouseEvent e) {
-            if (!isEnabled() || !dragging)
+            if (!isEnabled() || isHidden() || !dragging)
                 return e;
 
             int thumbTravel = trackHeight - thumb.height;

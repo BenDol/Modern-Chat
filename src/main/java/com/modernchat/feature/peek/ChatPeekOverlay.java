@@ -11,6 +11,7 @@ import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
+import lombok.Setter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
@@ -50,6 +51,8 @@ public class ChatPeekOverlay extends Overlay
     private volatile long fadeStartAtMs = Long.MAX_VALUE;
     @Getter
     private volatile boolean fading = false;
+    @Getter @Setter
+    private volatile boolean hidden = false;
 
     @Inject
     public ChatPeekOverlay(Client client, ModernChatConfig config, WidgetBucket widgetBucket) {
@@ -77,7 +80,7 @@ public class ChatPeekOverlay extends Overlay
     }
 
     public boolean canShow(Widget chatbox) {
-        return chatbox == null || chatbox.isHidden();
+        return !hidden && (chatbox == null || chatbox.isHidden());
     }
 
     @Override

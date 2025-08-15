@@ -6,6 +6,7 @@ import net.runelite.api.Client;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -18,6 +19,8 @@ public class WidgetBucket {
 
     @Inject private Client client;
 
+    private Widget chatViewportWidget = null;
+    private Widget chatParentWidget = null;
     private Widget chatWidget = null;
     private Widget chatBoxArea = null;
     private Widget messageLayerWidget = null;
@@ -28,6 +31,9 @@ public class WidgetBucket {
         if (e.getGroupId() == InterfaceID.CHATBOX) {
             chatWidget = null;
         }
+        else if (e.getGroupId() == ComponentID.CHATBOX_PARENT) {
+            chatParentWidget = null;
+        }
         else if (e.getGroupId() == InterfaceID.PM_CHAT) {
             pmWidget = null;
         }
@@ -37,14 +43,30 @@ public class WidgetBucket {
         else if (e.getGroupId() == InterfaceID.Chatbox.CHATAREA) {
             chatBoxArea = null;
         }
+        else if (e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT ||
+                 e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT) {
+            chatViewportWidget = null;
+        }
     }
 
     @Subscribe(priority = -1)
     public void onWidgetClosed(WidgetClosed e) {
         if (e.getGroupId() == InterfaceID.CHATBOX) {
             chatWidget = null;
-        } else if (e.getGroupId() == InterfaceID.PM_CHAT) {
+        }
+        else if (e.getGroupId() == ComponentID.CHATBOX_PARENT) {
+            chatParentWidget = null;
+        }
+        else if (e.getGroupId() == InterfaceID.PM_CHAT) {
             pmWidget = null;
+        }
+        else if (e.getGroupId() == InterfaceID.Chatbox.MES_TEXT2) {
+            messageLayerWidget = null;
+        } else if (e.getGroupId() == InterfaceID.Chatbox.CHATAREA) {
+            chatBoxArea = null;
+        } else if (e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT ||
+                   e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT) {
+            chatViewportWidget = null;
         }
     }
 
@@ -56,6 +78,34 @@ public class WidgetBucket {
 
     public void clearPmWidget() {
         pmWidget = null;
+    }
+
+    public Widget getChatParentWidget() {
+        if (chatParentWidget == null)
+            chatParentWidget = client.getWidget(ComponentID.CHATBOX_PARENT);
+        return chatParentWidget;
+    }
+
+    public void clearChatParentWidget() {
+        chatParentWidget = null;
+    }
+
+    public Widget getChatboxViewportWidget() {
+        Widget viewportWidget = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT);
+        if (viewportWidget == null) {
+            viewportWidget = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT);
+        }
+
+        if (viewportWidget == null) {
+            return null;
+        }
+
+        chatViewportWidget = viewportWidget;
+        return chatViewportWidget;
+    }
+
+    public void clearChatboxViewportWidget() {
+        chatViewportWidget = null;
     }
 
     public Widget getChatWidget() {

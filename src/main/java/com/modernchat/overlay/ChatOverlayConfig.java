@@ -8,6 +8,10 @@ public interface ChatOverlayConfig
 {
     boolean isEnabled();
 
+    boolean isHideOnSend();
+
+    boolean isHideOnEscape();
+
     Padding getPadding();
 
     int getInputLineSpacing();
@@ -36,6 +40,16 @@ public interface ChatOverlayConfig
     {
         @Override
         public boolean isEnabled() {
+            return true;
+        }
+
+        @Override
+        public boolean isHideOnSend() {
+            return true;
+        }
+
+        @Override
+        public boolean isHideOnEscape() {
             return true;
         }
 

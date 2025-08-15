@@ -3,6 +3,7 @@ package com.modernchat.feature.peek;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.RuneFontStyle;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.event.ChatOverlayVisibilityChangeEvent;
 import com.modernchat.feature.AbstractChatFeature;
 import com.modernchat.feature.ChatFeatureConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -205,5 +206,10 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 				chatPeekOverlay.clearChatWidget();
 			}
 		}
+	}
+
+	@Subscribe
+	public void onChatOverlayVisibilityChangeEvent(ChatOverlayVisibilityChangeEvent e) {
+		chatPeekOverlay.setHidden(e.isVisible());
 	}
 }

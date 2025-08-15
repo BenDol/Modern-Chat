@@ -287,7 +287,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		Widget root = widgetBucket.getChatWidget();
 		if (root != null) {
 			LAST_CHAT_BOUNDS = root.getBounds();
-			root.setHidden(chatHidden);
+ 			ClientUtil.setChatHidden(client, chatHidden);
 		}
 	}
 

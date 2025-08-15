@@ -2,7 +2,9 @@ package com.modernchat.overlay;
 
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.ClanType;
+import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Padding;
+import com.modernchat.event.ChatOverlayVisibilityChangeEvent;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
@@ -12,9 +14,15 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
-import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetPositionMode;
+import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseListener;
@@ -22,6 +30,7 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.input.MouseWheelListener;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.OverlayLayer;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.util.Text;
@@ -45,9 +54,13 @@ public class ChatOverlay extends OverlayPanel
 {
     @Inject private Client client;
     @Inject private ClientThread clientThread;
+    @Inject private EventBus eventBus;
+    @Inject private OverlayManager overlayManager;
     @Inject private MouseManager mouseManager;
     @Inject private KeyManager keyManager;
+    @Inject private WidgetBucket widgetBucket;
     @Inject @Getter private MessageContainer messageContainer;
+    @Inject @Getter private ResizePanel resizePanel;
 
     private ChatOverlayConfig config;
     private final ChatMouse mouse = new ChatMouse();
@@ -67,12 +80,15 @@ public class ChatOverlay extends OverlayPanel
     private long lastBlinkMs = 0;
     private boolean caretOn = true;
 
-    @Getter @Setter private boolean hidden = false;
+    @Getter private boolean hidden = false;
 
-    public ChatOverlay()
-    {
+    @Getter private int desiredChatWidth;
+    @Getter private int desiredChatHeight;
+
+    public ChatOverlay() {
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ALWAYS_ON_TOP);
+        setClearChildren(false);
     }
 
     public boolean isEnabled() {
@@ -86,10 +102,16 @@ public class ChatOverlay extends OverlayPanel
     public void startUp(ChatOverlayConfig config, MessageContainerConfig containerConfig) {
         this.config = config;
 
+        eventBus.register(this);
+
+        resizePanel.setBaseBoundsProvider(() -> lastViewport);
+        resizePanel.setListener(this::setDesiredChatSize);
+        resizePanel.startUp();
+
         registerMouseListener();
+        registerKeyboardListener();
 
         messageContainer.setChromeEnabled(true);
-        messageContainer.setCanDrawDecider((mc) -> !ClientUtil.isChatHidden(client));
         messageContainer.startUp(containerConfig);
         messageContainer.pushLines(Arrays.asList("Welcome to ModernChat!", "This is a redesigned chatbox with custom features.", "Use the input below; Left/Right move the caret, Enter sends.", "Esc unfocuses the input. Backspace/Delete/Home/End supported.", "Scroll with the mouse wheel, or drag the scrollbar on the right.", "You can customize the appearance in the settings.", "Enjoy your chat experience!", "This is a sample message to fill the chat buffer and demonstrate scrolling.", "Feel free to type here and see how the chat behaves.", "You can also resize the window to see how it adapts.", "Remember, this is just a demo; you can modify the code to suit your needs.", "Have fun exploring the features of ModernChat!", "This is another message to ensure the buffer has enough content for scrolling.", "Keep typing to see how the chatbox handles new messages.", "Here's a longer message to test the wrapping and scrolling behavior of the chatbox.", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.", "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." ));
     }
@@ -97,6 +119,14 @@ public class ChatOverlay extends OverlayPanel
     public void shutDown() {
         clear();
         unregisterMouseListener();
+        unregisterKeyboardListener();
+
+        eventBus.unregister(this);
+
+        resizePanel.shutDown();
+        messageContainer.shutDown();
+        overlayManager.remove(resizePanel);
+        panelComponent.getChildren().clear();
     }
 
     @Override
@@ -104,7 +134,7 @@ public class ChatOverlay extends OverlayPanel
         if (!isEnabled() || hidden)
             return null;
 
-        Widget chatRoot = client.getWidget(InterfaceID.CHATBOX, 0);
+        Widget chatRoot = widgetBucket.getChatboxViewportWidget();
         if (chatRoot == null || chatRoot.isHidden())
             return null;
 
@@ -158,8 +188,10 @@ public class ChatOverlay extends OverlayPanel
         // Draw input box
         drawInputBox(g, fm, left, msgBottom, innerW, inputHeight, inputPadX, inputPadY, gapAboveInput);
 
+        resizePanel.render(g);
+
         g.setComposite(oc);
-        return null;
+        return super.render(g);
     }
 
     @SuppressWarnings({"SameParameterValue", "UnnecessaryLocalVariable"})
@@ -232,6 +264,23 @@ public class ChatOverlay extends OverlayPanel
         }
     }
 
+    @Subscribe
+    public void onClientTick(ClientTick tick) {
+        resizeChatbox(desiredChatWidth, desiredChatHeight);
+    }
+
+    @Subscribe
+    public void onScriptPostFired(ScriptPostFired e) {
+        switch (e.getScriptId()) {
+            case ScriptID.BUILD_CHATBOX:
+            case ScriptID.MESSAGE_LAYER_OPEN:
+            case ScriptID.MESSAGE_LAYER_CLOSE:
+            case ScriptID.CHAT_TEXT_INPUT_REBUILD:
+                resizeChatbox(desiredChatWidth, desiredChatHeight);
+                break;
+        }
+    }
+
     public void inputTick() {
         if (inputFocused) {
             long now = System.currentTimeMillis();
@@ -264,6 +313,17 @@ public class ChatOverlay extends OverlayPanel
         Player lp = client.getLocalPlayer();
         String name = lp != null && lp.getName() != null ? Text.removeTags(lp.getName()) : "Player";
         return name + ": ";
+    }
+
+    public void setHidden(boolean hidden) {
+        this.hidden = hidden;
+
+        if (hidden)
+            unfocusInput();
+        else
+            focusInput();
+
+        eventBus.post(new ChatOverlayVisibilityChangeEvent(!this.hidden));
     }
 
     public void focusInput() {
@@ -366,6 +426,59 @@ public class ChatOverlay extends OverlayPanel
         messageContainer.pushLine(line, type, timestamp);
     }
 
+    private void setDesiredChatSize(int newW, int newH) {
+        if (newW <= 0 || newH <= 0) return;
+
+        desiredChatWidth = newW;
+        desiredChatHeight = newH;
+    }
+
+    private void resizeChatbox(int width, int height) {
+        if (width <= 0 || height <= 0)
+            return;
+
+        if (width == lastViewport.width && height == lastViewport.height)
+            return;
+
+        Widget chatViewport = widgetBucket.getChatboxViewportWidget();
+        if (chatViewport == null)
+            return;
+
+        Widget chatFrame = client.getWidget(ComponentID.CHATBOX_FRAME);
+        if (chatFrame == null)
+            return;
+
+        Widget chatboxParent = client.getWidget(ComponentID.CHATBOX_PARENT);
+        if (chatboxParent == null)
+            return;
+
+        chatViewport.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+        chatViewport.setOriginalHeight(height);
+        chatViewport.setOriginalWidth(width);
+
+        chatboxParent.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+        chatboxParent.setHeightMode(WidgetSizeMode.ABSOLUTE);
+        chatboxParent.setWidthMode(WidgetSizeMode.ABSOLUTE);
+        chatboxParent.setOriginalHeight(chatViewport.getOriginalHeight());
+        chatboxParent.setOriginalWidth(chatViewport.getOriginalWidth());
+
+        chatFrame.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+        chatFrame.setOriginalWidth(chatViewport.getOriginalWidth());
+
+        chatViewport.revalidate();
+        client.refreshChat();
+    }
+
+    public void showLegacyChat() {
+        ClientUtil.setChatHidden(client, false);
+        setHidden(true);
+    }
+
+    public void hideLegacyChat() {
+        ClientUtil.setChatHidden(client, true);
+        setHidden(false);
+    }
+
     public void clear() {
         messageContainer.clear();
         inputBuf.setLength(0);
@@ -374,7 +487,6 @@ public class ChatOverlay extends OverlayPanel
         inputFocused = false;
         caretOn = true;
         lastBlinkMs = 0;
-        // Reset viewport
         lastViewport = null;
     }
 
@@ -392,7 +504,7 @@ public class ChatOverlay extends OverlayPanel
 
         @Override
         public MouseEvent mousePressed(MouseEvent e) {
-            if (!isEnabled()) return e;
+            if (!isEnabled() || isHidden()) return e;
             if (lastViewport == null || !lastViewport.contains(e.getPoint()))
                 return e;
 
@@ -415,7 +527,7 @@ public class ChatOverlay extends OverlayPanel
     {
         @Override
         public void keyTyped(KeyEvent e) {
-            if (!isEnabled() || !inputFocused) return;
+            if (!isEnabled() || isHidden() || !inputFocused) return;
             char ch = e.getKeyChar();
             // Accept printable chars (ignore control chars and ENTER here)
             if (ch >= 32 && ch != 127) {
@@ -430,28 +542,33 @@ public class ChatOverlay extends OverlayPanel
 
         @Override
         public void keyPressed(KeyEvent e) {
-            if (!isEnabled() || !inputFocused)
+            if (!isEnabled() || isHidden())
                 return;
 
             int code = e.getKeyCode();
             switch (code) {
                 case KeyEvent.VK_LEFT:
+                    if (!inputFocused) return;
                     if (caret > 0) caret--;
                     e.consume();
                     break;
                 case KeyEvent.VK_RIGHT:
+                    if (!inputFocused) return;
                     if (caret < inputBuf.length()) caret++;
                     e.consume();
                     break;
                 case KeyEvent.VK_HOME:
+                    if (!inputFocused) return;
                     caret = 0;
                     e.consume();
                     break;
                 case KeyEvent.VK_END:
+                    if (!inputFocused) return;
                     caret = inputBuf.length();
                     e.consume();
                     break;
                 case KeyEvent.VK_BACK_SPACE:
+                    if (!inputFocused) return;
                     if (caret > 0 && inputBuf.length() > 0) {
                         inputBuf.deleteCharAt(caret - 1);
                         caret--;
@@ -459,6 +576,7 @@ public class ChatOverlay extends OverlayPanel
                     e.consume();
                     break;
                 case KeyEvent.VK_DELETE:
+                    if (!inputFocused) return;
                     if (caret < inputBuf.length()) {
                         inputBuf.deleteCharAt(caret);
                     }
@@ -466,10 +584,13 @@ public class ChatOverlay extends OverlayPanel
                     break;
                 case KeyEvent.VK_ENTER:
                     commitInput();
-                    //e.consume();
+                    if (config.isHideOnSend())
+                        setHidden(true);
+                    e.consume();
                     break;
                 case KeyEvent.VK_ESCAPE:
-                    inputFocused = false;
+                    if (config.isHideOnEscape())
+                        setHidden(true);
                     //e.consume();
                     break;
                 default:
@@ -477,8 +598,10 @@ public class ChatOverlay extends OverlayPanel
                     break;
             }
             // keep caret visible after nav/edit
-            caretOn = true;
-            lastBlinkMs = System.currentTimeMillis();
+            if (inputFocused) {
+                caretOn = true;
+                lastBlinkMs = System.currentTimeMillis();
+            }
         }
 
         @Override

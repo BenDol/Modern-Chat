@@ -9,6 +9,7 @@ import net.runelite.api.ScriptID;
 import net.runelite.api.VarClientInt;
 import net.runelite.api.VarClientStr;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.util.Text;
@@ -68,6 +69,18 @@ public class ClientUtil {
             return root.isHidden();
         }
         return false;
+    }
+
+    public static void setChatHidden(Client client, boolean hidden) {
+        /*Widget chatboxParent = client.getWidget(ComponentID.CHATBOX_PARENT);
+        if (chatboxParent != null) {
+            chatboxParent.setHidden(hidden);
+        }*/
+
+        Widget chatWidget = getChatWidget(client);
+        if (chatWidget != null) {
+            chatWidget.setHidden(hidden);
+        }
     }
 
     public static MessageNode findMessageNode(Client client, int id)

@@ -1,6 +1,7 @@
 package com.modernchat;
 
 import com.modernchat.common.RuneFontStyle;
+import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.ExampleChatFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
 import com.modernchat.feature.peek.PeekChatFeature;
@@ -21,6 +22,7 @@ import java.awt.event.KeyEvent;
 @ConfigGroup(ModernChatConfig.GROUP)
 public interface ModernChatConfig extends Config,
     ExampleChatFeature.ExampleChatFeatureConfig,
+    ChatRedesignFeature.ChatRedesignFeatureConfig,
     ToggleChatFeature.ToggleChatFeatureConfig,
     PeekChatFeature.PeekChatFeatureConfig,
     CommandsChatFeature.CommandsChatConfig,
@@ -32,9 +34,17 @@ public interface ModernChatConfig extends Config,
     /* ------------ Sections ------------ */
 
     @ConfigSection(
+        name = "Modern Chat Design",
+        description = "Modern Chat redesign settings",
+        position = 0,
+        closedByDefault = false
+    )
+    String modernChatSection = "modernChatSection";
+
+    @ConfigSection(
         name = "General",
         description = "General settings for Modern Chat",
-        position = 0,
+        position = 1,
         closedByDefault = false
     )
     String generalSection = "generalSection";
@@ -42,7 +52,7 @@ public interface ModernChatConfig extends Config,
     @ConfigSection(
         name = "Chat Toggle",
         description = "Show/hide chat with a hotkey",
-        position = 1,
+        position = 2,
         closedByDefault = false
     )
     String toggleChatSection = "toggleChatSection";
@@ -50,7 +60,7 @@ public interface ModernChatConfig extends Config,
     @ConfigSection(
         name = "Peek Overlay",
         description = "Show a peek overlay when chat is hidden",
-        position = 2,
+        position = 3,
         closedByDefault = true
     )
     String peekOverlaySection = "peekOverlaySection";
@@ -58,7 +68,7 @@ public interface ModernChatConfig extends Config,
     @ConfigSection(
         name = "Chat Commands",
         description = "Custom chat commands for quick actions",
-        position = 3,
+        position = 4,
         closedByDefault = true
     )
     String commandsSection = "commandsSection";
@@ -66,7 +76,7 @@ public interface ModernChatConfig extends Config,
     @ConfigSection(
         name = "Message History",
         description = "Cycle through your message history",
-        position = 4,
+        position = 5,
         closedByDefault = true
     )
     String messageHistorySection = "messageHistorySection";
@@ -83,6 +93,19 @@ public interface ModernChatConfig extends Config,
     @Override
     default boolean featureExample_Enabled() {
         return false;
+    }
+
+    /* ------------ Modern Chat ------------ */
+
+    @ConfigItem(
+        keyName = "featureRedesign_Enabled",
+        name = "Enable",
+        description = "Enable Modern Chat redesign",
+        position = 0,
+        section = modernChatSection
+    )
+    default boolean featureRedesign_Enabled() {
+        return true;
     }
 
     /* ------------ General Settings ------------ */
