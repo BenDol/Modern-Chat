@@ -235,7 +235,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		}
 
 		// After delay, wait until the chat input has cleared (message sent)
-		Widget chatWidget = widgetBucket.getChatWidget();
+		Widget chatWidget = widgetBucket.getChatboxViewportWidget();
 		if (chatWidget != null) {
 			LAST_CHAT_BOUNDS = chatWidget.getBounds();
 		}

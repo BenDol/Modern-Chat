@@ -331,7 +331,7 @@ public class ModernChatPlugin extends Plugin {
 			return;
 		}
 
-		final Widget chat = widgetBucket.getChatWidget();
+		final Widget chat = widgetBucket.getChatboxViewportWidget();
 		if (chat == null)
 			return;
 
@@ -370,7 +370,7 @@ public class ModernChatPlugin extends Plugin {
 		if (pmParent == null || pmParent.isHidden())
 			return;
 
-		Widget chat = widgetBucket.getChatWidget();
+		Widget chat = widgetBucket.getChatboxViewportWidget();
 		if (chat == null)
 			return;
 

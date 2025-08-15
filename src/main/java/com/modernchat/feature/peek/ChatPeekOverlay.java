@@ -43,7 +43,7 @@ public class ChatPeekOverlay extends Overlay
     private final WidgetBucket widgetBucket;
     private final ModernChatConfig config;
     private final Deque<RichLine> lines = new ArrayDeque<>();
-    private Rectangle lastBounds = null;
+    @Getter @Setter private Rectangle lastBounds = null;
     private Font font = null;
     private RuneFontStyle fontStyle = null;
 
@@ -99,7 +99,7 @@ public class ChatPeekOverlay extends Overlay
             return null; // fully faded; nothing to render
         }
 
-        Rectangle box = calculateBounds(chatbox);
+        Rectangle box = calculateBounds();
         if (box == null)
             return null;
 
@@ -197,7 +197,7 @@ public class ChatPeekOverlay extends Overlay
     }
 
     private Rectangle calculateBounds() {
-        return calculateBounds(widgetBucket.getChatWidget());
+        return calculateBounds(widgetBucket.getChatboxViewportWidget());
     }
 
     private Rectangle calculateBounds(Widget chatbox) {

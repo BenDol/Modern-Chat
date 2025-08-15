@@ -467,6 +467,8 @@ public class ChatOverlay extends OverlayPanel
 
         chatViewport.revalidate();
         client.refreshChat();
+
+        messageContainer.dirty();
     }
 
     public void showLegacyChat() {
@@ -586,7 +588,8 @@ public class ChatOverlay extends OverlayPanel
                     commitInput();
                     if (config.isHideOnSend())
                         setHidden(true);
-                    e.consume();
+                    if (inputFocused)
+                        e.consume();
                     break;
                 case KeyEvent.VK_ESCAPE:
                     if (config.isHideOnEscape())

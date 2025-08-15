@@ -50,7 +50,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private OverlayManager overlayManager;
     @Inject private WidgetBucket widgetBucket;
     @Inject private ChatOverlay overlay;
-    private ModernChatConfig mainConfig;
+
+    private final ModernChatConfig mainConfig;
 
     @Inject
     public ChatRedesignFeature(ModernChatConfig config, EventBus eventBus) {

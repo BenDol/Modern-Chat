@@ -6,6 +6,7 @@ import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.ChatOverlayVisibilityChangeEvent;
 import com.modernchat.feature.AbstractChatFeature;
 import com.modernchat.feature.ChatFeatureConfig;
+import com.modernchat.feature.ToggleChatFeature;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -18,6 +19,7 @@ import net.runelite.api.events.PostClientTick;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -66,6 +68,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	}
 
 	@Inject private Client client;
+	@Inject private ClientThread clientThread;
 	@Inject private OverlayManager overlayManager;
 	@Inject private ChatPeekOverlay chatPeekOverlay;
 	@Inject private WidgetBucket widgetBucket;
@@ -211,5 +214,6 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Subscribe
 	public void onChatOverlayVisibilityChangeEvent(ChatOverlayVisibilityChangeEvent e) {
 		chatPeekOverlay.setHidden(e.isVisible());
+		chatPeekOverlay.noteMessageActivity();
 	}
 }
