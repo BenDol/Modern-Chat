@@ -9,8 +9,14 @@ import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.event.ChatToggleEvent;
+import com.modernchat.event.DialogOptionsClosedEvent;
+import com.modernchat.event.DialogOptionsOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.event.NavigateHistoryEvent;
+import com.modernchat.event.LeftDialogClosedEvent;
+import com.modernchat.event.LeftDialogOpenedEvent;
+import com.modernchat.event.RightDialogClosedEvent;
+import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.event.SubmitHistoryEvent;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
@@ -34,7 +40,6 @@ import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
@@ -71,7 +76,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -121,7 +125,22 @@ public class ChatOverlay extends OverlayPanel
     private long lastBlinkMs = 0;
     private boolean caretOn = true;
 
+    // Selection state
+    private int selStart = 0;
+    private int selEnd = 0;
+    private int selAnchor = -1; // -1 no anchor
+    private boolean selectingText = false;
+
+    // Input padding used for hit-testing
+    private static final int INPUT_PAD_X = 8;
+    private static final int INPUT_PAD_Y = 6;
+
+    // Selection highlight color
+    private static final Color INPUT_SELECTION_BG = new Color(0, 120, 215, 120);
+
     @Getter private boolean hidden = false;
+    @Getter private boolean legacyShowing = false;
+    @Getter private boolean wasHidden = false;
 
     @Getter private int desiredChatWidth;
     @Getter private int desiredChatHeight;
@@ -134,16 +153,16 @@ public class ChatOverlay extends OverlayPanel
     private Tab dragTab = null;
     private String pendingSelectTabKey = null;
 
-    private int pressX = 0;             // mouse x at press
-    private int dragOffsetX = 0;        // mouseX - tabLeft at press
-    private int dragVisualX = 0;        // where we render the dragged tab
-    private int dragStartIndex = -1;    // index before drag started
-    private int dragTargetIndex = -1;   // predicted drop index (filtered, without the dragged tab)
-    private int dragTabWidth = 0;       // cached from tab bounds
-    private int dragTabHeight = 0;      // cached from tab bounds
+    private int pressX = 0;
+    private int dragOffsetX = 0;
+    private int dragVisualX = 0;
+    private int dragStartIndex = -1;
+    private int dragTargetIndex = -1;
+    private int dragTabWidth = 0;
+    private int dragTabHeight = 0;
 
     // Unread flash settings
-    private static final int  UNREAD_FLASH_PERIOD_MS = 900;
+    private static final int UNREAD_FLASH_PERIOD_MS = 900;
 
     public ChatOverlay() {
     }
@@ -521,6 +540,24 @@ public class ChatOverlay extends OverlayPanel
         }
         if (inputScrollPx < 0) inputScrollPx = 0;
 
+        if (hasSelection()) {
+            int selL = Math.min(selStart, selEnd);
+            int selR = Math.max(selStart, selEnd);
+
+            int selStartX = inputInnerLeft + prefixW + fm.stringWidth(inputBuf.substring(0, selL)) - inputScrollPx;
+            int selEndX   = inputInnerLeft + prefixW + fm.stringWidth(inputBuf.substring(0, selR)) - inputScrollPx;
+
+            int sx = Math.max(selStartX, leftLimit);
+            int ex = Math.min(selEndX, rightLimit);
+
+            if (ex > sx) {
+                g.setColor(INPUT_SELECTION_BG);
+                int caretTop = baseline - fm.getAscent();
+                int caretBottom = baseline + fm.getDescent();
+                g.fillRect(sx, caretTop, ex - sx, caretBottom - caretTop);
+            }
+        }
+
         // Shadow
         g.setColor(config.getInputShadowColor());
         g.drawString(prefix, inputInnerLeft + 1, baseline + 1);
@@ -537,7 +574,7 @@ public class ChatOverlay extends OverlayPanel
         // Caret
         long now = System.currentTimeMillis();
         if (now - lastBlinkMs > 500) { caretOn = !caretOn; lastBlinkMs = now; }
-        if (inputFocused && caretOn) {
+        if (inputFocused && caretOn && !hasSelection()) {
             g.setColor(config.getInputCaretColor());
             int caretTop = baseline - fm.getAscent();
             int caretBottom = baseline + fm.getDescent();
@@ -786,6 +823,36 @@ public class ChatOverlay extends OverlayPanel
     }
 
     @Subscribe
+    public void onNpcDialogOpenedEvent(LeftDialogOpenedEvent e) {
+        clientThread.invoke(() -> showLegacyChat());
+    }
+
+    @Subscribe
+    public void onLeftDialogClosedEvent(LeftDialogClosedEvent e) {
+        clientThread.invoke(() -> hideLegacyChat());
+    }
+
+    @Subscribe
+    public void onRightDialogOpenedEvent(RightDialogOpenedEvent e) {
+        clientThread.invoke(() -> showLegacyChat());
+    }
+
+    @Subscribe
+    public void onRightDialogClosedEvent(RightDialogClosedEvent e) {
+        clientThread.invoke(() -> hideLegacyChat());
+    }
+
+    @Subscribe
+    public void onDialogOptionsOpenedEvent(DialogOptionsOpenedEvent e) {
+        clientThread.invoke(() -> showLegacyChat());
+    }
+
+    @Subscribe
+    public void onDialogOptionsClosedEvent(DialogOptionsClosedEvent e) {
+        clientThread.invoke(() -> hideLegacyChat());
+    }
+
+    @Subscribe
     public void onChatToggleEvent(ChatToggleEvent e) {
         if (e.isHidden() != hidden) {
             setHidden(e.isHidden());
@@ -823,13 +890,6 @@ public class ChatOverlay extends OverlayPanel
         if (hit != null) {
             final String rowText = buildPlainRowText(hit.getVLine());
 
-            /*MenuEntry parent = rootMenu.createMenuEntry(1)
-                .setOption("Chat")
-                .setTarget("Message")
-                .setType(MenuAction.RUNELITE);
-
-            Menu sub = parent.createSubMenu();*/
-
             rootMenu.createMenuEntry(1)
                 .setOption("Copy line")
                 .setType(MenuAction.RUNELITE)
@@ -859,10 +919,12 @@ public class ChatOverlay extends OverlayPanel
 
             Menu sub = parent.createSubMenu();
 
-            sub.createMenuEntry(0)
-                .setOption("Close")
-                .setType(MenuAction.RUNELITE)
-                .onClick(me -> removeTab(hovered));
+            if (hovered.isCloseable()) {
+                sub.createMenuEntry(0)
+                    .setOption("Close")
+                    .setType(MenuAction.RUNELITE)
+                    .onClick(me -> removeTab(hovered));
+            }
 
             sub.createMenuEntry(1)
                 .setOption("Mark all as read")
@@ -983,6 +1045,11 @@ public class ChatOverlay extends OverlayPanel
         if (this.hidden == hidden)
             return; // no change
 
+        if (!hidden && legacyShowing) {
+            log.warn("Attempted to show ModernChat while legacy chat is showing, hiding legacy chat first");
+            return;
+        }
+
         this.hidden = hidden;
 
         if (hidden)
@@ -998,6 +1065,7 @@ public class ChatOverlay extends OverlayPanel
 
         inputFocused = true;
         caret = inputBuf.length(); // place caret at end
+        clearSelection();
     }
 
     public void unfocusInput() {
@@ -1046,6 +1114,7 @@ public class ChatOverlay extends OverlayPanel
         inputBuf.setLength(0);
         caret = 0;
         inputScrollPx = 0;
+        clearSelection(); // ensure selection cleared after send
     }
 
     public @Nullable String getCurrentTarget() {
@@ -1412,6 +1481,8 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void showLegacyChat(boolean hideOverlay) {
+        legacyShowing = true;
+        wasHidden = hidden; // remember if we were hidden before
         ClientUtil.setChatHidden(client, false);
 
         if (hideOverlay)
@@ -1426,9 +1497,11 @@ public class ChatOverlay extends OverlayPanel
         if (ClientUtil.isSystemTextEntryActive(client))
             return;
 
+        legacyShowing = false;
         ClientUtil.setChatHidden(client, true);
+
         if (showOverlay)
-            setHidden(false);
+            setHidden(wasHidden);
     }
 
     public void clear() {
@@ -1447,6 +1520,10 @@ public class ChatOverlay extends OverlayPanel
         caretOn = true;
         lastBlinkMs = 0;
         lastViewport = null;
+
+        selStart = selEnd = caret;
+        selAnchor = -1;
+        selectingText = false;
 
         activeTab = null;
         tabsByKey.clear();
@@ -1482,6 +1559,8 @@ public class ChatOverlay extends OverlayPanel
         inputScrollPx = 0;
         inputFocused = true;
         caretOn = true;
+        selStart = selEnd = caret; // clear selection on set
+        selAnchor = -1;
         lastBlinkMs = System.currentTimeMillis();
         eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
         clientThread.invokeLater(() -> {
@@ -1508,6 +1587,95 @@ public class ChatOverlay extends OverlayPanel
         for (MessageContainer container : messageContainers.values()) {
             container.dirty();
         }
+    }
+
+    private boolean hasSelection() { return selStart != selEnd; }
+    private void clearSelection() { selStart = selEnd = caret; selAnchor = -1; }
+    private void setSelectionRange(int a, int b) {
+        selStart = Math.max(0, Math.min(a, inputBuf.length()));
+        selEnd   = Math.max(0, Math.min(b, inputBuf.length()));
+    }
+    private int clampIndex(int i) { return Math.max(0, Math.min(i, inputBuf.length())); }
+
+    private void startAnchorIfNeeded() { if (selAnchor == -1) selAnchor = caret; }
+    private void setCaretAndMaybeExtend(int newCaret, boolean extend) {
+        newCaret = clampIndex(newCaret);
+        if (extend) {
+            startAnchorIfNeeded();
+            caret = newCaret;
+            setSelectionRange(selAnchor, caret);
+        } else {
+            caret = newCaret;
+            clearSelection();
+        }
+    }
+
+    private void deleteSelection() {
+        if (!hasSelection()) return;
+        int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
+        inputBuf.delete(lo, hi);
+        caret = lo;
+        clearSelection();
+    }
+
+    private void insertTextAtCaret(String s) {
+        if (s == null || s.isEmpty()) return;
+        int charLimit = getCharacterLimit();
+        int canTake = Math.max(0, charLimit - inputBuf.length() + (hasSelection() ? Math.abs(selEnd - selStart) : 0));
+        if (canTake <= 0) return;
+        if (s.length() > canTake) s = s.substring(0, canTake);
+        if (hasSelection()) deleteSelection();
+        inputBuf.insert(caret, s);
+        caret += s.length();
+    }
+
+    private int prevWordIndex(int from) {
+        int i = clampIndex(from);
+        if (i == 0)
+            return 0;
+        while (i > 0 && Character.isWhitespace(inputBuf.charAt(i - 1))) i--;
+        while (i > 0 && !Character.isWhitespace(inputBuf.charAt(i - 1))) i--;
+        return i;
+    }
+
+    private int nextWordIndex(int from) {
+        int i = clampIndex(from), n = inputBuf.length();
+        if (i >= n)
+            return n;
+        while (i < n && !Character.isWhitespace(inputBuf.charAt(i))) i++;
+        while (i < n && Character.isWhitespace(inputBuf.charAt(i))) i++;
+        return i;
+    }
+
+    private void syncChatInputLater() {
+        clientThread.invokeLater(() -> {
+            ClientUtil.setChatInputText(client, getInputText());
+            eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
+        });
+    }
+
+    private FontMetrics getInputFontMetrics() {
+        Font f = FontManager.getRunescapeFont().deriveFont((float) config.getInputFontSize());
+        return Toolkit.getDefaultToolkit().getFontMetrics(f);
+    }
+
+    private int indexFromMouseX(FontMetrics fm, int mouseX, int inputX, int inputW, int prefixW) {
+        int leftLimit  = inputX + INPUT_PAD_X + prefixW;
+        int rightLimit = inputX + inputW - INPUT_PAD_X;
+
+        int x = Math.max(leftLimit, Math.min(mouseX, rightLimit));
+        int xWithin = (x - (inputX + INPUT_PAD_X + prefixW)) + inputScrollPx;
+        if (xWithin <= 0)
+            return 0;
+
+        int acc = 0, i = 0, len = inputBuf.length();
+        while (i < len) {
+            int w = fm.charWidth(inputBuf.charAt(i));
+            if (acc + w / 2 >= xWithin)
+                break; // snap at half char
+            acc += w; i++;
+        }
+        return i;
     }
 
     private final class ChatMouse implements MouseListener, MouseWheelListener
@@ -1569,10 +1737,27 @@ public class ChatOverlay extends OverlayPanel
                 }
             }
 
-            // Input focus: LMB only
+            // Input focus + selection: LMB only
             if (inputBounds.contains(e.getPoint())) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     inputFocused = true;
+
+                    // caret/selection update
+                    FontMetrics fm = getInputFontMetrics();
+                    String prefix = getPlayerPrefix();
+                    int prefixW = fm.stringWidth(prefix);
+
+                    int clickedIdx = indexFromMouseX(fm, e.getX(), inputBounds.x, inputBounds.width, prefixW);
+                    if (e.isShiftDown()) {
+                        if (!hasSelection()) selAnchor = caret;
+                        setCaretAndMaybeExtend(clickedIdx, true);
+                    } else {
+                        caret = clickedIdx;
+                        selAnchor = caret;
+                        clearSelection();
+                    }
+
+                    selectingText = true;
                     e.consume();
                 }
                 return e;
@@ -1586,7 +1771,23 @@ public class ChatOverlay extends OverlayPanel
         @Override
         public MouseEvent mouseDragged(MouseEvent e)  {
             if (!isEnabled() || isHidden()) return e;
-            if (dragTab == null) return e;
+
+            // Selection drag
+            if (selectingText && inputFocused) {
+                FontMetrics fm = getInputFontMetrics();
+                String prefix = getPlayerPrefix();
+                int prefixW = fm.stringWidth(prefix);
+
+                int idx = indexFromMouseX(fm, e.getX(), inputBounds.x, inputBounds.width, prefixW);
+                if (selAnchor == -1) selAnchor = caret;
+                caret = idx;
+                setSelectionRange(selAnchor, caret);
+                e.consume();
+                return e;
+            }
+
+            if (dragTab == null)
+                return e;
 
             if (!draggingTab && Math.abs(e.getX() - pressX) >= DRAG_THRESHOLD_PX) {
                 draggingTab = true;
@@ -1607,6 +1808,13 @@ public class ChatOverlay extends OverlayPanel
 
         @Override
         public MouseEvent mouseReleased(MouseEvent e) {
+            // End selection drag
+            if (selectingText && e.getButton() == MouseEvent.BUTTON1) {
+                selectingText = false;
+                e.consume();
+                return e;
+            }
+
             if (dragTab != null && e.getButton() == MouseEvent.BUTTON1) {
                 if (draggingTab) {
                     // Commit reorder if target differs from original index
@@ -1637,27 +1845,18 @@ public class ChatOverlay extends OverlayPanel
     {
         @Override
         public void keyTyped(KeyEvent e) {
-            if (!isEnabled() || isHidden() || !inputFocused)
-                return;
-
-            if (inputBuf.length() >= getCharacterLimit())
-                return;
-
+            if (!isEnabled() || isHidden() || !inputFocused) return;
             char ch = e.getKeyChar();
-            // Accept printable chars (ignore control chars and ENTER here)
-            if (ch >= 32 && ch != 127) {
-                inputBuf.insert(caret, ch);
-                caret++;
-                e.consume();
-                // keep caret visible
-                caretOn = true;
-                lastBlinkMs = System.currentTimeMillis();
+            if (ch < 32 || ch == 127 || ch == '\n' || ch == '\r')
+                return; // ignore control chars
 
-                clientThread.invoke(() -> {
-                    ClientUtil.setChatInputText(client, getInputText());
-                    eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
-                });
-            }
+            // insert with selection awareness
+            insertTextAtCaret(String.valueOf(ch));
+            e.consume();
+
+            caretOn = true;
+            lastBlinkMs = System.currentTimeMillis();
+            syncChatInputLater();
         }
 
         @Override
@@ -1665,77 +1864,99 @@ public class ChatOverlay extends OverlayPanel
             if (!isEnabled() || isHidden())
                 return;
 
+            final boolean shift = e.isShiftDown();
+            final boolean ctrl = e.isControlDown();
             int code = e.getKeyCode();
-            switch (code) {
-                case KeyEvent.VK_LEFT:
-                    if (!inputFocused) return;
-                    if (caret > 0) caret--;
-                    e.consume();
-                    break;
-                case KeyEvent.VK_RIGHT:
-                    if (!inputFocused) return;
-                    if (caret < inputBuf.length()) caret++;
-                    e.consume();
-                    break;
-                case KeyEvent.VK_UP:
-                    if (!inputFocused) return;
 
+            switch (code) {
+                case KeyEvent.VK_LEFT: {
+                    if (!inputFocused) return;
+                    int newCaret = ctrl ? prevWordIndex(caret) : Math.max(0, caret - 1);
+                    setCaretAndMaybeExtend(newCaret, shift);
+                    e.consume();
+                    break;
+                }
+                case KeyEvent.VK_RIGHT: {
+                    if (!inputFocused) return;
+                    int newCaret = ctrl ? nextWordIndex(caret) : Math.min(inputBuf.length(), caret + 1);
+                    setCaretAndMaybeExtend(newCaret, shift);
+                    e.consume();
+                    break;
+                }
+                case KeyEvent.VK_UP: {
+                    if (!inputFocused) return;
                     if (e.isShiftDown()) {
                         eventBus.post(new NavigateHistoryEvent(NavigateHistoryEvent.PREV));
                         e.consume();
                     }
                     break;
-                case KeyEvent.VK_DOWN:
+                }
+                case KeyEvent.VK_DOWN: {
                     if (!inputFocused) return;
-
                     if (e.isShiftDown()) {
                         eventBus.post(new NavigateHistoryEvent(NavigateHistoryEvent.NEXT));
                         e.consume();
                     }
                     break;
-                case KeyEvent.VK_HOME:
+                }
+                case KeyEvent.VK_HOME: {
                     if (!inputFocused) return;
-                    caret = 0;
+                    setCaretAndMaybeExtend(0, shift);
                     e.consume();
                     break;
-                case KeyEvent.VK_END:
+                }
+                case KeyEvent.VK_END: {
                     if (!inputFocused) return;
-                    caret = inputBuf.length();
+                    setCaretAndMaybeExtend(inputBuf.length(), shift);
                     e.consume();
                     break;
-                case KeyEvent.VK_BACK_SPACE:
+                }
+                case KeyEvent.VK_BACK_SPACE: {
                     if (!inputFocused) return;
-                    if (caret > 0 && inputBuf.length() > 0) {
-                        inputBuf.deleteCharAt(caret - 1);
-                        caret--;
+                    if (hasSelection()) {
+                        deleteSelection();
+                    } else if (ctrl) {
+                        int ni = prevWordIndex(caret);
+                        if (ni < caret) { inputBuf.delete(ni, caret); caret = ni; }
+                    } else if (caret > 0) {
+                        inputBuf.deleteCharAt(caret - 1); caret--;
                     }
                     e.consume();
+                    syncChatInputLater();
                     break;
-                case KeyEvent.VK_DELETE:
+                }
+                case KeyEvent.VK_DELETE: {
                     if (!inputFocused) return;
-                    if (caret < inputBuf.length()) {
+                    if (hasSelection()) {
+                        deleteSelection();
+                    } else if (ctrl) {
+                        int ni = nextWordIndex(caret);
+                        if (ni > caret && ni <= inputBuf.length()) inputBuf.delete(caret, ni);
+                    } else if (caret < inputBuf.length()) {
                         inputBuf.deleteCharAt(caret);
                     }
                     e.consume();
+                    syncChatInputLater();
                     break;
-                case KeyEvent.VK_ENTER:
+                }
+                case KeyEvent.VK_ENTER: {
                     if (!inputFocused) {
                         focusInput();
+                        e.consume();
                         return;
                     }
                     commitInput();
-                    /*if (config.isHideOnSend())
-                        setHidden(true);*/
-                    //e.consume();
+                    // if (config.isHideOnSend()) setHidden(true);
+                    // e.consume();
                     break;
-                case KeyEvent.VK_ESCAPE:
+                }
+                case KeyEvent.VK_ESCAPE: {
                     if (config.isHideOnEscape())
                         setHidden(true);
                     e.consume();
                     break;
-                case KeyEvent.VK_TAB:
-                    //if (!inputFocused) return;
-
+                }
+                case KeyEvent.VK_TAB: {
                     if (activeTab != null && !tabOrder.isEmpty()) {
                         final int size = tabOrder.size();
                         final int dir = e.isShiftDown() ? -1 : 1;
@@ -1748,27 +1969,50 @@ public class ChatOverlay extends OverlayPanel
                     }
                     e.consume();
                     break;
-                case KeyEvent.VK_V:
-                    if (inputFocused && e.isControlDown()) {
-                        // Paste from clipboard
+                }
+                case KeyEvent.VK_A: {
+                    if (inputFocused && ctrl) {
+                        selAnchor = 0; caret = inputBuf.length(); setSelectionRange(0, caret);
+                        e.consume();
+                    }
+                    break;
+                }
+                case KeyEvent.VK_C: {
+                    if (inputFocused && ctrl && hasSelection()) {
+                        int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
+                        copyToClipboard(inputBuf.substring(lo, hi));
+                        e.consume();
+                    }
+                    break;
+                }
+                case KeyEvent.VK_X: {
+                    if (inputFocused && ctrl && hasSelection()) {
+                        int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
+                        copyToClipboard(inputBuf.substring(lo, hi));
+                        deleteSelection();
+                        e.consume();
+                        syncChatInputLater();
+                    }
+                    break;
+                }
+                case KeyEvent.VK_V: {
+                    if (inputFocused && ctrl) {
                         Optional<String> clipboardText = ChatUtil.getClipboardText();
                         if (clipboardText.isPresent()) {
-                            setInputText(clipboardText.get());
+                            insertTextAtCaret(clipboardText.get());
                             e.consume();
+                            syncChatInputLater();
                         }
                     }
                     break;
-                default:
-                    // allow other keys to pass if not handled
+                }
+                default: {
                     if (inputFocused) {
-                        clientThread.invokeLater(() -> {
-                            ClientUtil.setChatInputText(client, getInputText());
-
-                            // Seems this event isn't posted when the chat is hidden
-                            eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
-                        });
+                        caretOn = true;
+                        lastBlinkMs = System.currentTimeMillis();
                     }
                     break;
+                }
             }
             // keep caret visible after nav/edit
             if (inputFocused) {

@@ -295,7 +295,7 @@ public interface ModernChatConfig extends Config,
     @Alpha
     @Override
     default Color featureRedesign_InputBackgroundColor() {
-        return new Color(0, 0, 0, 110);
+        return new Color(0, 0, 0, 145);
     }
 
     @ConfigItem(

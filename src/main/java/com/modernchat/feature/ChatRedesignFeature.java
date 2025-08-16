@@ -295,7 +295,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe
     public void onLegacyChatVisibilityChangeEvent(LegacyChatVisibilityChangeEvent e) {
-        if (e.isVisible()) {
+        if (e.isVisible() && !overlay.isLegacyShowing()) {
             overlay.hideLegacyChat(false);
         }
     }

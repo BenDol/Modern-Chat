@@ -7,9 +7,15 @@ import com.modernchat.common.ChatProxy;
 import com.modernchat.common.MessageService;
 import com.modernchat.common.PrivateChatAnchor;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.event.DialogOptionsClosedEvent;
+import com.modernchat.event.DialogOptionsOpenedEvent;
 import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
+import com.modernchat.event.LeftDialogClosedEvent;
+import com.modernchat.event.LeftDialogOpenedEvent;
+import com.modernchat.event.RightDialogClosedEvent;
+import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.feature.ChatFeature;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
@@ -101,11 +107,11 @@ public class ModernChatPlugin extends Plugin {
 	protected void startUp() {
 		features = new HashSet<>();
 		//addFeature(exampleChatFeature);
+		addFeature(chatRedesignFeature);
 		addFeature(toggleChatFeature);
 		addFeature(peekChatFeature);
 		addFeature(commandsChatFeature);
 		addFeature(messageHistoryChatFeature);
-		addFeature(chatRedesignFeature);
 
 		features.forEach((f) -> {
 			f.startUp();
@@ -307,14 +313,40 @@ public class ModernChatPlugin extends Plugin {
 		if (e.getGroupId() == InterfaceID.PM_CHAT) {
 			maybeReanchor(true);
 		}
+
+		if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
+			Widget root = client.getWidget(InterfaceID.CHAT_LEFT, 0);
+			eventBus.post(new LeftDialogOpenedEvent(root));
+		}
+		else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
+			Widget root = client.getWidget(InterfaceID.CHAT_RIGHT, 0);
+			eventBus.post(new RightDialogOpenedEvent(root));
+		}
+		else if (e.getGroupId() == InterfaceID.CHATMENU) {
+			Widget root = client.getWidget(InterfaceID.CHATMENU, 0);
+			eventBus.post(new DialogOptionsOpenedEvent(root));
+		}
 	}
 
 	@Subscribe
 	public void onWidgetClosed(WidgetClosed e) {
 		if (e.getGroupId() == InterfaceID.CHATBOX) {
 			lastChatBounds = null;
-		} else if (e.getGroupId() == InterfaceID.PM_CHAT) {
+		}
+		else if (e.getGroupId() == InterfaceID.PM_CHAT) {
 			resetSplitPmAnchor();
+		}
+		else if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
+			Widget root = client.getWidget(InterfaceID.CHAT_LEFT, 0);
+			eventBus.post(new LeftDialogClosedEvent(root));
+		}
+		else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
+			Widget root = client.getWidget(InterfaceID.CHAT_RIGHT, 0);
+			eventBus.post(new RightDialogClosedEvent(root));
+		}
+		else if (e.getGroupId() == InterfaceID.CHATMENU) {
+			Widget root = client.getWidget(InterfaceID.CHATMENU, 0);
+			eventBus.post(new DialogOptionsClosedEvent(root));
 		}
 	}
 
