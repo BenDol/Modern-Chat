@@ -823,7 +823,7 @@ public class ChatOverlay extends OverlayPanel
     }
 
     @Subscribe
-    public void onNpcDialogOpenedEvent(LeftDialogOpenedEvent e) {
+    public void onLeftDialogOpenedEvent(LeftDialogOpenedEvent e) {
         clientThread.invoke(() -> showLegacyChat());
     }
 
