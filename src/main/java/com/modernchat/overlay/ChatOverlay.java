@@ -1240,12 +1240,12 @@ public class ChatOverlay extends OverlayPanel
         String prefix
     ) {
         Tab tab = null;
-        MessageContainer container = null;
+        MessageContainer container;
         ChatMode mode = ChatUtil.toChatMode(type);
 
         String targetName = type == ChatMessageType.PRIVATECHATOUT
             ? receiverName
-            : (type == ChatMessageType.PRIVATECHAT ? senderName : null);
+            : senderName;
 
         if (mode == ChatMode.PRIVATE) {
             if (StringUtil.isNullOrEmpty(targetName)) {

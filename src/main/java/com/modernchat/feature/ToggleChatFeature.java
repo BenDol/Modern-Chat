@@ -94,12 +94,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	public void startUp() {
 		super.startUp();
 
-		// We want to make sure this features key listener is registered later
-		// in the tick cycle, so that it can be overridden.
-		clientThread.invokeAtTickEnd(() -> {
-			keyManager.registerKeyListener(this);
-		});
-
 		chatHidden.set(config.featureToggle_StartHidden());
 
 		clientThread.invoke(() -> {
@@ -121,6 +115,15 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			applyVisibilityNow();
 			cancelDeferredHide();
 		});
+	}
+
+	@Override
+	public void onFeaturesStarted() {
+		super.onFeaturesStarted();
+
+		// We want to register this after all the other features have started,
+		// so that it can be overridden.
+		keyManager.registerKeyListener(this);
 	}
 
 	@Override

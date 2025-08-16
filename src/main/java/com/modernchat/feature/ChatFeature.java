@@ -14,4 +14,6 @@ public interface ChatFeature<T extends ChatFeatureConfig> {
     }
 
     void shutDown(boolean fullShutdown);
+
+    default void onFeaturesStarted() {}
 }

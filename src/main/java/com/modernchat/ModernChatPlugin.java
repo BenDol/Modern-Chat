@@ -120,6 +120,11 @@ public class ModernChatPlugin extends Plugin {
 				f.shutDown(false);
 		});
 
+		features.forEach((f) -> {
+			if (f.isEnabled())
+				f.onFeaturesStarted();
+		});
+
 		// Force an initial re-anchor if enabled once widgets are available
 		lastChatBounds = null;
 
