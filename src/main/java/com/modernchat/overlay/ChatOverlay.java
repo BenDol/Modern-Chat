@@ -1,6 +1,5 @@
 package com.modernchat.overlay;
 
-import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.ClanType;
 import com.modernchat.common.WidgetBucket;
@@ -44,7 +43,6 @@ import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyListener;
@@ -57,6 +55,7 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -86,10 +85,6 @@ import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static com.modernchat.ModernChatConfig.CHAT_HEIGHT;
-import static com.modernchat.ModernChatConfig.CHAT_WIDTH;
-import static com.modernchat.ModernChatConfig.GROUP;
 
 @Slf4j
 @Singleton
@@ -154,7 +149,6 @@ public class ChatOverlay extends OverlayPanel
 
     // Tab drag state
     private static final int DRAG_THRESHOLD_PX = 3;
-    private static final int DRAG_BUFFER_PX = 100;
     private boolean draggingTab = false;
     private boolean didReorder = false;
     private Tab dragTab = null;
@@ -905,7 +899,7 @@ public class ChatOverlay extends OverlayPanel
             String targetName = hit.getTargetName();
             if (targetName != null && !targetName.isBlank()) {
                 rootMenu.createMenuEntry(1)
-                    .setOption("Chat with " + targetName)
+                    .setOption("Message " + ColorUtil.wrapWithColorTag(targetName, Color.ORANGE))
                     .setType(MenuAction.RUNELITE)
                     .onClick(me -> {
                         setHidden(false);
@@ -926,27 +920,28 @@ public class ChatOverlay extends OverlayPanel
 
             Menu sub = parent.createSubMenu();
 
+            int index = 0;
             if (hovered.isCloseable()) {
-                sub.createMenuEntry(0)
+                sub.createMenuEntry(index++)
                     .setOption("Close")
                     .setType(MenuAction.RUNELITE)
                     .onClick(me -> removeTab(hovered));
             }
 
-            sub.createMenuEntry(1)
-                .setOption("Mark all as read")
-                .setType(MenuAction.RUNELITE)
-                .onClick(me -> hovered.setUnread(0));
-
-            sub.createMenuEntry(2)
+            sub.createMenuEntry(index++)
                 .setOption("Move left")
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> moveTab(hovered, -1));
 
-            sub.createMenuEntry(3)
+            sub.createMenuEntry(index++)
                 .setOption("Move right")
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> moveTab(hovered, +1));
+
+            sub.createMenuEntry(index++)
+                .setOption("Mark all as read")
+                .setType(MenuAction.RUNELITE)
+                .onClick(me -> hovered.setUnread(0));
         }
     }
 
@@ -1868,7 +1863,8 @@ public class ChatOverlay extends OverlayPanel
     {
         @Override
         public void keyTyped(KeyEvent e) {
-            if (!isEnabled() || isHidden() || !inputFocused) return;
+            if (!isEnabled() || isHidden() || !inputFocused)
+                return;
             char ch = e.getKeyChar();
             if (ch < 32 || ch == 127 || ch == '\n' || ch == '\r')
                 return; // ignore control chars
@@ -1889,6 +1885,7 @@ public class ChatOverlay extends OverlayPanel
 
             final boolean shift = e.isShiftDown();
             final boolean ctrl = e.isControlDown();
+            final boolean alt = e.isAltDown();
             int code = e.getKeyCode();
 
             switch (code) {
@@ -1938,11 +1935,17 @@ public class ChatOverlay extends OverlayPanel
                     if (!inputFocused) return;
                     if (hasSelection()) {
                         deleteSelection();
-                    } else if (ctrl) {
+                    }
+                    // TODO: need to figure out why Ctrl + Backspace isn't heard by the key listeners
+                    else if (alt/*ctrl*/) {
                         int ni = prevWordIndex(caret);
-                        if (ni < caret) { inputBuf.delete(ni, caret); caret = ni; }
+                        if (ni < caret) {
+                            inputBuf.delete(ni, caret);
+                            caret = ni;
+                        }
                     } else if (caret > 0) {
-                        inputBuf.deleteCharAt(caret - 1); caret--;
+                        inputBuf.deleteCharAt(caret - 1);
+                        caret--;
                     }
                     e.consume();
                     syncChatInputLater();
@@ -2026,13 +2029,6 @@ public class ChatOverlay extends OverlayPanel
                             e.consume();
                             syncChatInputLater();
                         }
-                    }
-                    break;
-                }
-                default: {
-                    if (inputFocused) {
-                        caretOn = true;
-                        lastBlinkMs = System.currentTimeMillis();
                     }
                     break;
                 }
