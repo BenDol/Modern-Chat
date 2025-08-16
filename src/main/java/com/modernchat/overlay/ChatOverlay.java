@@ -192,7 +192,7 @@ public class ChatOverlay extends OverlayPanel
 
         resizePanel.setBaseBoundsProvider(() -> lastViewport);
         resizePanel.setListener(this::setDesiredChatSize);
-        resizePanel.startUp();
+        resizePanel.startUp(() -> !isHidden());
 
         registerMouseListener();
         registerKeyboardListener();

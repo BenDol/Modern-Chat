@@ -72,6 +72,8 @@ public class ResizePanel extends Overlay
     private final Rectangle topHot = new Rectangle();
     private final Rectangle rightHot = new Rectangle();
 
+    @Getter @Setter private Supplier<Boolean> isResizable = () -> true; // default to always resizable
+
     @Getter
     private int widthOverride = -1;   // if <0, use base width
     @Getter
@@ -90,8 +92,9 @@ public class ResizePanel extends Overlay
         setPriority(Overlay.PRIORITY_HIGHEST);
     }
 
-    public void startUp() {
+    public void startUp(Supplier<Boolean> isResizable) {
         mouseManager.registerMouseListener(mouseHandler);
+        this.isResizable = isResizable;
     }
 
     public void shutDown() {
@@ -117,6 +120,9 @@ public class ResizePanel extends Overlay
 
     @Override
     public Dimension render(Graphics2D g) {
+        if (!isResizable.get())
+            return null;
+
         Rectangle base = baseBoundsProvider.get();
         if (base == null || base.width <= 0 || base.height <= 0) {
             lastPanel = null;
@@ -199,6 +205,9 @@ public class ResizePanel extends Overlay
 
         @Override
         public MouseEvent mouseMoved(MouseEvent e) {
+            if (!isResizable.get())
+                return e;
+
             lastMovePoint = e.getPoint();
             if (lastPanel == null || !lastPanel.contains(lastMovePoint)) {
                 if (!resizingTop && !resizingRight)
@@ -220,6 +229,9 @@ public class ResizePanel extends Overlay
 
         @Override
         public MouseEvent mousePressed(MouseEvent e) {
+            if (!isResizable.get())
+                return e;
+
             if (lastPanel == null || !lastPanel.contains(e.getPoint()))
                 return e;
 
@@ -246,6 +258,9 @@ public class ResizePanel extends Overlay
 
         @Override
         public MouseEvent mouseDragged(MouseEvent e) {
+            if (!isResizable.get())
+                return e;
+
             if (!resizingTop && !resizingRight)
                 return e;
 
