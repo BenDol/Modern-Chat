@@ -1,12 +1,10 @@
-package com.modernchat.feature.peek;
+package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.RuneFontStyle;
 import com.modernchat.common.WidgetBucket;
-import com.modernchat.event.ChatOverlayVisibilityChangeEvent;
-import com.modernchat.feature.AbstractChatFeature;
-import com.modernchat.feature.ChatFeatureConfig;
-import com.modernchat.feature.ToggleChatFeature;
+import com.modernchat.event.ModernChatVisibilityChangeEvent;
+import com.modernchat.overlay.ChatPeekOverlay;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -29,7 +27,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.awt.Color;
 
-import static com.modernchat.feature.peek.PeekChatFeature.PeekChatFeatureConfig;
+import static com.modernchat.feature.PeekChatFeature.PeekChatFeatureConfig;
 
 @Slf4j
 @Singleton
@@ -212,8 +210,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	}
 
 	@Subscribe
-	public void onChatOverlayVisibilityChangeEvent(ChatOverlayVisibilityChangeEvent e) {
-		chatPeekOverlay.setHidden(e.isVisible());
+	public void onModernChatVisibilityChangeEvent(ModernChatVisibilityChangeEvent e) {
+		chatPeekOverlay.setHidden(!e.isVisible());
 		chatPeekOverlay.noteMessageActivity();
 	}
 }

@@ -2,6 +2,7 @@ package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import javax.inject.Singleton;
 import java.awt.Canvas;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.modernchat.feature.ToggleChatFeature.ToggleChatFeatureConfig;
 
@@ -57,7 +59,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	@Inject private KeyManager keyManager;
 	@Inject private WidgetBucket widgetBucket;
 
-	private boolean chatHidden = false;
+	private final AtomicBoolean chatHidden = new AtomicBoolean(false);
 
 	// Deferred hide state
 	private boolean autoHide = false;
@@ -92,11 +94,11 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		super.startUp();
 
 		keyManager.registerKeyListener(this);
-		chatHidden = config.featureToggle_StartHidden();
+		chatHidden.set(config.featureToggle_StartHidden());
 
 		clientThread.invoke(() -> {
-			if (chatHidden && ClientUtil.isSystemTextEntryActive(client)) {
-				chatHidden = false;
+			if (chatHidden.get() && ClientUtil.isSystemTextEntryActive(client)) {
+				chatHidden.set(false);
 			}
 			applyVisibilityNow();
 			cancelDeferredHide();
@@ -108,7 +110,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		super.shutDown(fullShutdown);
 
 		keyManager.unregisterKeyListener(this);
-		chatHidden = false;
+		chatHidden.set(false);
 		clientThread.invoke(() -> {
 			applyVisibilityNow();
 			cancelDeferredHide();
@@ -125,7 +127,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	@Override
 	public void keyPressed(KeyEvent e) {
-		if (!chatHidden && config.featureToggle_LockCameraWhenVisible()) {
+		if (!chatHidden.get() && config.featureToggle_LockCameraWhenVisible()) {
 			switch (e.getKeyCode()) {
 				case java.awt.event.KeyEvent.VK_LEFT:
 				case java.awt.event.KeyEvent.VK_RIGHT:
@@ -159,15 +161,21 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 			// If there is actual text ready to send in chat, defer the hide.
 			if (hasPendingChatInputCT()) {
-				if (!chatHidden && config.featureToggle_AutoHideOnSend())
+				if (!chatHidden.get() && config.featureToggle_AutoHideOnSend())
 					scheduleDeferredHide();
 				return;
 			}
 
 			cancelDeferredHide();
-			chatHidden = !chatHidden;
+			chatHidden.set(!chatHidden.get());
 			applyVisibilityNow();
 		});
+	}
+
+	@Subscribe
+	public void onModernChatVisibilityChangeEvent(ModernChatVisibilityChangeEvent e) {
+		chatHidden.set(!e.isVisible());
+		cancelDeferredHide();
 	}
 
 	@Subscribe
@@ -179,7 +187,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 				// If logging in while a prompt is open, avoid immediate hide
 				if (ClientUtil.isSystemTextEntryActive(client)) {
 					cancelDeferredHide();
-					chatHidden = false;
+					chatHidden.set(false);
 					applyVisibilityNow();
 				}
 
@@ -191,15 +199,14 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	}
 
 	@Subscribe
-	public void onVarClientStrChanged(VarClientStrChanged e)
-	{
+	public void onVarClientStrChanged(VarClientStrChanged e) {
 		if (e.getIndex() != VarClientStr.INPUT_TEXT)
 			return;
 
 		// When the player starts typing into a system prompt, ensure chat is shown
 		String s = client.getVarcStrValue(VarClientStr.INPUT_TEXT);
-		if (s != null && chatHidden) {
-			chatHidden = false;
+		if (s != null && chatHidden.get()) {
+			chatHidden.set(false);
 			autoHide = true;
 			applyVisibilityNow();
 		}
@@ -258,13 +265,13 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	}
 
 	public void hide() {
-		chatHidden = true;
+		chatHidden.set(true);
 		applyVisibilityNow();
 		cancelDeferredHide();
 	}
 
 	public void show() {
-		chatHidden = false;
+		chatHidden.set(false);
 		applyVisibilityNow();
 		cancelDeferredHide();
 	}
@@ -286,7 +293,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		Widget root = widgetBucket.getChatWidget();
 		if (root != null) {
 			LAST_CHAT_BOUNDS = root.getBounds();
- 			ClientUtil.setChatHidden(client, chatHidden);
+ 			ClientUtil.setChatHidden(client, chatHidden.get());
 		}
 	}
 
@@ -297,7 +304,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	/** MUST be on client thread: true if the chat input line contains a real message to send. */
 	private boolean hasPendingChatInputCT() {
-		if (chatHidden)
+		if (chatHidden.get())
 			return false;
 
 		Widget input = ClientUtil.getChatInputWidget(client);

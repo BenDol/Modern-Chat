@@ -4,6 +4,16 @@ import com.modernchat.common.ChatMode;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.MenuAction;
 
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class ChatUtil {
 
     public static boolean isPrivateMessage(ChatMessageType t) {
@@ -73,5 +83,40 @@ public class ChatUtil {
         }
 
         return name;
+    }
+
+    public static List<String> chunk(String s, int limit) {
+        if (limit <= 0 || s == null || s.isEmpty()) return List.of(s == null ? "" : s);
+        List<String> out = new ArrayList<>((s.length() + limit - 1) / limit);
+        Matcher m = Pattern.compile("(?s).{1," + limit + "}").matcher(s);
+        while (m.find()) out.add(m.group());
+        return out;
+    }
+
+    public static Optional<String> getClipboardText() {
+        try {
+            Clipboard cb = Toolkit.getDefaultToolkit().getSystemClipboard();
+            Transferable t = cb.getContents(null);
+            if (t != null && t.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                return Optional.of((String) t.getTransferData(DataFlavor.stringFlavor));
+            }
+        } catch (Exception ex) {
+            // UnsupportedFlavorException | IOException | IllegalStateException (clipboard busy)
+        }
+        return Optional.empty();
+    }
+
+    public static boolean isClanMessage(ChatMessageType type) {
+        return type == ChatMessageType.CLAN_CHAT
+            || type == ChatMessageType.CLAN_GUEST_CHAT
+            || type == ChatMessageType.CLAN_GIM_CHAT
+            || type == ChatMessageType.CLAN_GIM_FORM_GROUP
+            || type == ChatMessageType.CLAN_GIM_MESSAGE
+            || type == ChatMessageType.CLAN_GIM_GROUP_WITH;
+    }
+
+    public static boolean isFriendsChatMessage(ChatMessageType type) {
+        return type == ChatMessageType.FRIENDSCHAT
+            || type == ChatMessageType.FRIENDSCHATNOTIFICATION;
     }
 }

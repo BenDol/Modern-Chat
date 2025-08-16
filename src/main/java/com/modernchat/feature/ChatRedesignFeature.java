@@ -11,6 +11,7 @@ import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatOverlayConfig;
 import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
@@ -158,10 +159,10 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         overlay.shutDown();
         overlayManager.remove(overlay);
 
-        // Restore original message lines
-        clientThread.invoke(this::showLegacyChatAndHideOverlay);
-
         super.shutDown(fullShutdown);
+
+        // Restore original
+        clientThread.invoke(this::showLegacyChatAndHideOverlay);
     }
 
     @Subscribe
@@ -229,16 +230,25 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
         ChatMessageType type = e.getType();
         String msg = e.getMessage();
-        String receiverName = e.getName();
+        String name = e.getName();
+        String receiverName = null;
         String senderName = e.getSender();
+        String prefix = "";
 
         if (type == ChatMessageType.PRIVATECHATOUT) {
-            receiverName = e.getName();
+            receiverName = name;
             senderName = "You";
         }
         else if (type == ChatMessageType.PRIVATECHAT) {
             receiverName = localPlayerName;
-            senderName = e.getName();
+            senderName = name;
+        }
+        else if (ChatUtil.isClanMessage(type) || ChatUtil.isFriendsChatMessage(type)) {
+            senderName = name;
+            prefix = e.getSender() != null ? "(" + e.getSender() + ") " : "";
+        }
+        else if (senderName == null) {
+            senderName = name;
         }
 
         if (receiverName == null) {
@@ -250,17 +260,17 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         log.info("Chat message received: type={}, sender={}, receiver={}, message={}",
                 type, senderName, receiverName, line);
 
-        overlay.addMessage(line, type, timestamp, senderName, receiverName);
+        overlay.addMessage(line, type, timestamp, senderName, receiverName, prefix);
     }
 
     @Subscribe
     public void onFriendsChatChanged(FriendsChatChanged e) {
-        overlay.refreshTabs();
+        clientThread.invokeAtTickEnd(() -> overlay.refreshTabs());
     }
 
     @Subscribe
     public void onClanChannelChanged(ClanChannelChanged e)  {
-        overlay.refreshTabs();
+        clientThread.invokeAtTickEnd(() -> overlay.refreshTabs());
     }
 
     public void showLegacyChatAndHideOverlay() {

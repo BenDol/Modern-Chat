@@ -4,9 +4,9 @@ import com.modernchat.common.RuneFontStyle;
 import com.modernchat.draw.ChatColors;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
+import net.runelite.api.Point;
 
 import java.awt.Color;
-import java.awt.Point;
 
 public interface MessageContainerConfig extends ChatColors
 {

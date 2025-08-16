@@ -5,6 +5,7 @@ import com.modernchat.common.RuneFontStyle;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
 import com.modernchat.draw.RichLine;
+import com.modernchat.draw.RowHit;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
@@ -15,6 +16,7 @@ import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.Point;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.input.MouseWheelListener;
@@ -23,6 +25,7 @@ import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.awt.AlphaComposite;
 import java.awt.Color;
@@ -31,7 +34,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.event.MouseEvent;
@@ -128,7 +130,7 @@ public class MessageContainer extends Overlay
         final int top = lastViewport.y + pad.getTop();
         final int bottom = lastViewport.y + lastViewport.height - pad.getBottom();
 
-        // Our message viewport (full height for now, if you add an input box, reduce bottom)
+        // Our message viewport
         msgViewport.setBounds(left, top, innerW, bottom - top);
 
         // Respect external alpha
@@ -153,7 +155,7 @@ public class MessageContainer extends Overlay
             final int lineH = fm.getAscent() + fm.getDescent() + config.getLineSpacing();
             lastLineHeight = Math.max(1, lineH);
 
-            // Flatten wrapped lines (oldest to newest) using caches
+            // Flatten wrapped lines (oldest to newest)
             final List<VisualLine> all = new ArrayList<>(64);
             for (RichLine rl : lines) {
                 if (rl.getLineCache() == null) {
@@ -286,7 +288,7 @@ public class MessageContainer extends Overlay
         int height = r.height - margin.getBottom();
         Point offset = config.getOffset();
 
-        return new Rectangle(r.x + offset.x, r.y + offset.y, width, height);
+        return new Rectangle(r.x + offset.getX(), r.y + offset.getY(), width, height);
     }
 
     public void clearMessages() {
@@ -330,12 +332,24 @@ public class MessageContainer extends Overlay
         return c == null ? Color.WHITE : c;
     }
 
-    public void pushLine(String s, ChatMessageType type, long timestamp) {
+    public void pushLine(
+        String s,
+        ChatMessageType type,
+        long timestamp,
+        String sender,
+        String receiver,
+        String targetName,
+        String prefix
+    ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
         Color c = getColor(type);
         RichLine rl = parseColored(s == null ? "" : s, c == null ? Color.WHITE : c);
         rl.setType(type);
         rl.setTimestamp(timestamp);
+        rl.setSender(sender);
+        rl.setReceiver(receiver);
+        rl.setTargetName(targetName);
+        rl.setPrefixCache(prefix);
         pushRich(rl);
     }
 
@@ -344,7 +358,7 @@ public class MessageContainer extends Overlay
         lines.addLast(rl);
         while (lines.size() > MAX_LINES) lines.removeFirst();
 
-        // If the user hasn't scrolled up, auto-stick to bottom on next render
+        // If we haven't scrolled up, auto-stick to bottom on next render
         if (!userScrolled) {
             scrollOffsetPx = SCROLL_TO_BOTTOM_SENTINEL;
         }
@@ -404,7 +418,7 @@ public class MessageContainer extends Overlay
         int segIndex = 0;
         boolean hasPrefix = false;
 
-        if (rl.getPrefixCache() == null)
+        if (StringUtil.isNullOrEmpty(rl.getPrefixCache()))
             rl.setPrefixCache(getPrefix(rl.getType()));
 
         if (rl.getTimestampCache() == null && rl.getTimestamp() > 0)
@@ -560,8 +574,51 @@ public class MessageContainer extends Overlay
 
     public void pushLines(List<String> lines, ChatMessageType type) {
         for (String line : lines) {
-            pushLine(line, type, System.currentTimeMillis());
+            pushLine(line, type, System.currentTimeMillis(), null, null, null, null);
         }
+    }
+
+    public @Nullable RowHit rowAt(Point p) {
+        if (hidden || lastViewport == null || msgViewport.isEmpty() || !msgViewport.contains(new java.awt.Point(p.getX(), p.getY())))
+            return null;
+
+        // If we haven't measured content yet, bail (render() populates these).
+        if (lastLineHeight <= 0 || contentHeightPx <= 0)
+            return null;
+
+        // Use current (possibly auto-stick) scroll offset
+        final int viewportH = Math.max(1, msgViewport.height);
+        final int effectiveScroll = (scrollOffsetPx == SCROLL_TO_BOTTOM_SENTINEL)
+            ? Math.max(0, contentHeightPx - viewportH)
+            : Math.max(0, Math.min(scrollOffsetPx, Math.max(0, contentHeightPx - viewportH)));
+
+        // Convert mouse Y to global wrapped-row index
+        final int relY = p.getY() - msgViewport.y + effectiveScroll; // 0 at content top
+        if (relY < 0 || relY >= contentHeightPx) return null;
+
+        final int rowH = lastLineHeight;
+        final int visualIndex = relY / rowH;
+
+        int cm = 0;
+        for (RichLine rl : lines)
+        {
+            final List<VisualLine> cache = rl.getLineCache();
+            if (cache == null || cache.isEmpty()) continue;
+
+            final int n = cache.size();
+            if (visualIndex < cm + n)
+            {
+                final VisualLine vl = cache.get(visualIndex - cm);
+
+                // Compute this row's on-screen rect on the fly
+                final int yTop = msgViewport.y + visualIndex * rowH - effectiveScroll;
+                final Rectangle r = new Rectangle(msgViewport.x, yTop, msgViewport.width, rowH);
+
+                return new RowHit(r, rl, vl);
+            }
+            cm += n;
+        }
+        return null;
     }
 
     public void clear() {
@@ -604,19 +661,34 @@ public class MessageContainer extends Overlay
                 return e;
             if (!config.isScrollable())
                 return e;
+
             if (lastViewport == null || !lastViewport.contains(e.getPoint()))
                 return e;
+            if (msgViewport.isEmpty() || !msgViewport.contains(e.getPoint()))
+                return e;
 
-            int dir = e.getWheelRotation(); // +1 down, -1 up
-            int step = config.getScrollStep();
-            Padding pad = config.getPadding();
-            int msgViewportH = (lastViewport.height - pad.getBottom()*2);
-            scrollOffsetPx = clamp(
-                scrollOffsetPx + dir * step,
-                0,
-                Math.max(0, contentHeightPx - Math.max(1, msgViewportH))
-            );
-            userScrolled = (contentHeightPx - Math.max(1, msgViewportH) - scrollOffsetPx) > 2;
+            final int viewportH = Math.max(1, msgViewport.height);
+
+            final int maxScrollLocal = Math.max(0, contentHeightPx - viewportH);
+            if (maxScrollLocal == 0)
+                return e;
+
+            // Normalize sentinel to a real bottom offset; also clamp any stale value
+            int offset = (scrollOffsetPx == SCROLL_TO_BOTTOM_SENTINEL)
+                ? maxScrollLocal
+                : clamp(scrollOffsetPx, 0, maxScrollLocal);
+
+            // Use precise rotation
+            final double ticks = e.getPreciseWheelRotation();
+            final int stepPx = Math.max(1, config.getScrollStep());
+            final int deltaPx = (int) Math.round(ticks * stepPx);
+
+            // Apply and clamp
+            offset = clamp(offset + deltaPx, 0, maxScrollLocal);
+            scrollOffsetPx = offset;
+
+            // Mark whether user is away from the bottom
+            userScrolled = (maxScrollLocal - offset) > 2;
 
             e.consume();
             return e;

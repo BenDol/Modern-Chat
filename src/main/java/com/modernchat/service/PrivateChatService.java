@@ -6,7 +6,6 @@ import com.modernchat.common.MessageService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -14,8 +13,6 @@ import net.runelite.api.VarClientStr;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.PostClientTick;
 import net.runelite.api.events.VarClientStrChanged;
-import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -219,7 +216,8 @@ public class PrivateChatService implements ChatService, KeyListener {
         pendingPmTarget = null;
         pendingPrefill = null;
 
-        chatProxy.startPrivateMessage(currentTarget, body, () -> {});
+        if (!chatProxy.startPrivateMessage(currentTarget, body, () -> {}))
+            setPmTarget(null);
     }
 
     public void setPmTarget(String pmTarget) {

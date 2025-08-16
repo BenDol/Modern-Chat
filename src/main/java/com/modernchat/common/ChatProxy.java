@@ -48,11 +48,15 @@ public class ChatProxy
         }
     }
 
-    public void startPrivateMessage(String currentTarget, String body, Runnable callback) {
+    public boolean startPrivateMessage(String currentTarget, String body, Runnable callback) {
         if (modernChat.isEnabled()) {
-            modernChat.selectPrivateTab(currentTarget);
+            if (!modernChat.isPrivateTabOpen(currentTarget)) {
+                modernChat.selectPrivateTab(currentTarget);
+            }
+            return false;
         } else {
             ClientUtil.startPrivateMessage(client, clientThread, currentTarget, body, callback);
+            return true;
         }
     }
 

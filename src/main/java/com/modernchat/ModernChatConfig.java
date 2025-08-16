@@ -4,7 +4,7 @@ import com.modernchat.common.RuneFontStyle;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.ExampleChatFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
-import com.modernchat.feature.peek.PeekChatFeature;
+import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import net.runelite.client.config.Alpha;
@@ -101,6 +101,8 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_Enabled",
         name = "Enable",
         description = "Enable Modern Chat redesign",
+        warning = "This is a beta feature and may not work as expected for all features. " +
+                  "Feel free to give it a go, but be aware that some features may not be fully functional yet.",
         position = 0,
         section = modernChatSection
     )

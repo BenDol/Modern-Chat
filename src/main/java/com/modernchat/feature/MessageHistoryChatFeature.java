@@ -5,8 +5,10 @@ import com.google.gson.Gson;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.event.NavigateHistoryEvent;
+import com.modernchat.event.SubmitHistoryEvent;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.util.ClientUtil;
+import com.modernchat.util.StringUtil;
 import lombok.Data;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -151,12 +153,29 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
 
     @Subscribe
     public void onChatboxInput(ChatboxInput ev) {
-        if (!isEnabled()) return;
+        addHistory(ev.getValue());
+    }
 
-        final String raw = ev.getValue();
-        if (raw == null) return;
+    @Subscribe
+    public void onNavigateHistoryEvent(NavigateHistoryEvent e) {
+        int delta = e.getDelta();
+        if (delta == 0) return; // No navigation requested
 
-        String msg = Text.removeTags(raw).trim();
+        clientThread.invoke(() -> navigateHistory(delta));
+    }
+
+    @Subscribe
+    public void onSubmitHistoryEvent(SubmitHistoryEvent e) {
+        if (StringUtil.isNullOrEmpty(e.getText()))
+            return;
+
+        addHistory(e.getText());
+    }
+
+    private void addHistory(String text) {
+        if (text == null) return;
+
+        String msg = Text.removeTags(text).trim();
         if (msg.isEmpty()) return;
 
         if (commandsChatFeature.isEnabled()) {
@@ -195,16 +214,6 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         saveHistory();
         // After sending, drop navigation state and draft
         resetNavState();
-    }
-
-    @Subscribe
-    public void onNavigateHistoryEvent(NavigateHistoryEvent e) {
-        if (!isEnabled()) return;
-
-        int delta = e.getDelta();
-        if (delta == 0) return; // No navigation requested
-
-        clientThread.invoke(() -> navigateHistory(delta));
     }
 
     private void navigateHistory(int delta) {

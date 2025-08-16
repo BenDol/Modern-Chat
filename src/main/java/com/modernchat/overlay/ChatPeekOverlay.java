@@ -1,4 +1,4 @@
-package com.modernchat.feature.peek;
+package com.modernchat.overlay;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.RuneFontStyle;
@@ -373,7 +373,7 @@ public class ChatPeekOverlay extends Overlay
         int segIndex = 0;
         boolean hasPrefix = false;
 
-        if (rl.getPrefixCache() == null)
+        if (StringUtil.isNullOrEmpty(rl.getPrefixCache()))
             rl.setPrefixCache(getPrefix(rl.getType()));
 
         if (rl.getTimestampCache() == null && rl.getTimestamp() > 0)

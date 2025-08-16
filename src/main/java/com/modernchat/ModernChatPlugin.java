@@ -15,7 +15,7 @@ import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
-import com.modernchat.feature.peek.PeekChatFeature;
+import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
@@ -107,7 +107,12 @@ public class ModernChatPlugin extends Plugin {
 		addFeature(messageHistoryChatFeature);
 		addFeature(chatRedesignFeature);
 
-		features.forEach(ChatFeature::startUp);
+		features.forEach((f) -> {
+			f.startUp();
+
+			if (!f.isEnabled())
+				f.shutDown(false);
+		});
 
 		// Force an initial re-anchor if enabled once widgets are available
 		lastChatBounds = null;

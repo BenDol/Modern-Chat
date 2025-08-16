@@ -4,6 +4,7 @@ import lombok.Data;
 
 import javax.annotation.Nullable;
 import java.awt.Rectangle;
+import java.util.Objects;
 
 @Data
 public final class Tab {
@@ -38,5 +39,17 @@ public final class Tab {
 
     public @Nullable String getTargetName() {
         return isPrivate() ? getTitle() : null;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Tab tab = (Tab) o;
+        return Objects.equals(key, tab.key);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(key);
     }
 }

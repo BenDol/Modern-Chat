@@ -15,6 +15,8 @@ public interface ChatOverlayConfig
 
     boolean isHideOnEscape();
 
+    boolean isOpenTabOnIncomingPM();
+
     Padding getPadding();
 
     int getInputLineSpacing();
@@ -61,6 +63,11 @@ public interface ChatOverlayConfig
         @Override
         public boolean isHideOnEscape() {
             return true;
+        }
+
+        @Override
+        public boolean isOpenTabOnIncomingPM() {
+            return false;
         }
 
         @Override
