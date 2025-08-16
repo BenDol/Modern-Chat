@@ -44,7 +44,7 @@ public interface ModernChatConfig extends Config,
 
     @ConfigSection(
         name = "Modern Design Style",
-        description = "Modern Chat style settings",
+        description = "Modern Chat style settings (Modern Design must be enabled)",
         position = 1,
         closedByDefault = true
     )
@@ -256,7 +256,7 @@ public interface ModernChatConfig extends Config,
     @Alpha
     @Override
     default Color featureRedesign_BackdropColor() {
-        return new Color(0, 0, 0, 160);
+        return new Color(0, 0, 0, 100);
     }
 
     @ConfigItem(
@@ -295,7 +295,7 @@ public interface ModernChatConfig extends Config,
     @Alpha
     @Override
     default Color featureRedesign_InputBackgroundColor() {
-        return new Color(0, 0, 0, 200);
+        return new Color(0, 0, 0, 110);
     }
 
     @ConfigItem(
@@ -372,7 +372,7 @@ public interface ModernChatConfig extends Config,
     @Alpha
     @Override
     default Color featureRedesign_TabBarBackgroundColor() {
-        return new Color(0, 0, 0, 80);
+        return new Color(0, 0, 0, 50);
     }
 
     @ConfigItem(
@@ -708,7 +708,7 @@ public interface ModernChatConfig extends Config,
     @Alpha
     @Override
     default Color featureRedesign_MessageContainer_BackdropColor() {
-        return new Color(0, 0, 0, 160);
+        return new Color(0, 0, 0, 150);
     }
 
     @ConfigItem(

@@ -248,8 +248,8 @@ public class ChatOverlay extends OverlayPanel
         g.setColor(config.getBackdropColor());
         g.fillRoundRect(vp.x + 4, vp.y + 4, vp.width - 8, vp.height - 8, 8, 8);
 
-        g.setColor(config.getBorderColor()); // or a border color of your choice
-        g.drawRoundRect(vp.x, vp.y, vp.width, vp.height, 8, 8);
+        g.setColor(config.getBorderColor());
+        g.drawRoundRect(vp.x + 3, vp.y + 3, vp.width - 7, vp.height - 7, 8, 8);
 
         // Layout constants
         final Padding pad = config.getPadding();
