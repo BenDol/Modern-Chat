@@ -190,7 +190,7 @@ public class MessageContainer extends Overlay
 
                         int shadowOffset = config.getTextShadow();
                         if (shadowOffset > 0) {
-                            g.setColor(new Color(0, 0, 0, 200));
+                            g.setColor(config.getShadowColor());
                             g.drawString(seg.getText(), dx + shadowOffset, y + shadowOffset);
                         }
 

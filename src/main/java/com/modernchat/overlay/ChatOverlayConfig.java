@@ -17,6 +17,10 @@ public interface ChatOverlayConfig
 
     boolean isOpenTabOnIncomingPM();
 
+    boolean isClickOutsideToClose();
+
+    boolean isShowNotificationBadge();
+
     Padding getPadding();
 
     int getInputLineSpacing();
@@ -38,6 +42,32 @@ public interface ChatOverlayConfig
     Color getInputTextColor();
 
     Color getInputCaretColor();
+
+    Color getTabBarBackgroundColor();
+
+    int getTabFontSize();
+
+    Color getTabColor();
+
+    Color getTabSelectedColor();
+
+    Color getTabBorderColor();
+
+    Color getTabBorderSelectedColor();
+
+    Color getTabTextColor();
+
+    Color getTabUnreadPulseToColor();
+
+    Color getTabUnreadPulseFromColor();
+
+    Color getTabNotificationColor();
+
+    Color getTabNotificationTextColor();
+
+    Color getTabCloseButtonColor();
+
+    Color getTabCloseButtonTextColor();
 
     ChatMode getDefaultChatMode();
 
@@ -68,6 +98,16 @@ public interface ChatOverlayConfig
         @Override
         public boolean isOpenTabOnIncomingPM() {
             return false;
+        }
+
+        @Override
+        public boolean isClickOutsideToClose() {
+            return false;
+        }
+
+        @Override
+        public boolean isShowNotificationBadge() {
+            return true;
         }
 
         @Override
@@ -122,6 +162,71 @@ public interface ChatOverlayConfig
 
         @Override
         public Color getInputCaretColor() {
+            return Color.WHITE;
+        }
+
+        @Override
+        public int getTabFontSize() {
+            return 16;
+        }
+
+        @Override
+        public Color getTabBarBackgroundColor() {
+            return new Color(0, 0, 0, 80);
+        }
+
+        @Override
+        public Color getTabColor() {
+            return new Color(35, 35, 35, 180);
+        }
+
+        @Override
+        public Color getTabSelectedColor() {
+            return new Color(60, 60, 60, 220);
+        }
+
+        @Override
+        public Color getTabBorderColor() {
+            return new Color(255, 255, 255, 70);
+        }
+
+        @Override
+        public Color getTabBorderSelectedColor() {
+            return new Color(255, 255, 255, 140);
+        }
+
+        @Override
+        public Color getTabTextColor() {
+            return Color.WHITE;
+        }
+
+        @Override
+        public Color getTabUnreadPulseToColor() {
+            return new Color(255,180,60);
+        }
+
+        @Override
+        public Color getTabUnreadPulseFromColor() {
+            return Color.WHITE;
+        }
+
+        @Override
+        public Color getTabNotificationColor() {
+            return new Color(200, 60, 60, 230);
+        }
+
+        @Override
+        public Color getTabNotificationTextColor() {
+            return Color.WHITE;
+        }
+
+        @Override
+        public Color getTabCloseButtonColor() {
+            return new Color(200, 60, 60, 230);
+        }
+
+        @Override
+        public Color getTabCloseButtonTextColor() {
             return Color.WHITE;
         }
 

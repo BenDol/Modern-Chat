@@ -3,6 +3,7 @@ package com.modernchat.feature;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.RuneFontStyle;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.draw.ChatColors;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.overlay.ChatPeekOverlay;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +39,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		return "featurePeek";
 	}
 
-	public interface PeekChatFeatureConfig extends ChatFeatureConfig {
+	public interface PeekChatFeatureConfig extends ChatFeatureConfig, ChatColors {
 		boolean featurePeek_Enabled();
 		boolean featurePeek_FollowChatBox();
 		boolean featurePeek_ShowPrivateMessages();
@@ -54,11 +55,6 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		int featurePeek_OffsetY();
 		int featurePeek_MarginRight();
 		int featurePeek_MarginBottom();
-		Color featurePeek_PublicChatColor();
-		Color featurePeek_FriendsChatColor();
-		Color featurePeek_ClanChatColor();
-		Color featurePeek_PrivateChatColor();
-		Color featurePeek_SystemChatColor();
 		boolean featurePeek_PrefixChatTypes();
 		boolean featurePeek_FadeEnabled();
 		int featurePeek_FadeDelay();
@@ -94,15 +90,18 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public int featurePeek_OffsetY() { return config.featurePeek_OffsetY(); }
 			@Override public int featurePeek_MarginRight() { return config.featurePeek_MarginRight(); }
 			@Override public int featurePeek_MarginBottom() { return config.featurePeek_MarginBottom(); }
-			@Override public Color featurePeek_PublicChatColor() { return config.featurePeek_PublicChatColor(); }
-			@Override public Color featurePeek_FriendsChatColor() { return config.featurePeek_FriendsChatColor(); }
-			@Override public Color featurePeek_ClanChatColor() { return config.featurePeek_ClanChatColor(); }
-			@Override public Color featurePeek_PrivateChatColor() { return config.featurePeek_PrivateChatColor(); }
-			@Override public Color featurePeek_SystemChatColor() { return config.featurePeek_SystemChatColor(); }
+			@Override public Color getPublicColor() { return config.general_PublicChatColor(); }
 			@Override public boolean featurePeek_PrefixChatTypes() { return config.featurePeek_PrefixChatTypes(); }
 			@Override public boolean featurePeek_FadeEnabled() { return config.featurePeek_FadeEnabled(); }
 			@Override public int featurePeek_FadeDelay() { return config.featurePeek_FadeDelay(); }
 			@Override public int featurePeek_FadeDuration() { return config.featurePeek_FadeDuration(); }
+
+			public Color featurePeek_FriendsChatColor() { return config.general_FriendsChatColor(); }
+			public Color featurePeek_ClanChatColor() { return config.general_ClanChatColor(); }
+			public Color featurePeek_PrivateChatColor() { return config.general_PrivateChatColor(); }
+			public Color featurePeek_SystemChatColor() { return config.general_SystemChatColor(); }
+			public Color featurePeek_TradeChatColor() { return config.general_TradeChatColor(); }
+			public Color featurePeek_WelcomeChatColor() { return config.general_WelcomeChatColor(); }
 		};
 	}
 
@@ -211,7 +210,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Subscribe
 	public void onModernChatVisibilityChangeEvent(ModernChatVisibilityChangeEvent e) {
-		chatPeekOverlay.setHidden(!e.isVisible());
+		chatPeekOverlay.setHidden(e.isVisible());
 		chatPeekOverlay.noteMessageActivity();
 	}
 }

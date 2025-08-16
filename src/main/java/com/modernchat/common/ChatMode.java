@@ -8,7 +8,6 @@ public enum ChatMode
     CLAN_GIM(-2),
     PRIVATE(-1),
     PUBLIC(0),
-    DEVELOP(1),
     FRIENDS_CHAT(2),
     CLAN_MAIN(3),
     CLAN_GUEST(4);

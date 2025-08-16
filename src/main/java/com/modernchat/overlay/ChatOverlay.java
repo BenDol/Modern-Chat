@@ -8,6 +8,7 @@ import com.modernchat.draw.RowHit;
 import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
+import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.event.NavigateHistoryEvent;
 import com.modernchat.event.SubmitHistoryEvent;
@@ -143,8 +144,6 @@ public class ChatOverlay extends OverlayPanel
 
     // Unread flash settings
     private static final int  UNREAD_FLASH_PERIOD_MS = 900;
-    private static final Color UNREAD_FLASH_FROM = Color.WHITE;
-    private static final Color UNREAD_FLASH_TO = new Color(255,180,60); // warm amber
 
     public ChatOverlay() {
     }
@@ -189,7 +188,7 @@ public class ChatOverlay extends OverlayPanel
         messageContainers.forEach((mode, container) -> {
             container.setChromeEnabled(true);
             container.startUp(containerConfig, ChatMode.valueOf(mode));
-            container.pushLines(Arrays.asList("Welcome to ModernChat!", "This is a redesigned chatbox with custom features.", "Use the input below; Left/Right move the caret, Enter sends.", "Esc unfocuses the input. Backspace/Delete/Home/End supported.", "Scroll with the mouse wheel, or drag the scrollbar on the right.", "You can customize the appearance in the settings.", "Enjoy your chat experience!", "This is a sample message to fill the chat buffer and demonstrate scrolling.", "Feel free to type here and see how the chat behaves.", "You can also resize the window to see how it adapts.", "Remember, this is just a demo; you can modify the code to suit your needs.", "Have fun exploring the features of ModernChat!", "This is another message to ensure the buffer has enough content for scrolling.", "Keep typing to see how the chatbox handles new messages.", "Here's a longer message to test the wrapping and scrolling behavior of the chatbox.", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.", "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", mode));
+            //container.pushLines(Arrays.asList("Welcome to ModernChat!", "This is a redesigned chatbox with custom features.", "Use the input below; Left/Right move the caret, Enter sends.", "Esc unfocuses the input. Backspace/Delete/Home/End supported.", "Scroll with the mouse wheel, or drag the scrollbar on the right.", "You can customize the appearance in the settings.", "Enjoy your chat experience!", "This is a sample message to fill the chat buffer and demonstrate scrolling.", "Feel free to type here and see how the chat behaves.", "You can also resize the window to see how it adapts.", "Remember, this is just a demo; you can modify the code to suit your needs.", "Have fun exploring the features of ModernChat!", "This is another message to ensure the buffer has enough content for scrolling.", "Keep typing to see how the chatbox handles new messages.", "Here's a longer message to test the wrapping and scrolling behavior of the chatbox.", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.", "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", mode));
         });
 
         refreshTabs();
@@ -254,8 +253,8 @@ public class ChatOverlay extends OverlayPanel
 
         // Layout constants
         final Padding pad = config.getPadding();
-        Font font = FontManager.getRunescapeFont().deriveFont((float) config.getInputFontSize());
-        g.setFont(font);
+        Font inputFont = FontManager.getRunescapeFont().deriveFont((float) config.getInputFontSize());
+        g.setFont(inputFont);
         FontMetrics fm = g.getFontMetrics();
         final int lineH = fm.getAscent() + fm.getDescent() + config.getInputLineSpacing();
 
@@ -269,7 +268,11 @@ public class ChatOverlay extends OverlayPanel
         final int bottom = vp.y + vp.height - pad.getBottom();
         final int innerW = Math.max(1, vp.width - pad.getWidth());
 
-        lastTabBarHeight = drawTabBar(g, fm, left, top, innerW);
+        Font tabFont = FontManager.getRunescapeFont().deriveFont((float) config.getTabFontSize());
+        g.setFont(tabFont);
+        FontMetrics tfm = g.getFontMetrics();
+
+        lastTabBarHeight = drawTabBar(g, tfm, left, top, innerW);
         final int msgAreaTop = top + lastTabBarHeight + 3; // gap under tabs
         final int msgBottom = bottom - inputHeight - gapAboveInput;
         final Rectangle msgArea = new Rectangle(left, msgAreaTop, innerW, Math.max(1, msgBottom - msgAreaTop));
@@ -284,6 +287,9 @@ public class ChatOverlay extends OverlayPanel
         g.setClip(new Rectangle(vp.x, vp.y, vp.width, msgBottom - vp.y));
         messageContainer.render(g);
         g.setClip(oldClip);
+
+        // Reset the font for the input box
+        g.setFont(inputFont);
 
         // Draw input box
         drawInputBox(g, fm, left, msgBottom, innerW, inputHeight, inputPadX, inputPadY, gapAboveInput);
@@ -325,7 +331,7 @@ public class ChatOverlay extends OverlayPanel
         final int h = fm.getHeight() + padY * 2;
 
         // Bar background (subtle)
-        g.setColor(new Color(0, 0, 0, 80));
+        g.setColor(config.getTabBarBackgroundColor());
         g.fillRoundRect(x, y, width, h, 8, 8);
 
         int cx = x + 4; // running x
@@ -336,7 +342,9 @@ public class ChatOverlay extends OverlayPanel
         for (Tab t : tabOrder) {
             String label = t.getTitle();
             int textW = fm.stringWidth(label);
-            int badgeW = (t.getUnread() > 0) ? (Math.max(15, fm.stringWidth(String.valueOf(t.getUnread())) + 2)) : 0;
+            int badgeW = (t.getUnread() > 0 && config.isShowNotificationBadge())
+                ? (Math.max(15, fm.stringWidth(String.valueOf(t.getUnread())) + 2))
+                : 0;
             int closeW = t.isCloseable() ? (fm.getHeight() - 2) : 0;
             int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0) + (t.isCloseable() ? (6 + closeW) : 0) + padX;
 
@@ -355,9 +363,9 @@ public class ChatOverlay extends OverlayPanel
 
             // Tab background
             Rectangle bounds = t.getBounds();
-            g.setColor(selected ? new Color(60, 60, 60, 220) : new Color(35, 35, 35, 180));
+            g.setColor(selected ? config.getTabSelectedColor() : config.getTabColor());
             g.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
-            g.setColor(new Color(255, 255, 255, selected ? 140 : 70));
+            g.setColor(selected ? config.getTabBorderSelectedColor() : config.getTabBorderColor());
             g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
 
             // Text (shadow and label)
@@ -365,12 +373,12 @@ public class ChatOverlay extends OverlayPanel
             int tx = bounds.x + padX;
             g.setColor(new Color(0, 0, 0, 180));
             g.drawString(label, tx + 1, textBase + 1);
-            Color labelColor = Color.WHITE;
+            Color labelColor = config.getTabTextColor();
             if (!selected && t.getUnread() > 0) {
                 long now = System.currentTimeMillis();
                 int offset = (t.getKey().hashCode() & 0x7fffffff) % UNREAD_FLASH_PERIOD_MS;
                 float phase = flashPhase(now, UNREAD_FLASH_PERIOD_MS, offset);
-                labelColor = lerpColor(UNREAD_FLASH_FROM, UNREAD_FLASH_TO, phase);
+                labelColor = lerpColor(config.getTabUnreadPulseFromColor(), config.getTabUnreadPulseToColor(), phase);
             }
             g.setColor(labelColor);
             g.drawString(label, tx, textBase);
@@ -383,9 +391,9 @@ public class ChatOverlay extends OverlayPanel
                 int by = y + ((h - fm.getHeight()) / 2) + 1;
                 int bH = fm.getHeight() - 2;
 
-                g.setColor(new Color(200, 60, 60, 230));
+                g.setColor(config.getTabNotificationColor());
                 g.fillRoundRect(bx, by, badgeW, bH, bH, bH);
-                g.setColor(Color.WHITE);
+                g.setColor(config.getTabNotificationTextColor());
                 String n = String.valueOf(t.getUnread());
                 int nx = bx + (badgeW - fm.stringWidth(n)) / 2;
                 int ny = by + fm.getAscent();
@@ -399,9 +407,9 @@ public class ChatOverlay extends OverlayPanel
                 int closeY = (y + (h - fm.getHeight()) / 2) + 1;
                 int closeH = fm.getHeight() - 2;
 
-                g.setColor(new Color(200, 60, 60, 230));
+                g.setColor(config.getTabCloseButtonColor());
                 g.fillRoundRect(closeX, closeY, closeH, closeH, closeH, closeH);
-                g.setColor(Color.WHITE);
+                g.setColor(config.getTabCloseButtonTextColor());
                 int xSize = 4;
                 g.drawLine(closeX + xSize - 1, closeY + xSize, closeX + closeH - xSize - 1, closeY + closeH - xSize);
                 g.drawLine(closeX + closeH - xSize - 1, closeY + xSize, closeX + xSize - 1, closeY + closeH - xSize);
@@ -460,9 +468,6 @@ public class ChatOverlay extends OverlayPanel
                 int nx = bx + (badgeW - fm.stringWidth(n)) / 2;
                 int ny = by + fm.getAscent();
                 g.drawString(n, nx, ny);
-            }
-            if (dragTab.isCloseable()) {
-                // no close hitbox while dragging
             }
         }
 
@@ -781,6 +786,13 @@ public class ChatOverlay extends OverlayPanel
     }
 
     @Subscribe
+    public void onChatToggleEvent(ChatToggleEvent e) {
+        if (e.isHidden() != hidden) {
+            setHidden(e.isHidden());
+        }
+    }
+
+    @Subscribe
     public void onClientTick(ClientTick tick) {
         resizeChatbox(desiredChatWidth, desiredChatHeight);
     }
@@ -978,7 +990,7 @@ public class ChatOverlay extends OverlayPanel
         else
             focusInput();
 
-        eventBus.post(new ModernChatVisibilityChangeEvent(this.hidden));
+        eventBus.post(new ModernChatVisibilityChangeEvent(!this.hidden));
     }
 
     public void focusInput() {
@@ -1457,11 +1469,11 @@ public class ChatOverlay extends OverlayPanel
         if (inputBuf.toString().equals(value))
             return; // no change
 
-        /*int charLimit = getCharacterLimit();
+        int charLimit = getCharacterLimit();
         if (value.length() > charLimit) {
             log.debug("Input text exceeds character limit of {}: {}", charLimit, value);
             value = value.substring(0, charLimit);
-        }*/
+        }
 
         final String text = value.trim();
         inputBuf.setLength(0);
@@ -1492,6 +1504,12 @@ public class ChatOverlay extends OverlayPanel
         return new Color(r, g, bch, alpha);
     }
 
+    public void dirty() {
+        for (MessageContainer container : messageContainers.values()) {
+            container.dirty();
+        }
+    }
+
     private final class ChatMouse implements MouseListener, MouseWheelListener
     {
         @Override public MouseEvent mouseClicked(MouseEvent e) { return e; }
@@ -1507,7 +1525,13 @@ public class ChatOverlay extends OverlayPanel
         @Override
         public MouseEvent mousePressed(MouseEvent e) {
             if (!isEnabled() || isHidden()) return e;
-            if (lastViewport == null || !lastViewport.contains(e.getPoint())) return e;
+            if (lastViewport == null) return e;
+
+            if (!lastViewport.contains(e.getPoint())) {
+                if (config.isClickOutsideToClose()) {
+                    setHidden(true);
+                }
+            }
 
             if (tabsBarBounds.contains(e.getPoint())) {
                 for (Tab t : tabOrder) {
@@ -1700,9 +1724,9 @@ public class ChatOverlay extends OverlayPanel
                         return;
                     }
                     commitInput();
-                    if (config.isHideOnSend())
-                        setHidden(true);
-                    e.consume();
+                    /*if (config.isHideOnSend())
+                        setHidden(true);*/
+                    //e.consume();
                     break;
                 case KeyEvent.VK_ESCAPE:
                     if (config.isHideOnEscape())

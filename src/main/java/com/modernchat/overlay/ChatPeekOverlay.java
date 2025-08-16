@@ -35,6 +35,7 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 
+// TODO: transition this to use MessageContainer
 public class ChatPeekOverlay extends Overlay
 {
     private static final int MAX_LINES = 20; // Maximum number of lines to cache
@@ -239,26 +240,32 @@ public class ChatPeekOverlay extends Overlay
         Color c;
         switch (type) {
             case PUBLICCHAT:
-                c = config.featurePeek_PublicChatColor();
+                c = config.general_PublicChatColor();
                 break;
             case FRIENDSCHATNOTIFICATION:
             case FRIENDSCHAT:
-                c = config.featurePeek_FriendsChatColor();
+                c = config.general_FriendsChatColor();
                 break;
             case CLAN_CHAT:
             case CLAN_GUEST_CHAT:
-                c = config.featurePeek_ClanChatColor();
+                c = config.general_ClanChatColor();
                 break;
             case PRIVATECHATOUT:
             case PRIVATECHAT:
             case FRIENDNOTIFICATION:
-                c = config.featurePeek_PrivateChatColor();
+                c = config.general_PrivateChatColor();
                 break;
             case WELCOME:
-                c = Color.WHITE;
+                c = config.general_WelcomeChatColor();
+                break;
+            case TRADE:
+            case TRADEREQ:
+            case TRADE_SENT:
+            case CHALREQ_TRADE:
+                c = config.general_TradeChatColor();
                 break;
             default:
-                c = config.featurePeek_SystemChatColor();
+                c = config.general_SystemChatColor();
         }
         return c == null ? Color.WHITE : c;
     }

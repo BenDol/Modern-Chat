@@ -44,8 +44,6 @@ public interface MessageContainerConfig extends ChatColors
 
     Color getBorderColor();
 
-    Color getDefaultTextColor();
-
     Color getShadowColor();
 
     Color getScrollbarTrackColor();
@@ -96,7 +94,7 @@ public interface MessageContainerConfig extends ChatColors
 
         @Override
         public int getMaxLines() {
-            return 40;
+            return 50;
         }
 
         @Override
@@ -137,11 +135,6 @@ public interface MessageContainerConfig extends ChatColors
         @Override
         public Color getBorderColor() {
             return new Color(12, 12, 12, 0);
-        }
-
-        @Override
-        public Color getDefaultTextColor() {
-            return Color.WHITE;
         }
 
         @Override

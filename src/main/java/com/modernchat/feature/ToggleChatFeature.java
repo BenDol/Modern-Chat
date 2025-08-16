@@ -2,6 +2,7 @@ package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
@@ -139,6 +140,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		}
 
 		if (!isCanvasFocused())
+			return;
+
+		if (e.isConsumed())
 			return;
 
 		Keybind kb = config.featureToggle_ToggleKey();
@@ -294,6 +298,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		if (root != null) {
 			LAST_CHAT_BOUNDS = root.getBounds();
  			ClientUtil.setChatHidden(client, chatHidden.get());
+			eventBus.post(new ChatToggleEvent(chatHidden.get()));
 		}
 	}
 
