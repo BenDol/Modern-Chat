@@ -31,6 +31,8 @@ public interface ModernChatConfig extends Config,
 {
     String GROUP = "modernchat";
     String HISTORY_KEY = "messageHistory";
+    String CHAT_WIDTH = "chatWidth";
+    String CHAT_HEIGHT = "chatHeight";
 
     /* ------------ Sections ------------ */
 

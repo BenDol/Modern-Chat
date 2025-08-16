@@ -7,6 +7,7 @@ import com.modernchat.common.RuneFontStyle;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
+import com.modernchat.event.ChatResizedEvent;
 import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
@@ -32,9 +33,11 @@ import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -42,6 +45,9 @@ import javax.inject.Singleton;
 
 import java.awt.Color;
 
+import static com.modernchat.ModernChatConfig.CHAT_HEIGHT;
+import static com.modernchat.ModernChatConfig.CHAT_WIDTH;
+import static com.modernchat.ModernChatConfig.GROUP;
 import static com.modernchat.feature.ChatRedesignFeature.ChatRedesignFeatureConfig;
 
 @Slf4j
@@ -112,6 +118,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Inject private Client client;
     @Inject private ClientThread clientThread;
+    @Inject private ConfigManager configManager;
     @Inject private OverlayManager overlayManager;
     @Inject private WidgetBucket widgetBucket;
     @Inject private ChatOverlay overlay;
@@ -281,6 +288,24 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         clientThread.invoke(this::showLegacyChatAndHideOverlay);
     }
 
+    private void loadChatSize() {
+        overlay.setDesiredChatSize(
+            configManager.getRSProfileConfiguration(GROUP, CHAT_WIDTH),
+            configManager.getRSProfileConfiguration(GROUP, CHAT_HEIGHT));
+    }
+
+    @Subscribe
+    public void onChatResizedEvent(ChatResizedEvent e) {
+        configManager.setRSProfileConfiguration(GROUP, CHAT_WIDTH, e.getWidth());
+        configManager.setRSProfileConfiguration(GROUP, CHAT_HEIGHT, e.getHeight());
+    }
+
+    @Subscribe
+    public void onProfileChanged(ProfileChanged e) {
+        // When the profile changes, we need to refresh
+        loadChatSize();
+    }
+
     @Subscribe
     public void onConfigChanged(ConfigChanged e) {
         if (!e.getGroup().equals(ModernChatConfig.GROUP))
@@ -328,6 +353,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Subscribe
     public void onGameStateChanged(GameStateChanged e) {
         if (e.getGameState() == GameState.LOGGED_IN) {
+            loadChatSize();
+
             clientThread.invoke(() -> overlay.hideLegacyChat(false));
         }
 

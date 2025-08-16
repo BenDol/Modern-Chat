@@ -1,5 +1,6 @@
 package com.modernchat.overlay;
 
+import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.ClanType;
 import com.modernchat.common.WidgetBucket;
@@ -8,6 +9,7 @@ import com.modernchat.draw.RowHit;
 import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
+import com.modernchat.event.ChatResizedEvent;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.DialogOptionsOpenedEvent;
@@ -42,6 +44,7 @@ import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyListener;
@@ -83,6 +86,10 @@ import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static com.modernchat.ModernChatConfig.CHAT_HEIGHT;
+import static com.modernchat.ModernChatConfig.CHAT_WIDTH;
+import static com.modernchat.ModernChatConfig.GROUP;
 
 @Slf4j
 @Singleton
@@ -1408,7 +1415,22 @@ public class ChatOverlay extends OverlayPanel
         tabOrder.add(j, t);
     }
 
-    private void setDesiredChatSize(int newW, int newH) {
+    public void setDesiredChatSize(String newW, String newH) {
+        if (newW == null || newH == null) {
+            log.debug("Attempted to set desired chat size with null width or height");
+            return;
+        }
+
+        try {
+            int width = Integer.parseInt(newW);
+            int height = Integer.parseInt(newH);
+            setDesiredChatSize(width, height);
+        } catch (NumberFormatException e) {
+            log.debug("Unable to parse desired chat size: {}x{} - {}", newW, newH, e.getMessage());
+        }
+    }
+
+    public void setDesiredChatSize(int newW, int newH) {
         if (newW <= 0 || newH <= 0) return;
 
         desiredChatWidth = newW;
@@ -1448,9 +1470,10 @@ public class ChatOverlay extends OverlayPanel
 
         client.refreshChat();
 
-        if (messageContainer != null) {
+        if (messageContainer != null)
             messageContainer.dirty();
-        }
+
+        eventBus.post(new ChatResizedEvent(width, height));
     }
 
     private void resetChatbox() {

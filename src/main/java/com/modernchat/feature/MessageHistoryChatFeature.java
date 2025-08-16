@@ -21,6 +21,7 @@ import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ChatboxInput;
+import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.util.Text;
@@ -33,6 +34,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.modernchat.ModernChatConfig.CHAT_HEIGHT;
+import static com.modernchat.ModernChatConfig.CHAT_WIDTH;
+import static com.modernchat.ModernChatConfig.GROUP;
 import static com.modernchat.feature.MessageHistoryChatFeature.MessageHistoryChatFeatureConfig;
 
 @Slf4j
@@ -136,6 +140,12 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
             else
                 navigateHistory(+1);
         });
+    }
+
+    @Subscribe
+    public void onProfileChanged(ProfileChanged e) {
+        // When the profile changes, we need to refresh
+        loadHistory();
     }
 
     @Subscribe
