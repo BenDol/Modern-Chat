@@ -146,7 +146,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		for (MenuEntry entry : entries) {
 			order++;
 			String option = entry.getOption();
-			if (option == null || !option.equalsIgnoreCase("Clear history"))
+			if (option == null || (!option.equalsIgnoreCase("Clear history") &&
+								   !option.equalsIgnoreCase("Clear messages")))
 				continue;
 			id = entry.getIdentifier();
 			break;

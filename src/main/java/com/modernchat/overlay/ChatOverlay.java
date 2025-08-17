@@ -216,7 +216,7 @@ public class ChatOverlay extends OverlayPanel
         resizePanel.setSidesEnabled(false, true, true, false);
         resizePanel.setBaseBoundsProvider(() -> lastViewport);
         resizePanel.setListener(this::setDesiredChatSize);
-        resizePanel.startUp(() -> !isHidden() && !client.isMenuOpen());
+        resizePanel.startUp(() -> isResizable() && !isHidden() && !client.isMenuOpen());
 
         messageContainers.putAll(Map.of(
             ChatMode.PUBLIC.name(), messageContainerProvider.get(),
@@ -974,7 +974,17 @@ public class ChatOverlay extends OverlayPanel
 
         Menu rootMenu = client.getMenu();
 
-        RowHit hit = messageContainer.rowAt(mouse);
+        if (messageContainer != null && messageContainer.hitAt(mouse)) {
+            rootMenu.createMenuEntry(1)
+                .setOption("Clear messages")
+                .setType(MenuAction.RUNELITE)
+                .onClick(me -> {
+                    if (messageContainer != null)
+                        messageContainer.clearMessages();
+                });
+        }
+
+        RowHit hit = messageContainer != null ? messageContainer.rowAt(mouse) : null;
         if (hit != null) {
             final String rowText = buildPlainRowText(hit.getVLine());
 
@@ -985,7 +995,7 @@ public class ChatOverlay extends OverlayPanel
 
             String targetName = hit.getTargetName();
             if (targetName != null && !targetName.isBlank() && !targetName.equals(getLocalPlayerName())) {
-                rootMenu.createMenuEntry(1)
+                rootMenu.createMenuEntry(2)
                     .setOption("Message " + ColorUtil.wrapWithColorTag(targetName, Color.ORANGE))
                     .setType(MenuAction.RUNELITE)
                     .onClick(me -> {
@@ -1081,10 +1091,12 @@ public class ChatOverlay extends OverlayPanel
     private int targetIndexForXSkipping(Tab skip, int mouseX) {
         int idx = 0;
         for (Tab t : tabOrder) {
-            if (t == skip) continue;
+            if (t == skip)
+                continue;
             Rectangle b = t.getBounds();
             int center = b.x + b.width / 2;
-            if (mouseX < center) return idx;
+            if (mouseX < center)
+                return idx;
             idx++;
         }
         return idx; // end
@@ -1096,10 +1108,12 @@ public class ChatOverlay extends OverlayPanel
 
         int idx = 0; // counts tabs except the dragged one
         for (Tab t : tabOrder) {
-            if (t == skip) continue;
+            if (t == skip)
+                continue;
             Rectangle b = t.getBounds();
             int center = b.x + b.width / 2;
-            if (dragCenter < center) return idx;
+            if (dragCenter < center)
+                return idx;
             idx++;
         }
         return idx; // end (after last)
@@ -1107,17 +1121,20 @@ public class ChatOverlay extends OverlayPanel
 
     private String visibleInputText(FontMetrics fm, int availWidth, int scrollPx) {
         String full = inputBuf.toString();
-        if (full.isEmpty()) return "";
+        if (full.isEmpty())
+            return "";
         int start = 0, acc = 0;
         while (start < full.length()) {
             int w = fm.charWidth(full.charAt(start));
-            if (acc + w > scrollPx) break;
+            if (acc + w > scrollPx)
+                break;
             acc += w; start++;
         }
         int end = start, used = 0;
         while (end < full.length()) {
             int w = fm.charWidth(full.charAt(end));
-            if (used + w > availWidth) break;
+            if (used + w > availWidth)
+                break;
             used += w; end++;
         }
         return full.substring(start, end);
@@ -1125,7 +1142,8 @@ public class ChatOverlay extends OverlayPanel
 
     private boolean commitReorder(Tab tab, int filteredIndex) {
         int old = tabOrder.indexOf(tab);
-        if (old < 0) return false;
+        if (old < 0)
+            return false;
 
         // Remove the dragged tab first, then insert at filtered index (list w/o tab)
         tabOrder.remove(old);
@@ -1494,6 +1512,11 @@ public class ChatOverlay extends OverlayPanel
         tabOrder.add(j, t);
     }
 
+    @Override
+    public boolean isResizable() {
+        return config.isResizeable();
+    }
+
     public void setDesiredChatSize(String newW, String newH) {
         if (newW == null || newH == null) {
             log.debug("Attempted to set desired chat size with null width or height");
@@ -1793,6 +1816,7 @@ public class ChatOverlay extends OverlayPanel
             boolean shouldBlock = !config.isAllowClickThrough()
                 && e.getButton() == MouseEvent.BUTTON1
                 && !e.isAltDown()
+                && !client.isMenuOpen()
                 && lastViewport != null
                 && lastViewport.contains(e.getPoint());
             if (shouldBlock && !clickThroughNotificationSent) {
@@ -1842,6 +1866,10 @@ public class ChatOverlay extends OverlayPanel
 
             if (shouldBlockClickThrough(e)) {
                 e.consume();
+            }
+
+            if (client.isMenuOpen()) {
+                return e;
             }
 
             if (tabsBarBounds.contains(e.getPoint())) {
@@ -1919,6 +1947,10 @@ public class ChatOverlay extends OverlayPanel
                 e.consume();
             }
 
+            if (client.isMenuOpen()) {
+                return e;
+            }
+
             // Selection drag
             if (selectingText && inputFocused) {
                 FontMetrics fm = getInputFontMetrics();
@@ -1957,6 +1989,10 @@ public class ChatOverlay extends OverlayPanel
         public MouseEvent mouseReleased(MouseEvent e) {
             if (shouldBlockClickThrough(e)) {
                 e.consume();
+            }
+
+            if (client.isMenuOpen()) {
+                return e;
             }
 
             // End selection drag

@@ -71,7 +71,7 @@ public class MessageContainer extends Overlay
     private FontStyle lineFontStyle = null;
 
     // Viewport and scrolling
-    private Rectangle lastViewport = null;                 // full container viewport
+    @Getter private Rectangle lastViewport = null;                 // full container viewport
     private final Rectangle msgViewport = new Rectangle(); // message area (excludes any input, if you add later)
     @Getter @Setter private int scrollOffsetPx = 0;        // top-anchored pixel offset
     private int contentHeightPx = 0;                       // total content height (in pixels)
@@ -625,6 +625,10 @@ public class MessageContainer extends Overlay
     public void unregisterMouseListener() {
         mouseManager.unregisterMouseListener(mouse);
         mouseManager.unregisterMouseWheelListener(mouse);
+    }
+
+    public boolean hitAt(Point mouse) {
+        return lastViewport != null && lastViewport.contains(new java.awt.Point(mouse.getX(), mouse.getY()));
     }
 
     private final class MouseHandler implements MouseListener, MouseWheelListener
