@@ -1,11 +1,13 @@
 package com.modernchat.common;
 
+import com.modernchat.ModernChatConfig;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.client.Notifier;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Notification;
 
 import javax.inject.Inject;
@@ -27,6 +29,7 @@ public class MessageService
     @Inject private Client client;
     @Inject private Notifier notifier;
     @Inject private ChatMessageManager chatMessageManager;
+    @Inject private ModernChatConfig config;
 
     public void pushChatMessage(String text) {
         pushChatMessage(text, ChatMessageType.GAMEMESSAGE);
@@ -184,5 +187,16 @@ public class MessageService
 
     private String prepareMessage(String message, String tagFormat) {
         return tagFormat.replace("{}", MODERN_CHAT_TAG) + message;
+    }
+
+    public void pushHelperNotification(String message) {
+        pushHelperNotification(new ChatMessageBuilder().append(message));
+    }
+
+    public void pushHelperNotification(ChatMessageBuilder builder) {
+        if (!config.featureRedesign_HelperNotifications())
+            return;
+
+        pushChatMessage(builder);
     }
 }

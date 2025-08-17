@@ -1,7 +1,10 @@
 package com.modernchat.overlay;
 
+import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.ClanType;
+import com.modernchat.common.FontStyle;
+import com.modernchat.common.MessageService;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Padding;
 import com.modernchat.draw.RowHit;
@@ -19,6 +22,7 @@ import com.modernchat.event.LeftDialogOpenedEvent;
 import com.modernchat.event.RightDialogClosedEvent;
 import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.event.SubmitHistoryEvent;
+import com.modernchat.service.FontService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.MathUtil;
@@ -50,7 +54,6 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.input.MouseWheelListener;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -97,6 +100,8 @@ public class ChatOverlay extends OverlayPanel
     @Inject private MouseManager mouseManager;
     @Inject private KeyManager keyManager;
     @Inject private WidgetBucket widgetBucket;
+    @Inject private FontService fontService;
+    @Inject private MessageService messageService;
     @Inject @Getter private ResizePanel resizePanel;
     @Inject private Provider<MessageContainer> messageContainerProvider;
 
@@ -140,6 +145,13 @@ public class ChatOverlay extends OverlayPanel
     // Selection highlight color
     private static final Color INPUT_SELECTION_BG = new Color(0, 120, 215, 120);
 
+    // Badge tuning
+    private static final int BADGE_MIN_W = 15;
+    private static final int BADGE_MIN_H = 12;
+    private static final int BADGE_TEXT_PAD = 8;   // inside-pill left+right
+    private static final int BADGE_SHRINK_PX = 4;  // shrink when thin
+    private static final int BADGE_THIN_THRESHOLD = 120; // tab content width threshold
+
     @Getter private boolean hidden = false;
     @Getter private boolean legacyShowing = false;
     @Getter private boolean wasHidden = false;
@@ -164,6 +176,10 @@ public class ChatOverlay extends OverlayPanel
 
     // Unread flash settings
     private static final int UNREAD_FLASH_PERIOD_MS = 900;
+
+    // Font caching
+    private FontStyle fontStyle;
+    private Font font;
 
     public ChatOverlay() {
     }
@@ -191,12 +207,15 @@ public class ChatOverlay extends OverlayPanel
 
         eventBus.register(this);
 
+        registerMouseListener();
+        registerKeyboardListener();
+
+        // Note: need to make sure the resize panel is started after the mouse listener is registered,
+        // as we will be consuming events in the chat that will stop the resize panel from receiving them otherwise.
+        resizePanel.setSidesEnabled(false, true, true, false);
         resizePanel.setBaseBoundsProvider(() -> lastViewport);
         resizePanel.setListener(this::setDesiredChatSize);
         resizePanel.startUp(() -> !isHidden());
-
-        registerMouseListener();
-        registerKeyboardListener();
 
         messageContainers.putAll(Map.of(
             ChatMode.PUBLIC.name(), messageContainerProvider.get(),
@@ -221,7 +240,7 @@ public class ChatOverlay extends OverlayPanel
         setHidden(true);
         clientThread.invoke(this::resetChatbox);
 
-        clear();
+        reset();
         unregisterMouseListener();
         unregisterKeyboardListener();
 
@@ -273,7 +292,8 @@ public class ChatOverlay extends OverlayPanel
 
         // Layout constants
         final Padding pad = config.getPadding();
-        Font inputFont = FontManager.getRunescapeFont().deriveFont((float) config.getInputFontSize());
+        final Font font = getFont();
+        Font inputFont = font.deriveFont((float) config.getInputFontSize());
         g.setFont(inputFont);
         FontMetrics fm = g.getFontMetrics();
         final int lineH = fm.getAscent() + fm.getDescent() + config.getInputLineSpacing();
@@ -288,7 +308,7 @@ public class ChatOverlay extends OverlayPanel
         final int bottom = vp.y + vp.height - pad.getBottom();
         final int innerW = Math.max(1, vp.width - pad.getWidth());
 
-        Font tabFont = FontManager.getRunescapeFont().deriveFont((float) config.getTabFontSize());
+        Font tabFont = font.deriveFont((float) config.getTabFontSize());
         g.setFont(tabFont);
         FontMetrics tfm = g.getFontMetrics();
 
@@ -320,6 +340,17 @@ public class ChatOverlay extends OverlayPanel
         return super.render(g);
     }
 
+    private Font getFont() {
+        if (fontStyle == null || fontStyle != config.getFontStyle()) {
+            fontStyle = config.getFontStyle();
+            font = null;
+        }
+        if (font == null) {
+            font = fontService.getFont(fontStyle != null ? fontStyle : FontStyle.RUNE_REG);
+        }
+        return font;
+    }
+
     public void selectTab(ChatMode chatMode) {
         selectTab(chatMode, false);
     }
@@ -348,51 +379,69 @@ public class ChatOverlay extends OverlayPanel
     private int drawTabBar(Graphics2D g, FontMetrics fm, int x, int y, int width) {
         final int padX = 10;
         final int padY = 3;
-        final int h = fm.getHeight() + padY * 2;
+        final int h = fm.getAscent() + fm.getDescent() + padY * 2; // tighter
 
-        // Bar background (subtle)
+        // Tab font & metrics
+        final Font tabFont = fm.getFont();
+
+        // Badge font
+        final float notifSize = Math.max(0f, (float) config.getTabBadgeFontSize());
+        final Font notifFont = notifSize > 0f ? tabFont.deriveFont(notifSize) : tabFont;
+        final FontMetrics nfm = g.getFontMetrics(notifFont);
+
+        // Bar background
         g.setColor(config.getTabBarBackgroundColor());
         g.fillRoundRect(x, y, width, h, 8, 8);
 
-        int cx = x + 4; // running x
-        final int r = 7; // corner radius
-
-        int filteredIdx = 0; // counts tabs except the dragged one
+        int cx = x + 4;
+        final int r = 7;
+        int filteredIdx = 0;
 
         for (Tab t : tabOrder) {
-            String label = t.getTitle();
-            int textW = fm.stringWidth(label);
-            int badgeW = (t.getUnread() > 0 && config.isShowNotificationBadge())
-                ? (Math.max(15, fm.stringWidth(String.valueOf(t.getUnread())) + 2))
-                : 0;
-            int closeW = t.isCloseable() ? (fm.getHeight() - 2) : 0;
-            int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0) + (t.isCloseable() ? (6 + closeW) : 0) + padX;
+            final String label = t.getTitle();
+            final int textW = fm.stringWidth(label);
 
-            // If dragging, insert the placeholder where we predict a drop
-            if (draggingTab && dragTab != null && t != dragTab && filteredIdx == dragTargetIndex) {
-                cx += (dragTabWidth > 0 ? dragTabWidth : w) + 4; // reserve space for the dragged tab
+            final int closeH = fm.getHeight() - 2;
+            final int closeW = t.isCloseable() ? closeH : 0;
+
+            final int wNoBadge = padX + textW + (t.isCloseable() ? (6 + closeW) : 0) + padX;
+
+            int badgeW = 0;
+            final boolean showBadge = t.getUnread() > 0 && config.isShowNotificationBadge();
+            final String unreadStr = String.valueOf(t.getUnread());
+            if (showBadge) {
+                final boolean thinTab = (wNoBadge <= BADGE_THIN_THRESHOLD);
+                badgeW = computeBadgeWidth(nfm, unreadStr, thinTab); // uses notif metrics
             }
 
-            // Skip drawing the dragged tab in-flow, we'll draw it floating later
+            final int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0) + (t.isCloseable() ? (6 + closeW) : 0) + padX;
+
+            if (draggingTab && dragTab != null && t != dragTab && filteredIdx == dragTargetIndex) {
+                cx += (dragTabWidth > 0 ? dragTabWidth : w) + 4;
+            }
+
             if (draggingTab && t == dragTab) {
                 continue;
             }
 
+            // Layout & draw tab
             t.getBounds().setBounds(cx, y, w, h);
-            boolean selected = isTabSelected(t);
+            final boolean selected = isTabSelected(t);
+            final Rectangle bounds = t.getBounds();
 
-            // Tab background
-            Rectangle bounds = t.getBounds();
+            // Background + border
             g.setColor(selected ? config.getTabSelectedColor() : config.getTabColor());
             g.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
             g.setColor(selected ? config.getTabBorderSelectedColor() : config.getTabBorderColor());
             g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
 
-            // Text (shadow and label)
-            int textBase = y + padY + fm.getAscent() + 1;
-            int tx = bounds.x + padX;
+            // Label
+            g.setFont(tabFont);
+            final int textBase = y + padY + fm.getAscent();
+            final int tx = bounds.x + padX;
             g.setColor(new Color(0, 0, 0, 180));
             g.drawString(label, tx + 1, textBase + 1);
+
             Color labelColor = config.getTabTextColor();
             if (!selected && t.getUnread() > 0) {
                 long now = System.currentTimeMillis();
@@ -405,42 +454,42 @@ public class ChatOverlay extends OverlayPanel
 
             int advanceX = tx + textW;
 
-            // Unread badge
+            // Badge
             if (badgeW > 0) {
-                int bx = advanceX + 4;
-                int by = y + ((h - fm.getHeight()) / 2) + 1;
-                int bH = fm.getHeight() - 2;
+                final int bx = advanceX + 4;
+                final boolean thinTab = (wNoBadge <= BADGE_THIN_THRESHOLD);
 
-                g.setColor(config.getTabNotificationColor());
-                g.fillRoundRect(bx, by, badgeW, bH, bH, bH);
-                g.setColor(config.getTabNotificationTextColor());
-                String n = String.valueOf(t.getUnread());
-                int nx = bx + (badgeW - fm.stringWidth(n)) / 2;
-                int ny = by + fm.getAscent();
-                g.drawString(n, nx, ny);
+                // temporarily switch to notification font for badge draw
+                final Font old = g.getFont();
+                g.setFont(notifFont);
+                int used = drawBadge(g, nfm, bx, textBase, unreadStr,
+                    config.getTabNotificationColor(),
+                    config.getTabNotificationTextColor(),
+                    thinTab);
+                g.setFont(old);
 
-                advanceX = bx + badgeW;
+                advanceX = bx + used;
             }
 
+            // Close button
             if (t.isCloseable()) {
-                int closeX = advanceX + 6;
-                int closeY = (y + (h - fm.getHeight()) / 2) + 1;
-                int closeH = fm.getHeight() - 2;
+                final int closeX = advanceX + 6;
+                final int closeY = (y + (h - fm.getHeight()) / 2) + 1;
 
                 g.setColor(config.getTabCloseButtonColor());
                 g.fillRoundRect(closeX, closeY, closeH, closeH, closeH, closeH);
                 g.setColor(config.getTabCloseButtonTextColor());
-                int xSize = 4;
+                final int xSize = 4;
                 g.drawLine(closeX + xSize - 1, closeY + xSize, closeX + closeH - xSize - 1, closeY + closeH - xSize);
                 g.drawLine(closeX + closeH - xSize - 1, closeY + xSize, closeX + xSize - 1, closeY + closeH - xSize);
 
-                advanceX += (closeH + 6);
                 t.setCloseBounds(new Rectangle(closeX, closeY, closeH, closeH));
             }
 
-            cx = bounds.x + bounds.width + 4; // spacing between tabs
+            // advance to next tab position
+            cx = bounds.x + bounds.width + 4;
             if (!(draggingTab && t == dragTab)) {
-                filteredIdx++; // count only non-drag tab to align with dragTargetIndex
+                filteredIdx++;
             }
         }
 
@@ -453,47 +502,49 @@ public class ChatOverlay extends OverlayPanel
             int maxX = x + width - w - 2;
             int drawX = MathUtil.clamp(dragVisualX, minX, maxX);
 
-            // subtle drop shadow for "lifted" effect
+            // background + border
             g.setColor(new Color(0, 0, 0, 120));
             g.fillRoundRect(drawX + 2, y + 2, w, hTab, r, r);
 
-            // draw the tab itself (selected state preserved)
-            boolean selected = isTabSelected(dragTab);
+            final boolean selected = isTabSelected(dragTab);
             g.setColor(selected ? new Color(60, 60, 60, 240) : new Color(45, 45, 45, 220));
             g.fillRoundRect(drawX, y, w, hTab, r, r);
             g.setColor(new Color(255, 255, 255, selected ? 160 : 90));
             g.drawRoundRect(drawX, y, w, hTab, r, r);
 
-            // label/badge (same layout as above)
-            String label = dragTab.getTitle();
-            int textW = fm.stringWidth(label);
-            int badgeW = (dragTab.getUnread() > 0) ? Math.max(15, fm.stringWidth(String.valueOf(dragTab.getUnread())) + 2) : 0;
-            int closeW = dragTab.isCloseable() ? (fm.getHeight() - 2) : 0;
-            int tx = drawX + padX;
-            int textBase = y + padY + fm.getAscent() + 1;
+            // label (tab font)
+            final String label = dragTab.getTitle();
+            final int textW = fm.stringWidth(label);
+            final int tx = drawX + padX;
+            final int textBase = y + padY + fm.getAscent();
+            g.setFont(tabFont);
             g.setColor(new Color(0, 0, 0, 200));
             g.drawString(label, tx + 1, textBase + 1);
             g.setColor(Color.WHITE);
             g.drawString(label, tx, textBase);
 
             int advanceX = tx + textW;
-            if (badgeW > 0) {
-                int bx = advanceX + 4;
-                int by = y + ((hTab - fm.getHeight()) / 2) + 1;
-                int bH = fm.getHeight() - 2;
-                g.setColor(new Color(200, 60, 60, 230));
-                g.fillRoundRect(bx, by, badgeW, bH, bH, bH);
-                g.setColor(Color.WHITE);
-                String n = String.valueOf(dragTab.getUnread());
-                int nx = bx + (badgeW - fm.stringWidth(n)) / 2;
-                int ny = by + fm.getAscent();
-                g.drawString(n, nx, ny);
+
+            // badge for dragged tab (notification font)
+            if (dragTab.getUnread() > 0) {
+                final String unreadStrDrag = String.valueOf(dragTab.getUnread());
+                final int bx = advanceX + 4;
+                final boolean thinTab = (w <= BADGE_THIN_THRESHOLD);
+
+                final Font old = g.getFont();
+                g.setFont(notifFont);
+                drawBadge(g, nfm, bx, textBase, unreadStrDrag,
+                    new Color(200, 60, 60, 230),
+                    Color.WHITE,
+                    thinTab);
+                g.setFont(old);
             }
         }
 
         tabsBarBounds.setBounds(x, y, width, h);
         return h;
     }
+
 
     @SuppressWarnings({"SameParameterValue", "UnnecessaryLocalVariable"})
     private void drawInputBox(
@@ -581,6 +632,36 @@ public class ChatOverlay extends OverlayPanel
             int caretBottom = baseline + fm.getDescent();
             g.fillRect(caretScreenX, caretTop, 1, caretBottom - caretTop);
         }
+    }
+
+    private int drawBadge(Graphics2D g, FontMetrics fm, int bx, int textBase,
+                          String text, Color bg, Color fg, boolean thinTab)
+    {
+        int bH = badgeHeight(fm);
+        int bW = computeBadgeWidth(fm, text, thinTab);
+
+        textBase -= 1;
+        int labelTop = textBase - fm.getAscent();
+        int labelHeight = fm.getAscent() + fm.getDescent();
+        int by = labelTop + (labelHeight - bH) / 2;
+
+        g.setColor(bg);
+        g.fillRoundRect(bx, by, bW, bH, bH, bH);
+        g.setColor(fg);
+        int nx = bx + (bW - fm.stringWidth(text)) / 2;
+        g.drawString(text, nx, textBase);
+
+        return bW;
+    }
+
+    private int badgeHeight(FontMetrics fm) {
+        return Math.max(BADGE_MIN_H, fm.getAscent() + fm.getDescent() - 2);
+    }
+
+    private int computeBadgeWidth(FontMetrics fm, String text, boolean thinTab) {
+        int base = Math.max(BADGE_MIN_W, fm.stringWidth(text) + BADGE_TEXT_PAD);
+        int shrunk = thinTab ? base - BADGE_SHRINK_PX : base;
+        return Math.max(badgeHeight(fm), shrunk); // keep pill at least as wide as tall
     }
 
     private String selectPrivateContainer(String targetName) {
@@ -927,6 +1008,11 @@ public class ChatOverlay extends OverlayPanel
                     .setType(MenuAction.RUNELITE)
                     .onClick(me -> removeTab(hovered));
             }
+
+            sub.createMenuEntry(index++)
+                .setOption("Clear messages")
+                .setType(MenuAction.RUNELITE)
+                .onClick(me -> clear());
 
             sub.createMenuEntry(index++)
                 .setOption("Move left")
@@ -1522,14 +1608,8 @@ public class ChatOverlay extends OverlayPanel
             setHidden(wasHidden);
     }
 
-    public void clear() {
-        messageContainer = null;
-        messageContainers.forEach((chatMode, container) -> {
-            container.clear();
-        });
-        privateContainers.forEach((targetName, container) -> {
-            container.clear();
-        });
+    public void reset() {
+        clear();
 
         inputBuf.setLength(0);
         caret = 0;
@@ -1538,8 +1618,10 @@ public class ChatOverlay extends OverlayPanel
         caretOn = true;
         lastBlinkMs = 0;
         lastViewport = null;
+        fontStyle = null;
 
-        selStart = selEnd = caret;
+        selStart = 0;
+        selEnd = 0;
         selAnchor = -1;
         selectingText = false;
 
@@ -1549,6 +1631,16 @@ public class ChatOverlay extends OverlayPanel
         availableChatModes.clear();
 
         refreshTabs(); // reinitialize tabs
+    }
+
+    public void clear() {
+        messageContainer = null;
+        messageContainers.forEach((chatMode, container) -> {
+            container.clear();
+        });
+        privateContainers.forEach((targetName, container) -> {
+            container.clear();
+        });
     }
 
     public void clearInputText() {
@@ -1673,7 +1765,7 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private FontMetrics getInputFontMetrics() {
-        Font f = FontManager.getRunescapeFont().deriveFont((float) config.getInputFontSize());
+        Font f = getFont().deriveFont((float) config.getInputFontSize());
         return Toolkit.getDefaultToolkit().getFontMetrics(f);
     }
 
@@ -1698,10 +1790,39 @@ public class ChatOverlay extends OverlayPanel
 
     private final class ChatMouse implements MouseListener, MouseWheelListener
     {
-        @Override public MouseEvent mouseClicked(MouseEvent e) { return e; }
+        private boolean clickThroughNotificationSent = false;
+
+        private boolean shouldBlockClickThrough(MouseEvent e) {
+            boolean shouldBlock = !config.isAllowClickThrough()
+                && e.getButton() == MouseEvent.BUTTON1
+                && !e.isAltDown()
+                && lastViewport != null
+                && lastViewport.contains(e.getPoint());
+            if (shouldBlock && !clickThroughNotificationSent) {
+                messageService.pushHelperNotification(new ChatMessageBuilder()
+                    .append("Left-click did not pass through the chat because ")
+                    .append(Color.ORANGE, "Allow click-through")
+                    .append(" is disabled. This can be changed in the settings."));
+                clickThroughNotificationSent = true;
+            }
+
+            return shouldBlock;
+        }
+
         @Override public MouseEvent mouseEntered(MouseEvent e) { return e; }
         @Override public MouseEvent mouseExited(MouseEvent e) { return e; }
         @Override public MouseEvent mouseMoved(MouseEvent e) { return e; }
+
+        @Override
+        public MouseEvent mouseClicked(MouseEvent e) {
+            if (!isEnabled() || isHidden())
+                return e;
+
+            if (lastViewport != null && lastViewport.contains(e.getPoint()) && shouldBlockClickThrough(e)) {
+                e.consume(); // block underlying handlers
+            }
+            return e;
+        }
 
         @Override
         public MouseWheelEvent mouseWheelMoved(MouseWheelEvent e) {
@@ -1710,13 +1831,20 @@ public class ChatOverlay extends OverlayPanel
 
         @Override
         public MouseEvent mousePressed(MouseEvent e) {
-            if (!isEnabled() || isHidden()) return e;
-            if (lastViewport == null) return e;
+            if (!isEnabled() || isHidden())
+                return e;
+            if (lastViewport == null)
+                return e;
 
             if (!lastViewport.contains(e.getPoint())) {
                 if (config.isClickOutsideToClose()) {
                     setHidden(true);
                 }
+                return e;
+            }
+
+            if (shouldBlockClickThrough(e)) {
+                e.consume();
             }
 
             if (tabsBarBounds.contains(e.getPoint())) {
@@ -1790,6 +1918,10 @@ public class ChatOverlay extends OverlayPanel
         public MouseEvent mouseDragged(MouseEvent e)  {
             if (!isEnabled() || isHidden()) return e;
 
+            if (shouldBlockClickThrough(e)) {
+                e.consume();
+            }
+
             // Selection drag
             if (selectingText && inputFocused) {
                 FontMetrics fm = getInputFontMetrics();
@@ -1826,6 +1958,10 @@ public class ChatOverlay extends OverlayPanel
 
         @Override
         public MouseEvent mouseReleased(MouseEvent e) {
+            if (shouldBlockClickThrough(e)) {
+                e.consume();
+            }
+
             // End selection drag
             if (selectingText && e.getButton() == MouseEvent.BUTTON1) {
                 selectingText = false;

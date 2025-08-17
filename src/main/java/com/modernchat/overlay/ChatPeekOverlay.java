@@ -1,12 +1,13 @@
 package com.modernchat.overlay;
 
 import com.modernchat.ModernChatConfig;
-import com.modernchat.common.RuneFontStyle;
+import com.modernchat.common.FontStyle;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.RichLine;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
+import com.modernchat.service.FontService;
 import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.StringUtil;
@@ -15,7 +16,6 @@ import lombok.Setter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -43,10 +43,12 @@ public class ChatPeekOverlay extends Overlay
     private final Client client;
     private final WidgetBucket widgetBucket;
     private final ModernChatConfig config;
+    private final FontService fontService;
+
     private final Deque<RichLine> lines = new ArrayDeque<>();
     @Getter @Setter private Rectangle lastBounds = null;
     private Font font = null;
-    private RuneFontStyle fontStyle = null;
+    private FontStyle fontStyle = null;
 
     private volatile float fadeAlpha = 1f;
     private volatile long fadeStartAtMs = Long.MAX_VALUE;
@@ -56,10 +58,16 @@ public class ChatPeekOverlay extends Overlay
     private volatile boolean hidden = false;
 
     @Inject
-    public ChatPeekOverlay(Client client, ModernChatConfig config, WidgetBucket widgetBucket) {
+    public ChatPeekOverlay(
+        Client client,
+        ModernChatConfig config,
+        WidgetBucket widgetBucket,
+        FontService fontService
+    ) {
         this.client = client;
         this.config = config;
         this.widgetBucket = widgetBucket;
+        this.fontService = fontService;
 
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
@@ -179,20 +187,10 @@ public class ChatPeekOverlay extends Overlay
     private Font getFont() {
         if (fontStyle == null || fontStyle != config.featurePeek_FontStyle()) {
             fontStyle = config.featurePeek_FontStyle();
-            switch (fontStyle) {
-            case NORMAL:
-                font = FontManager.getRunescapeFont();
-                break;
-            case SMALL:
-                font = FontManager.getRunescapeSmallFont();
-                break;
-            case BOLD:
-                font = FontManager.getRunescapeBoldFont();
-                break;
-            }
+            font = null;
         }
         if (font == null) {
-            font = FontManager.getRunescapeFont();
+            font = fontService.getFont(fontStyle != null ? fontStyle : FontStyle.RUNE_REG);
         }
         return font;
     }

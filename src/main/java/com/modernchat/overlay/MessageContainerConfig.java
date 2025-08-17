@@ -1,6 +1,6 @@
 package com.modernchat.overlay;
 
-import com.modernchat.common.RuneFontStyle;
+import com.modernchat.common.FontStyle;
 import com.modernchat.draw.ChatColors;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
@@ -34,7 +34,7 @@ public interface MessageContainerConfig extends ChatColors
 
     int getScrollbarWidth();
 
-    RuneFontStyle getLineFontStyle();
+    FontStyle getLineFontStyle();
 
     int getLineFontSize();
 
@@ -113,8 +113,8 @@ public interface MessageContainerConfig extends ChatColors
         }
 
         @Override
-        public RuneFontStyle getLineFontStyle() {
-            return RuneFontStyle.NORMAL;
+        public FontStyle getLineFontStyle() {
+            return FontStyle.RUNE_REG;
         }
 
         @Override

@@ -23,7 +23,6 @@ import java.util.function.Supplier;
 
 /**
  * Draws resize grips and handles mouse interactions to resize a panel.
- * Intended to sit on top of your chat panel (same bounds provider).
  */
 public class ResizePanel extends Overlay
 {
@@ -32,55 +31,85 @@ public class ResizePanel extends Overlay
         void onResize(int newWidth, int newHeight);
     }
 
-    private static final int TOP_BAR_INSET_X = 5;
-    private static final int TOP_BAR_X1_OFFSET = 0; // 1st bar x-offset from panel.x
-    private static final int TOP_BAR_Y1_OFFSET = 4; // 1st bar y-offset from panel.y
-    private static final int TOP_BAR_H = 1;        // each bar height
+    private static final int TOP_BAR_INSET_X   = 5;
+    private static final int TOP_BAR_X1_OFFSET = 0;
+    private static final int TOP_BAR_Y1_OFFSET = 4;
+    private static final int TOP_BAR_H         = 1;
 
-    private static final int RIGHT_BAR_INSET_Y = 6;
+    private static final int RIGHT_BAR_INSET_Y   = 6;
     private static final int RIGHT_BAR_X1_OFFSET = 5;
-    private static final int RIGHT_BAR_W = 1;
+    private static final int RIGHT_BAR_W         = 1;
 
-    private static final Color GRIP_COLOR = new Color(0, 0, 0, 0);
-    private static final Color GRIP_HOVER_COLOR = new Color(255, 255, 255, 220);
+    private static final int BOTTOM_BAR_INSET_X   = 5;
+    private static final int BOTTOM_BAR_X1_OFFSET = 0;
+    private static final int BOTTOM_BAR_Y1_OFFSET = -4;
+    private static final int BOTTOM_BAR_H         = 1;
+
+    private static final int LEFT_BAR_INSET_Y   = 6;
+    private static final int LEFT_BAR_X1_OFFSET = 5;
+    private static final int LEFT_BAR_W         = 1;
+
+    private static final Color DEFAULT_GRIP_COLOR       = new Color(0, 0, 0, 0);
+    private static final Color DEFAULT_GRIP_HOVER_COLOR = new Color(255, 255, 255, 220);
 
     // Clickable hot areas
-    private static final int TOP_HOT_H = 10;
-    private static final int RIGHT_HOT_W = 10;
+    private static final int DEFAULT_TOP_HOT_H    = 10;
+    private static final int DEFAULT_RIGHT_HOT_W  = 10;
+    private static final int DEFAULT_BOTTOM_HOT_H = 10; // height, not width
+    private static final int DEFAULT_LEFT_HOT_W   = 10;
 
     // Constraints
-    private static final int MIN_W = 220;
-    private static final int MIN_H = 120;
+    private static final int DEFAULT_MIN_W = 220;
+    private static final int DEFAULT_MIN_H = 120;
 
-    @Inject
-    private Client client;
-    @Inject
-    private MouseManager mouseManager;
+    @Inject private Client client;
+    @Inject private MouseManager mouseManager;
 
-    @Setter
-    private Supplier<Rectangle> baseBoundsProvider;
+    @Setter private Supplier<Rectangle> baseBoundsProvider;
+    @Setter @Nullable private ResizeListener listener;
 
-    @Setter
-    @Nullable
-    private ResizeListener listener;
+    // Configurable properties
+    @Getter @Setter private Supplier<Boolean> isResizable = () -> true;
+
+    // Enable/disable each side independently
+    @Getter @Setter private Supplier<Boolean> enableTop    = () -> true;
+    @Getter @Setter private Supplier<Boolean> enableRight  = () -> true;
+    @Getter @Setter private Supplier<Boolean> enableBottom = () -> true;
+    @Getter @Setter private Supplier<Boolean> enableLeft   = () -> true;
+
+    // Minimum size
+    @Getter @Setter private int minWidth  = DEFAULT_MIN_W;
+    @Getter @Setter private int minHeight = DEFAULT_MIN_H;
+
+    // Hot zone sizes
+    @Getter @Setter private int topHotHeight    = DEFAULT_TOP_HOT_H;
+    @Getter @Setter private int rightHotWidth   = DEFAULT_RIGHT_HOT_W;
+    @Getter @Setter private int bottomHotHeight = DEFAULT_BOTTOM_HOT_H;
+    @Getter @Setter private int leftHotWidth    = DEFAULT_LEFT_HOT_W;
+
+    // Grip colors
+    @Getter @Setter private Color gripColor      = DEFAULT_GRIP_COLOR;
+    @Getter @Setter private Color gripHoverColor = DEFAULT_GRIP_HOVER_COLOR;
 
     // Mouse
     private final MouseHandler mouseHandler = new MouseHandler();
 
     // State
     private Rectangle lastPanel = null;
-    private final Rectangle topHot = new Rectangle();
-    private final Rectangle rightHot = new Rectangle();
+    private final Rectangle topHot    = new Rectangle();
+    private final Rectangle rightHot  = new Rectangle();
+    private final Rectangle bottomHot = new Rectangle();
+    private final Rectangle leftHot   = new Rectangle();
 
-    @Getter @Setter private Supplier<Boolean> isResizable = () -> true; // default to always resizable
+    @Getter @Setter private Supplier<Boolean> drawGrips = () -> true;
 
-    @Getter
-    private int widthOverride = -1;   // if <0, use base width
-    @Getter
-    private int heightOverride = -1;  // if <0, use base height
+    @Getter private int widthOverride  = -1; // if <0, use base width
+    @Getter private int heightOverride = -1; // if <0, use base height
 
-    private boolean resizingTop = false;
-    private boolean resizingRight = false;
+    private boolean resizingTop    = false;
+    private boolean resizingRight  = false;
+    private boolean resizingBottom = false;
+    private boolean resizingLeft   = false;
     private int dragStartX, dragStartY;
     private int startW, startH;
 
@@ -88,12 +117,12 @@ public class ResizePanel extends Overlay
 
     public ResizePanel() {
         setPosition(OverlayPosition.DYNAMIC);
-        setLayer(OverlayLayer.ALWAYS_ON_TOP); // keep grips above your chat
+        setLayer(OverlayLayer.ALWAYS_ON_TOP);
         setPriority(Overlay.PRIORITY_HIGHEST);
     }
 
     public void startUp(Supplier<Boolean> isResizable) {
-        mouseManager.registerMouseListener(mouseHandler);
+        mouseManager.registerMouseListener(1, mouseHandler);
         this.isResizable = isResizable;
     }
 
@@ -108,19 +137,22 @@ public class ResizePanel extends Overlay
     }
 
     /**
-     * Returns the effective panel rect using base + overrides.
+     * Returns the effective panel rect using base and overrides.
      */
     public Rectangle getEffectivePanel() {
+        if (baseBoundsProvider == null)
+            return null;
         Rectangle base = baseBoundsProvider.get();
-        if (base == null) return null;
-        int w = widthOverride > 0 ? Math.max(MIN_W, widthOverride) : base.width;
-        int h = heightOverride > 0 ? Math.max(MIN_H, heightOverride) : base.height;
+        if (base == null)
+            return null;
+        int w = widthOverride  > 0 ? Math.max(minWidth,  widthOverride)  : base.width;
+        int h = heightOverride > 0 ? Math.max(minHeight, heightOverride) : base.height;
         return new Rectangle(base.x, base.y, w, h);
     }
 
     @Override
     public Dimension render(Graphics2D g) {
-        if (!isResizable.get())
+        if (!isResizable.get() || baseBoundsProvider == null)
             return null;
 
         Rectangle base = baseBoundsProvider.get();
@@ -130,39 +162,84 @@ public class ResizePanel extends Overlay
         }
 
         // Apply overrides
-        int w = widthOverride > 0 ? Math.max(MIN_W, widthOverride) : base.width;
-        int h = heightOverride > 0 ? Math.max(MIN_H, heightOverride) : base.height;
+        int w = widthOverride  > 0 ? Math.max(minWidth,  widthOverride)  : base.width;
+        int h = heightOverride > 0 ? Math.max(minHeight, heightOverride) : base.height;
         Rectangle panel = new Rectangle(base.x, base.y, w, h);
         lastPanel = panel;
 
-        // Build hot areas
-        topHot.setBounds(panel.x + TOP_BAR_INSET_X, panel.y, panel.width - TOP_BAR_INSET_X * 2, TOP_HOT_H);
-        rightHot.setBounds(panel.x + panel.width - RIGHT_HOT_W, panel.y + 6, RIGHT_HOT_W, panel.height - 12);
+        // Build hot areas (only if side is enabled; otherwise clear rect)
+        if (enableTop.get()) {
+            topHot.setBounds(panel.x + TOP_BAR_INSET_X, panel.y, Math.max(0, panel.width - TOP_BAR_INSET_X * 2), topHotHeight);
+        } else {
+            topHot.setBounds(0, 0, 0, 0);
+        }
 
-        // Draw grips (just the bars; your main panel draws its own chrome)
-        boolean topHover = isMouseOver(topHot);
-        boolean rightHover = isMouseOver(rightHot);
+        if (enableRight.get()) {
+            rightHot.setBounds(panel.x + panel.width - rightHotWidth, panel.y + RIGHT_BAR_INSET_Y, rightHotWidth, Math.max(0, panel.height - RIGHT_BAR_INSET_Y * 2));
+        } else {
+            rightHot.setBounds(0, 0, 0, 0);
+        }
 
-        Color grip = topHover ? GRIP_HOVER_COLOR : GRIP_COLOR;
-        g.setColor(grip);
-        int y1 = panel.y + TOP_BAR_Y1_OFFSET;
-        int xL = panel.x + TOP_BAR_INSET_X + TOP_BAR_X1_OFFSET;
-        int xR = panel.x + panel.width - TOP_BAR_INSET_X;
-        g.fillRect(xL, y1, xR - xL, TOP_BAR_H);
+        if (enableBottom.get()) {
+            bottomHot.setBounds(panel.x + BOTTOM_BAR_INSET_X, panel.y + panel.height - bottomHotHeight, Math.max(0, panel.width - BOTTOM_BAR_INSET_X * 2), bottomHotHeight);
+        } else {
+            bottomHot.setBounds(0, 0, 0, 0);
+        }
 
-        grip = rightHover ? GRIP_HOVER_COLOR : GRIP_COLOR;
-        g.setColor(grip);
-        int rx1 = panel.x + panel.width - RIGHT_HOT_W + RIGHT_BAR_X1_OFFSET;
-        int ryT = panel.y + RIGHT_BAR_INSET_Y;
-        int ryH = Math.max(0, panel.y + panel.height - RIGHT_BAR_INSET_Y - ryT);
-        g.fillRect(rx1, ryT, RIGHT_BAR_W, ryH);
+        if (enableLeft.get()) {
+            leftHot.setBounds(panel.x, panel.y + LEFT_BAR_INSET_Y, leftHotWidth, Math.max(0, panel.height - LEFT_BAR_INSET_Y * 2));
+        } else {
+            leftHot.setBounds(0, 0, 0, 0);
+        }
+
+        if (!drawGrips.get()) return null;
+
+        // Draw grips
+        boolean topHover    = isMouseOver(topHot);
+        boolean rightHover  = isMouseOver(rightHot);
+        boolean bottomHover = isMouseOver(bottomHot);
+        boolean leftHover   = isMouseOver(leftHot);
+
+        // Top
+        if (enableTop.get()) {
+            g.setColor(topHover ? gripHoverColor : gripColor);
+            int y1 = panel.y + TOP_BAR_Y1_OFFSET;
+            int xL = panel.x + TOP_BAR_INSET_X + TOP_BAR_X1_OFFSET;
+            int xR = panel.x + panel.width - TOP_BAR_INSET_X;
+            g.fillRect(xL, y1, Math.max(0, xR - xL), TOP_BAR_H);
+        }
+
+        // Right
+        if (enableRight.get()) {
+            g.setColor(rightHover ? gripHoverColor : gripColor);
+            int rx1 = panel.x + panel.width - rightHotWidth + RIGHT_BAR_X1_OFFSET;
+            int ryT = panel.y + RIGHT_BAR_INSET_Y;
+            int ryH = Math.max(0, panel.y + panel.height - RIGHT_BAR_INSET_Y - ryT);
+            g.fillRect(rx1, ryT, RIGHT_BAR_W, ryH);
+        }
+
+        // Bottom
+        if (enableBottom.get()) {
+            g.setColor(bottomHover ? gripHoverColor : gripColor);
+            int by1 = panel.y + panel.height - BOTTOM_BAR_H + BOTTOM_BAR_Y1_OFFSET;
+            int bxL = panel.x + BOTTOM_BAR_INSET_X + BOTTOM_BAR_X1_OFFSET;
+            int bxR = panel.x + panel.width - BOTTOM_BAR_INSET_X;
+            g.fillRect(bxL, by1, Math.max(0, bxR - bxL), BOTTOM_BAR_H);
+        }
+
+        // Left
+        if (enableLeft.get()) {
+            g.setColor(leftHover ? gripHoverColor : gripColor);
+            int lx1 = panel.x + LEFT_BAR_X1_OFFSET;
+            int lyT = panel.y + LEFT_BAR_INSET_Y;
+            int lyH = Math.max(0, panel.y + panel.height - LEFT_BAR_INSET_Y - lyT);
+            g.fillRect(lx1, lyT, LEFT_BAR_W, lyH);
+        }
 
         return null;
     }
 
     private boolean isMouseOver(Rectangle r) {
-        // Mouse position is only available via events; we infer hover by cursor-set state in handler,
-        // but for drawing highlight we approximate using lastPanel!=null and handler.lastMovePoint.
         Point p = mouseHandler.lastMovePoint;
         return p != null && r.contains(p);
     }
@@ -179,63 +256,62 @@ public class ResizePanel extends Overlay
         } catch (Exception ignored) { /* no-op */ }
     }
 
-    // Mouse handler
+    private boolean isResizingAny() {
+        return resizingTop || resizingRight || resizingBottom || resizingLeft;
+    }
 
+    private void updateHoverCursor(Point p) {
+        if (p == null || lastPanel == null || !lastPanel.contains(p)) {
+            setCanvasCursor(Cursor.DEFAULT_CURSOR);
+            return;
+        }
+        if (enableTop.get() && topHot.contains(p) || enableBottom.get() && bottomHot.contains(p)) {
+            setCanvasCursor(Cursor.N_RESIZE_CURSOR);
+        } else if (enableRight.get() && rightHot.contains(p) || enableLeft.get() && leftHot.contains(p)) {
+            setCanvasCursor(Cursor.E_RESIZE_CURSOR);
+        } else {
+            setCanvasCursor(Cursor.DEFAULT_CURSOR);
+        }
+    }
+
+    // Mouse handler
     private final class MouseHandler implements MouseListener
     {
         private Point lastMovePoint = null;
 
-        @Override
-        public MouseEvent mouseClicked(MouseEvent e) {
-            return e;
-        }
+        @Override public MouseEvent mouseClicked(MouseEvent e) { return e; }
 
-        @Override
-        public MouseEvent mouseEntered(MouseEvent e) {
-            return e;
-        }
+        @Override public MouseEvent mouseEntered(MouseEvent e) { return e; }
 
         @Override
         public MouseEvent mouseExited(MouseEvent e) {
             lastMovePoint = null;
-            if (!resizingTop && !resizingRight)
+            if (!isResizingAny())
                 setCanvasCursor(Cursor.DEFAULT_CURSOR);
             return e;
         }
 
         @Override
         public MouseEvent mouseMoved(MouseEvent e) {
-            if (!isResizable.get())
-                return e;
+            if (!isResizable.get()) return e;
 
             lastMovePoint = e.getPoint();
-            if (lastPanel == null || !lastPanel.contains(lastMovePoint)) {
-                if (!resizingTop && !resizingRight)
-                    setCanvasCursor(Cursor.DEFAULT_CURSOR);
+            if (isResizingAny()) {
+                // keep resize cursor consistent while dragging (guarded elsewhere)
                 return e;
             }
 
-            // Hover cursor feedback
-            if (topHot.contains(lastMovePoint)) {
-                setCanvasCursor(Cursor.N_RESIZE_CURSOR);
-            } else if (rightHot.contains(lastMovePoint)) {
-                setCanvasCursor(Cursor.E_RESIZE_CURSOR);
-            } else if (!resizingTop && !resizingRight) {
-                setCanvasCursor(Cursor.DEFAULT_CURSOR);
-            }
-
+            updateHoverCursor(lastMovePoint);
             return e;
         }
 
         @Override
         public MouseEvent mousePressed(MouseEvent e) {
-            if (!isResizable.get())
-                return e;
+            if (!isResizable.get()) return e;
+            if (lastPanel == null || !lastPanel.contains(e.getPoint())) return e;
 
-            if (lastPanel == null || !lastPanel.contains(e.getPoint()))
-                return e;
-
-            if (topHot.contains(e.getPoint())) {
+            // TOP
+            if (enableTop.get() && topHot.contains(e.getPoint())) {
                 resizingTop = true;
                 dragStartY = e.getY();
                 startH = (heightOverride > 0 ? heightOverride : lastPanel.height);
@@ -244,11 +320,32 @@ public class ResizePanel extends Overlay
                 return e;
             }
 
-            if (rightHot.contains(e.getPoint())) {
+            // RIGHT
+            if (enableRight.get() && rightHot.contains(e.getPoint())) {
                 resizingRight = true;
                 dragStartX = e.getX();
                 startW = (widthOverride > 0 ? widthOverride : lastPanel.width);
                 setCanvasCursor(Cursor.E_RESIZE_CURSOR);
+                e.consume();
+                return e;
+            }
+
+            // BOTTOM
+            if (enableBottom.get() && bottomHot.contains(e.getPoint())) {
+                resizingBottom = true;
+                dragStartY = e.getY();
+                startH = (heightOverride > 0 ? heightOverride : lastPanel.height);
+                setCanvasCursor(Cursor.S_RESIZE_CURSOR);
+                e.consume();
+                return e;
+            }
+
+            // LEFT
+            if (enableLeft.get() && leftHot.contains(e.getPoint())) {
+                resizingLeft = true;
+                dragStartX = e.getX();
+                startW = (widthOverride > 0 ? widthOverride : lastPanel.width);
+                setCanvasCursor(Cursor.W_RESIZE_CURSOR);
                 e.consume();
                 return e;
             }
@@ -258,28 +355,33 @@ public class ResizePanel extends Overlay
 
         @Override
         public MouseEvent mouseDragged(MouseEvent e) {
-            if (!isResizable.get())
-                return e;
+            if (!isResizable.get()) return e;
+            lastMovePoint = e.getPoint();
 
-            if (!resizingTop && !resizingRight)
-                return e;
+            if (!isResizingAny()) return e;
 
             if (resizingTop) {
-                int dy = e.getY() - dragStartY;       // drag down -> increase height
-                int newH = Math.max(MIN_H, startH - dy);
-                heightOverride = newH;
+                int dy = e.getY() - dragStartY; // drag down -> increase height
+                heightOverride = Math.max(minHeight, startH - dy);
             }
             if (resizingRight) {
-                int dx = e.getX() - dragStartX;       // drag right -> increase width
-                int newW = Math.max(MIN_W, startW + dx);
-                widthOverride = newW;
+                int dx = e.getX() - dragStartX; // drag right -> increase width
+                widthOverride = Math.max(minWidth, startW + dx);
+            }
+            if (resizingBottom) {
+                int dy = e.getY() - dragStartY; // drag down -> increase height
+                heightOverride = Math.max(minHeight, startH + dy);
+            }
+            if (resizingLeft) {
+                int dx = e.getX() - dragStartX; // drag right -> decrease width
+                widthOverride = Math.max(minWidth, startW - dx);
             }
 
             // Notify listener (e.g., to reflow ChatOverlay/message area)
-            if (listener != null) {
+            if (listener != null && baseBoundsProvider != null) {
                 Rectangle base = baseBoundsProvider.get();
                 if (base != null) {
-                    int w = widthOverride > 0 ? widthOverride : base.width;
+                    int w = widthOverride  > 0 ? widthOverride  : base.width;
                     int h = heightOverride > 0 ? heightOverride : base.height;
                     listener.onResize(w, h);
                 }
@@ -291,20 +393,46 @@ public class ResizePanel extends Overlay
 
         @Override
         public MouseEvent mouseReleased(MouseEvent e) {
-            if (resizingTop || resizingRight) {
+            if (isResizingAny()) {
+                // stop any resizing state
                 resizingTop = false;
                 resizingRight = false;
-                // Keep hover cursor if still over a grip; otherwise reset
-                if (topHot.contains(e.getPoint()))
-                    setCanvasCursor(Cursor.N_RESIZE_CURSOR);
-                else if (rightHot.contains(e.getPoint()))
-                    setCanvasCursor(Cursor.E_RESIZE_CURSOR);
-                else
-                    setCanvasCursor(Cursor.DEFAULT_CURSOR);
+                resizingBottom = false;
+                resizingLeft = false;
+
+                // update cursor based on current hover
+                updateHoverCursor(e.getPoint());
                 e.consume();
                 return e;
             }
             return e;
         }
+    }
+
+    public void setSidesEnabled(boolean top, boolean right, boolean bottom, boolean left) {
+        this.enableTop   = () -> top;
+        this.enableRight = () -> right;
+        this.enableBottom= () -> bottom;
+        this.enableLeft  = () -> left;
+    }
+
+    public void setAllEnabled(boolean enabled) {
+        setSidesEnabled(true, true, true, true);
+    }
+
+    public void setLeftEnabled(boolean enabled) {
+        this.enableLeft = () -> enabled;
+    }
+
+    public void setRightEnabled(boolean enabled) {
+        this.enableRight = () -> enabled;
+    }
+
+    public void setTopEnabled(boolean enabled) {
+        this.enableTop = () -> enabled;
+    }
+
+    public void setBottomEnabled(boolean enabled) {
+        this.enableBottom = () -> enabled;
     }
 }

@@ -1,7 +1,7 @@
 package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
-import com.modernchat.common.RuneFontStyle;
+import com.modernchat.common.FontStyle;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.ChatColors;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
@@ -47,7 +47,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		boolean featurePeek_HideSplitPrivateMessages();
 		Color featurePeek_BackgroundColor();
 		Color featurePeek_BorderColor();
-		RuneFontStyle featurePeek_FontStyle();
+		FontStyle featurePeek_FontStyle();
 		int featurePeek_FontSize();
 		int featurePeek_TextShadow();
 		int featurePeek_Padding();
@@ -82,7 +82,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_HideSplitPrivateMessages() { return config.featurePeek_HideSplitPrivateMessages(); }
 			@Override public Color featurePeek_BackgroundColor() { return config.featurePeek_BackgroundColor(); }
 			@Override public Color featurePeek_BorderColor() { return config.featurePeek_BorderColor(); }
-			@Override public RuneFontStyle featurePeek_FontStyle() { return config.featurePeek_FontStyle(); }
+			@Override public FontStyle featurePeek_FontStyle() { return config.featurePeek_FontStyle(); }
 			@Override public int featurePeek_FontSize() { return config.featurePeek_FontSize(); }
 			@Override public int featurePeek_TextShadow() { return config.featurePeek_TextShadow(); }
 			@Override public int featurePeek_Padding() { return config.featurePeek_Padding(); }

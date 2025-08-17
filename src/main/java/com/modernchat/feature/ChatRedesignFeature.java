@@ -3,7 +3,7 @@ package com.modernchat.feature;
 import com.google.inject.Provides;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatMode;
-import com.modernchat.common.RuneFontStyle;
+import com.modernchat.common.FontStyle;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
@@ -42,7 +42,6 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-
 import java.awt.Color;
 
 import static com.modernchat.ModernChatConfig.CHAT_HEIGHT;
@@ -61,15 +60,16 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     public interface ChatRedesignFeatureConfig extends ChatFeatureConfig
     {
         boolean featureRedesign_Enabled();
-        boolean featureRedesign_StartHidden();
         boolean featureRedesign_OpenTabOnIncomingPM();
         boolean featureRedesign_ClickOutsideToClose();
         boolean featureRedesign_ShowNotificationBadge();
+        boolean featureRedesign_AllowClickThrough();
+        boolean featureRedesign_HelperNotifications();
         ChatMode featureRedesign_DefaultChatMode();
+        FontStyle featureRedesign_FontStyle();
         int featureRedesign_Padding();
         Color featureRedesign_BackdropColor();
         Color featureRedesign_BorderColor();
-        int featureRedesign_InputLineSpacing();
         int featureRedesign_InputFontSize();
         Color featureRedesign_InputPrefixColor();
         Color featureRedesign_InputBackgroundColor();
@@ -78,6 +78,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         Color featureRedesign_InputTextColor();
         Color featureRedesign_InputCaretColor();
         int featureRedesign_TabFontSize();
+        int featureRedesign_TabBadgeFontSize();
         Color featureRedesign_TabBarBackgroundColor();
         Color featureRedesign_TabColor();
         Color featureRedesign_TabSelectedColor();
@@ -106,7 +107,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         int featureRedesign_MessageContainer_LineSpacing();
         int featureRedesign_MessageContainer_ScrollStep();
         int featureRedesign_MessageContainer_ScrollbarWidth();
-        RuneFontStyle featureRedesign_MessageContainer_LineFontStyle();
+        FontStyle featureRedesign_MessageContainer_LineFontStyle();
         int featureRedesign_MessageContainer_LineFontSize();
         int featureRedesign_MessageContainer_TextShadow();
         Color featureRedesign_MessageContainer_BackdropColor();
@@ -140,12 +141,13 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     protected ChatRedesignFeatureConfig partitionConfig(ModernChatConfig cfg) {
         return new ChatRedesignFeatureConfig() {
             @Override public boolean featureRedesign_Enabled() { return cfg.featureRedesign_Enabled(); }
-            @Override public boolean featureRedesign_StartHidden() { return cfg.featureToggle_StartHidden(); }
             @Override public boolean featureRedesign_OpenTabOnIncomingPM() { return cfg.featureRedesign_OpenTabOnIncomingPM(); }
             @Override public boolean featureRedesign_ClickOutsideToClose() { return cfg.featureRedesign_ClickOutsideToClose(); }
             @Override public boolean featureRedesign_ShowNotificationBadge() { return cfg.featureRedesign_ShowNotificationBadge(); }
+            @Override public boolean featureRedesign_AllowClickThrough() { return cfg.featureRedesign_AllowClickThrough(); }
+            @Override public boolean featureRedesign_HelperNotifications() { return cfg.featureRedesign_HelperNotifications(); }
+            @Override public FontStyle featureRedesign_FontStyle() { return cfg.featureRedesign_FontStyle(); }
             @Override public int featureRedesign_Padding() { return cfg.featureRedesign_Padding(); }
-            @Override public int featureRedesign_InputLineSpacing() { return cfg.featureRedesign_InputLineSpacing(); }
             @Override public int featureRedesign_InputFontSize() { return cfg.featureRedesign_InputFontSize(); }
             @Override public Color featureRedesign_BackdropColor() { return cfg.featureRedesign_BackdropColor(); }
             @Override public Color featureRedesign_BorderColor() { return cfg.featureRedesign_BorderColor(); }
@@ -156,6 +158,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color featureRedesign_InputTextColor() { return cfg.featureRedesign_InputTextColor(); }
             @Override public Color featureRedesign_InputCaretColor() { return cfg.featureRedesign_InputCaretColor(); }
             @Override public int featureRedesign_TabFontSize() { return cfg.featureRedesign_TabFontSize(); }
+            @Override public int featureRedesign_TabBadgeFontSize() { return cfg.featureRedesign_TabBadgeFontSize(); }
             @Override public Color featureRedesign_TabBarBackgroundColor() { return cfg.featureRedesign_TabBarBackgroundColor(); }
             @Override public Color featureRedesign_TabColor() { return cfg.featureRedesign_TabColor(); }
             @Override public Color featureRedesign_TabSelectedColor() { return cfg.featureRedesign_TabSelectedColor(); }
@@ -183,7 +186,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public int featureRedesign_MessageContainer_LineSpacing() { return cfg.featureRedesign_MessageContainer_LineSpacing(); }
             @Override public int featureRedesign_MessageContainer_ScrollStep() { return cfg.featureRedesign_MessageContainer_ScrollStep(); }
             @Override public int featureRedesign_MessageContainer_ScrollbarWidth() { return cfg.featureRedesign_MessageContainer_ScrollbarWidth(); }
-            @Override public RuneFontStyle featureRedesign_MessageContainer_LineFontStyle() { return cfg.featureRedesign_MessageContainer_LineFontStyle(); }
+            @Override public FontStyle featureRedesign_MessageContainer_LineFontStyle() { return cfg.featureRedesign_MessageContainer_LineFontStyle(); }
             @Override public int featureRedesign_MessageContainer_LineFontSize() { return cfg.featureRedesign_MessageContainer_LineFontSize(); }
             @Override public int featureRedesign_MessageContainer_TextShadow() { return cfg.featureRedesign_MessageContainer_TextShadow(); }
             @Override public Color featureRedesign_MessageContainer_BackdropColor() { return cfg.featureRedesign_MessageContainer_BackdropColor(); }
@@ -200,9 +203,11 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean isHideOnSend() { return mainConfig.featureToggle_AutoHideOnSend(); }
             @Override public boolean isHideOnEscape() { return mainConfig.featureToggle_EscapeHides(); }
             @Override public boolean isStartHidden() { return mainConfig.featureToggle_StartHidden(); }
-            @Override public boolean isShowNotificationBadge() { return mainConfig.featureRedesign_ShowNotificationBadge(); }
+            @Override public boolean isShowNotificationBadge() { return cfg.featureRedesign_ShowNotificationBadge(); }
+            @Override public boolean isAllowClickThrough() { return cfg.featureRedesign_AllowClickThrough(); }
+            @Override public boolean isHelperNotifications() { return cfg.featureRedesign_HelperNotifications(); }
+            @Override public FontStyle getFontStyle() { return cfg.featureRedesign_FontStyle(); }
             @Override public Padding getPadding() { return new Padding(cfg.featureRedesign_Padding()); }
-            @Override public int getInputLineSpacing() { return cfg.featureRedesign_InputLineSpacing(); }
             @Override public boolean isOpenTabOnIncomingPM() { return cfg.featureRedesign_OpenTabOnIncomingPM(); }
             @Override public boolean isClickOutsideToClose() { return cfg.featureRedesign_ClickOutsideToClose(); }
             @Override public ChatMode getDefaultChatMode() { return cfg.featureRedesign_DefaultChatMode(); }
@@ -216,6 +221,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color getInputTextColor() { return cfg.featureRedesign_InputTextColor(); }
             @Override public Color getInputCaretColor() { return cfg.featureRedesign_InputCaretColor();}
             @Override public int getTabFontSize() { return cfg.featureRedesign_TabFontSize(); }
+            @Override public int getTabBadgeFontSize() { return cfg.featureRedesign_TabBadgeFontSize(); }
             @Override public Color getTabBarBackgroundColor() { return cfg.featureRedesign_TabBarBackgroundColor(); }
             @Override public Color getTabColor() { return cfg.featureRedesign_TabColor(); }
             @Override public Color getTabSelectedColor() { return cfg.featureRedesign_TabSelectedColor(); }
@@ -242,7 +248,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 @Override public int getLineSpacing() { return cfg.featureRedesign_MessageContainer_LineSpacing(); }
                 @Override public int getScrollStep() { return cfg.featureRedesign_MessageContainer_ScrollStep(); }
                 @Override public int getScrollbarWidth() { return cfg.featureRedesign_MessageContainer_ScrollbarWidth(); }
-                @Override public RuneFontStyle getLineFontStyle() { return cfg.featureRedesign_MessageContainer_LineFontStyle(); }
+                @Override public FontStyle getLineFontStyle() { return cfg.featureRedesign_MessageContainer_LineFontStyle(); }
                 @Override public int getLineFontSize() { return cfg.featureRedesign_MessageContainer_LineFontSize(); }
                 @Override public int getTextShadow() { return cfg.featureRedesign_MessageContainer_TextShadow(); }
                 @Override public Color getBackdropColor() { return cfg.featureRedesign_MessageContainer_BackdropColor(); }
@@ -361,7 +367,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         if (e.getGameState() == GameState.LOGGED_IN || e.getGameState() == GameState.LOGIN_SCREEN)
             overlay.refreshTabs();
 
-        if (config.featureRedesign_StartHidden())
+        if (mainConfig.featureToggle_StartHidden())
             clientThread.invokeAtTickEnd(() -> overlay.setHidden(true));
     }
 
@@ -411,7 +417,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
         String line = (senderName != null && !senderName.isEmpty()) ? senderName + ": " + msg : msg;
 
-        log.info("Chat message received: type={}, sender={}, receiver={}, message={}",
+        log.debug("Chat message received: type={}, sender={}, receiver={}, message={}",
                 type, senderName, receiverName, line);
 
         overlay.addMessage(line, type, timestamp, senderName, receiverName, prefix);

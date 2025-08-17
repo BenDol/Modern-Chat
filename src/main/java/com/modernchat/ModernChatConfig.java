@@ -1,13 +1,7 @@
 package com.modernchat;
 
 import com.modernchat.common.ChatMode;
-import com.modernchat.common.RuneFontStyle;
-import com.modernchat.feature.ChatRedesignFeature;
-import com.modernchat.feature.ExampleChatFeature;
-import com.modernchat.feature.MessageHistoryChatFeature;
-import com.modernchat.feature.PeekChatFeature;
-import com.modernchat.feature.ToggleChatFeature;
-import com.modernchat.feature.command.CommandsChatFeature;
+import com.modernchat.common.FontStyle;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -21,19 +15,8 @@ import java.awt.Color;
 import java.awt.event.KeyEvent;
 
 @ConfigGroup(ModernChatConfig.GROUP)
-public interface ModernChatConfig extends Config,
-    ExampleChatFeature.ExampleChatFeatureConfig,
-    ChatRedesignFeature.ChatRedesignFeatureConfig,
-    ToggleChatFeature.ToggleChatFeatureConfig,
-    PeekChatFeature.PeekChatFeatureConfig,
-    CommandsChatFeature.CommandsChatConfig,
-    MessageHistoryChatFeature.MessageHistoryChatFeatureConfig
+public interface ModernChatConfig extends Config, ModernChatConfigBase
 {
-    String GROUP = "modernchat";
-    String HISTORY_KEY = "messageHistory";
-    String CHAT_WIDTH = "chatWidth";
-    String CHAT_HEIGHT = "chatHeight";
-
     /* ------------ Sections ------------ */
 
     @ConfigSection(
@@ -206,13 +189,113 @@ public interface ModernChatConfig extends Config,
         return true;
     }
 
+    @ConfigItem(
+        keyName = "featureRedesign_AllowClickThrough",
+        name = "Allow Click-Through",
+        description = "Allow clicking through the chat overlay to interact with game elements",
+        position = 8,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_AllowClickThrough() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_HelperNotifications",
+        name = "Helper Notifications",
+        description = "Show helper notifications for new features and updates",
+        position = 9,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_HelperNotifications() {
+        return true;
+    }
+
     /* ------------ Modern Chat Style ------------ */
+
+    @ConfigItem(
+        keyName = "featureRedesign_FontStyle",
+        name = "Font Style",
+        description = "Font style for the outer chat text like input, tabs, etc (see Line Font Style for message text)",
+        position = 1,
+        section = modernChatStyleSection
+    )
+    @Override
+    default FontStyle featureRedesign_FontStyle() {
+        return FontStyle.RUNE_REG;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_InputFontSize",
+        name = "Input Font Size",
+        description = "Font size for the input field",
+        position = 2,
+        section = modernChatStyleSection
+    )
+    @Units(Units.PIXELS)
+    @Override
+    default int featureRedesign_InputFontSize() {
+        return 16;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_TabFontSize",
+        name = "Tab Font Size",
+        description = "Font size for tabs in the tab bar",
+        position = 3,
+        section = modernChatStyleSection
+    )
+    @Units(Units.PIXELS)
+    @Override
+    default int featureRedesign_TabFontSize() {
+        return 16;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_TabBadgeFontSize",
+        name = "Badge Font Size",
+        description = "Font size for the notification badge on tabs",
+        position = 4,
+        section = modernChatStyleSection
+    )
+    @Units(Units.PIXELS)
+    @Override
+    default int featureRedesign_TabBadgeFontSize() {
+        return 12;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_MessageContainer_LineFontStyle",
+        name = "Message Font Style",
+        description = "Font style for messages in the message container",
+        position = 5,
+        section = modernChatStyleSection
+    )
+    @Override
+    default FontStyle featureRedesign_MessageContainer_LineFontStyle() {
+        return FontStyle.RUNE_REG;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_MessageContainer_LineFontSize",
+        name = "Message Font Size",
+        description = "Font size for messages in the message container",
+        position = 6,
+        section = modernChatStyleSection
+    )
+    @Units(Units.PIXELS)
+    @Override
+    default int featureRedesign_MessageContainer_LineFontSize() {
+        return 16;
+    }
 
     @ConfigItem(
         keyName = "featureRedesign_Padding",
         name = "Padding",
         description = "Padding around the chat view port",
-        position = 1,
+        position = 7,
         section = modernChatStyleSection
     )
     @Range(max = 200)
@@ -223,36 +306,35 @@ public interface ModernChatConfig extends Config,
     }
 
     @ConfigItem(
-        keyName = "featureRedesign_InputLineSpacing",
-        name = "Input Line Spacing",
-        description = "Spacing between lines in the input field",
-        position = 2,
+        keyName = "featureRedesign_MessageContainer_DrawScrollbar",
+        name = "Draw Scrollbar",
+        description = "Draw a scrollbar in the message container",
+        position = 8,
         section = modernChatStyleSection
     )
-    @Units(Units.PIXELS)
     @Override
-    default int featureRedesign_InputLineSpacing() {
-        return 0;
+    default boolean featureRedesign_MessageContainer_DrawScrollbar() {
+        return true;
     }
 
     @ConfigItem(
-        keyName = "featureRedesign_InputFontSize",
-        name = "Input Font Size",
-        description = "Font size for the input field",
-        position = 3,
+        keyName = "featureRedesign_MessageContainer_ScrollbarWidth",
+        name = "Scrollbar Width",
+        description = "Width of the scrollbar in the message container",
+        position = 9,
         section = modernChatStyleSection
     )
-    @Units(Units.PIXELS)
+    @Range(max = 100)
     @Override
-    default int featureRedesign_InputFontSize() {
-        return 16;
+    default int featureRedesign_MessageContainer_ScrollbarWidth() {
+        return 8;
     }
 
     @ConfigItem(
         keyName = "featureRedesign_BackdropColor",
         name = "Backdrop Color",
         description = "Color for the chat backdrop",
-        position = 4,
+        position = 10,
         section = modernChatStyleSection
     )
     @Alpha
@@ -265,7 +347,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_BorderColor",
         name = "Border Color",
         description = "Border color for the chat view",
-        position = 5,
+        position = 11,
         section = modernChatStyleSection
     )
     @Alpha
@@ -278,7 +360,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_InputPrefixColor",
         name = "Input Prefix Color",
         description = "Color for the input prefix name",
-        position = 6,
+        position = 12,
         section = modernChatStyleSection
     )
     @Alpha
@@ -291,7 +373,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_InputBackgroundColor",
         name = "Input Background Color",
         description = "Background color for the input field",
-        position = 7,
+        position = 13,
         section = modernChatStyleSection
     )
     @Alpha
@@ -304,7 +386,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_InputBorderColor",
         name = "Input Border Color",
         description = "Border color for the input field",
-        position = 8,
+        position = 14,
         section = modernChatStyleSection
     )
     @Alpha
@@ -317,7 +399,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_InputShadowColor",
         name = "Input Shadow Color",
         description = "Shadow color for the input field",
-        position = 9,
+        position = 15,
         section = modernChatStyleSection
     )
     @Alpha
@@ -330,7 +412,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_InputTextColor",
         name = "Input Text Color",
         description = "Text color for the input field",
-        position = 10,
+        position = 16,
         section = modernChatStyleSection
     )
     @Alpha
@@ -343,7 +425,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_InputCaretColor",
         name = "Input Caret Color",
         description = "Caret (cursor) color for the input field",
-        position = 11,
+        position = 17,
         section = modernChatStyleSection
     )
     @Alpha
@@ -353,22 +435,10 @@ public interface ModernChatConfig extends Config,
     }
 
     @ConfigItem(
-        keyName = "featureRedesign_TabFontSize",
-        name = "Tab Font Size",
-        description = "Font size for tabs in the tab bar",
-        position = 12,
-        section = modernChatStyleSection
-    )
-    @Override
-    default int featureRedesign_TabFontSize() {
-        return 16;
-    }
-
-    @ConfigItem(
         keyName = "featureRedesign_TabBarBackgroundColor",
         name = "Tab Bar Background Color",
         description = "Background color for the tab bar",
-        position = 13,
+        position = 18,
         section = modernChatStyleSection
     )
     @Alpha
@@ -381,7 +451,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabColor",
         name = "Tab Color",
         description = "Color for inactive tabs in the tab bar",
-        position = 14,
+        position = 19,
         section = modernChatStyleSection
     )
     @Alpha
@@ -394,7 +464,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabSelectedColor",
         name = "Tab Selected Color",
         description = "Color for the selected tab in the tab bar",
-        position = 15,
+        position = 20,
         section = modernChatStyleSection
     )
     @Alpha
@@ -407,7 +477,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabBorderColor",
         name = "Tab Border Color",
         description = "Border color for the tab bar",
-        position = 16,
+        position = 21,
         section = modernChatStyleSection
     )
     @Alpha
@@ -420,7 +490,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabBorderSelectedColor",
         name = "Tab Border Selected Color",
         description = "Border color for the selected tab in the tab bar",
-        position = 17,
+        position = 22,
         section = modernChatStyleSection
     )
     @Alpha
@@ -433,7 +503,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabTextColor",
         name = "Tab Text Color",
         description = "Text color for tabs in the tab bar",
-        position = 18,
+        position = 23,
         section = modernChatStyleSection
     )
     @Alpha
@@ -446,7 +516,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabUnreadPulseToColor",
         name = "Unread Pulse To Color",
         description = "Color to pulse to when a tab has unread messages",
-        position = 19,
+        position = 24,
         section = modernChatStyleSection
     )
     @Alpha
@@ -459,7 +529,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabUnreadPulseFromColor",
         name = "Unread Pulse From Color",
         description = "Color to pulse from when a tab has unread messages",
-        position = 20,
+        position = 25,
         section = modernChatStyleSection
     )
     @Alpha
@@ -472,7 +542,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabNotificationColor",
         name = "Tab Notification Color",
         description = "Color for the tab notification (e.g. when a new message arrives)",
-        position = 21,
+        position = 26,
         section = modernChatStyleSection
     )
     @Alpha
@@ -485,7 +555,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabNotificationTextColor",
         name = "Tab Notification Text Color",
         description = "Text color for the tab notification",
-        position = 22,
+        position = 27,
         section = modernChatStyleSection
     )
     @Alpha
@@ -498,7 +568,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabCloseButtonColor",
         name = "Tab Close Button Color",
         description = "Color for the tab close button",
-        position = 23,
+        position = 28,
         section = modernChatStyleSection
     )
     @Alpha
@@ -511,7 +581,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_TabCloseButtonTextColor",
         name = "Tab Close Text Color",
         description = "Text color for the tab close button",
-        position = 24,
+        position = 29,
         section = modernChatStyleSection
     )
     @Alpha
@@ -521,22 +591,10 @@ public interface ModernChatConfig extends Config,
     }
 
     @ConfigItem(
-        keyName = "featureRedesign_MessageContainer_DrawScrollbar",
-        name = "Draw Scrollbar",
-        description = "Draw a scrollbar in the message container",
-        position = 25,
-        section = modernChatStyleSection
-    )
-    @Override
-    default boolean featureRedesign_MessageContainer_DrawScrollbar() {
-        return true;
-    }
-
-    @ConfigItem(
         keyName = "featureRedesign_MessageContainer_OffsetX",
         name = "Message Offset X",
         description = "Horizontal offset for the message container",
-        position = 26,
+        position = 30,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -549,7 +607,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_OffsetY",
         name = "Message Offset Y",
         description = "Vertical offset for the message container",
-        position = 27,
+        position = 31,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -562,7 +620,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_Margin",
         name = "Message Margin",
         description = "Margin around the message container",
-        position = 28,
+        position = 32,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -575,7 +633,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_PaddingTop",
         name = "Message Padding Top",
         description = "Padding at the top of the message container",
-        position = 29,
+        position = 33,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -588,7 +646,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_PaddingLeft",
         name = "Message Padding Left",
         description = "Padding at the left of the message container",
-        position = 30,
+        position = 34,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -601,7 +659,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_PaddingBottom",
         name = "Message Padding Bottom",
         description = "Padding at the bottom of the message container",
-        position = 31,
+        position = 35,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -614,7 +672,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_PaddingRight",
         name = "Message Padding Right",
         description = "Padding at the right of the message container",
-        position = 32,
+        position = 36,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -625,9 +683,9 @@ public interface ModernChatConfig extends Config,
 
     @ConfigItem(
         keyName = "featureRedesign_MessageContainer_LineSpacing",
-        name = "Message Line Spacing",
+        name = "Message Spacing",
         description = "Spacing between lines in the message container",
-        position = 33,
+        position = 37,
         section = modernChatStyleSection
     )
     @Range(max = 100)
@@ -640,7 +698,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_ScrollStep",
         name = "Message Scroll Step",
         description = "Number of lines to scroll when using the mouse wheel",
-        position = 34,
+        position = 38,
         section = modernChatStyleSection
     )
     @Range(max = 120)
@@ -650,48 +708,10 @@ public interface ModernChatConfig extends Config,
     }
 
     @ConfigItem(
-        keyName = "featureRedesign_MessageContainer_ScrollbarWidth",
-        name = "Scrollbar Width",
-        description = "Width of the scrollbar in the message container",
-        position = 35,
-        section = modernChatStyleSection
-    )
-    @Range(max = 100)
-    @Override
-    default int featureRedesign_MessageContainer_ScrollbarWidth() {
-        return 8;
-    }
-
-    @ConfigItem(
-        keyName = "featureRedesign_MessageContainer_LineFontStyle",
-        name = "Message Font Style",
-        description = "Font style for messages in the message container",
-        position = 36,
-        section = modernChatStyleSection
-    )
-    @Override
-    default RuneFontStyle featureRedesign_MessageContainer_LineFontStyle() {
-        return RuneFontStyle.NORMAL;
-    }
-
-    @ConfigItem(
-        keyName = "featureRedesign_MessageContainer_LineFontSize",
-        name = "Message Font Size",
-        description = "Font size for messages in the message container",
-        position = 37,
-        section = modernChatStyleSection
-    )
-    @Range(max = 100)
-    @Override
-    default int featureRedesign_MessageContainer_LineFontSize() {
-        return 16;
-    }
-
-    @ConfigItem(
         keyName = "featureRedesign_MessageContainer_TextShadow",
         name = "Message Text Shadow",
         description = "Shadow effect for text in the message container",
-        position = 38,
+        position = 39,
         section = modernChatStyleSection
     )
     @Range(max = 32)
@@ -704,7 +724,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_BackdropColor",
         name = "Message Backdrop Color",
         description = "Color for the message container backdrop",
-        position = 39,
+        position = 40,
         section = modernChatStyleSection
     )
     @Alpha
@@ -717,7 +737,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_BorderColor",
         name = "Message Border Color",
         description = "Color for the message container border",
-        position = 40,
+        position = 41,
         section = modernChatStyleSection
     )
     @Alpha
@@ -730,7 +750,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_ShadowColor",
         name = "Message Shadow Color",
         description = "Shadow color for the message container",
-        position = 41,
+        position = 42,
         section = modernChatStyleSection
     )
     @Alpha
@@ -743,7 +763,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_ScrollbarTrackColor",
         name = "Scrollbar Track Color",
         description = "Color for the scrollbar track in the message container",
-        position = 42,
+        position = 43,
         section = modernChatStyleSection
     )
     @Alpha
@@ -756,7 +776,7 @@ public interface ModernChatConfig extends Config,
         keyName = "featureRedesign_MessageContainer_ScrollbarThumbColor",
         name = "Scrollbar Thumb Color",
         description = "Color for the scrollbar thumb in the message container",
-        position = 43,
+        position = 44,
         section = modernChatStyleSection
     )
     @Alpha
@@ -782,6 +802,7 @@ public interface ModernChatConfig extends Config,
         position = 0,
         section = generalSection
     )
+    @Override
     default boolean general_AnchorPrivateChat() {
         return true;
     }
@@ -795,6 +816,7 @@ public interface ModernChatConfig extends Config,
     )
     @Range(min = -500, max = 500)
     @Units(Units.PIXELS)
+    @Override
     default int general_AnchorPrivateChatOffsetX() {
         return 0;
     }
@@ -808,6 +830,7 @@ public interface ModernChatConfig extends Config,
     )
     @Range(min = -500, max = 500)
     @Units(Units.PIXELS)
+    @Override
     default int general_AnchorPrivateChatOffsetY() {
         return 0;
     }
@@ -820,6 +843,7 @@ public interface ModernChatConfig extends Config,
         position = 3,
         section = generalSection
     )
+    @Override
     default Color general_PublicChatColor() {
         return Color.WHITE;
     }
@@ -832,6 +856,7 @@ public interface ModernChatConfig extends Config,
         position = 4,
         section = generalSection
     )
+    @Override
     default Color general_FriendsChatColor() {
         return new Color(0x00FF80); // light green
     }
@@ -844,6 +869,7 @@ public interface ModernChatConfig extends Config,
         position = 5,
         section = generalSection
     )
+    @Override
     default Color general_ClanChatColor() {
         return new Color(0x80C0FF); // light blue
     }
@@ -856,6 +882,7 @@ public interface ModernChatConfig extends Config,
         position = 6,
         section = generalSection
     )
+    @Override
     default Color general_PrivateChatColor() {
         return new Color(0xFF80FF); // light purple
     }
@@ -868,6 +895,7 @@ public interface ModernChatConfig extends Config,
         position = 7,
         section = generalSection
     )
+    @Override
     default Color general_SystemChatColor() {
         return new Color(0xCFCFCF); // light gray
     }
@@ -880,6 +908,7 @@ public interface ModernChatConfig extends Config,
         position = 8,
         section = generalSection
     )
+    @Override
     default Color general_WelcomeChatColor() {
         return Color.WHITE;
     }
@@ -892,6 +921,7 @@ public interface ModernChatConfig extends Config,
         position = 9,
         section = generalSection
     )
+    @Override
     default Color general_TradeChatColor() {
         return Color.ORANGE;
     }
@@ -1077,10 +1107,9 @@ public interface ModernChatConfig extends Config,
         position = 8,
         section = peekOverlaySection
     )
-    @Units(Units.PIXELS)
     @Override
-    default RuneFontStyle featurePeek_FontStyle() {
-        return RuneFontStyle.NORMAL;
+    default FontStyle featurePeek_FontStyle() {
+        return FontStyle.RUNE_REG;
     }
 
     @ConfigItem(

@@ -1,6 +1,7 @@
 package com.modernchat.overlay;
 
 import com.modernchat.common.ChatMode;
+import com.modernchat.common.FontStyle;
 import com.modernchat.draw.Padding;
 
 import java.awt.Color;
@@ -20,6 +21,12 @@ public interface ChatOverlayConfig
     boolean isClickOutsideToClose();
 
     boolean isShowNotificationBadge();
+
+    boolean isAllowClickThrough();
+
+    boolean isHelperNotifications();
+
+    FontStyle getFontStyle();
 
     Padding getPadding();
 
@@ -46,6 +53,8 @@ public interface ChatOverlayConfig
     Color getTabBarBackgroundColor();
 
     int getTabFontSize();
+
+    int getTabBadgeFontSize();
 
     Color getTabColor();
 
@@ -111,6 +120,21 @@ public interface ChatOverlayConfig
         }
 
         @Override
+        public boolean isHelperNotifications() {
+            return true;
+        }
+
+        @Override
+        public boolean isAllowClickThrough() {
+            return true;
+        }
+
+        @Override
+        public FontStyle getFontStyle() {
+            return FontStyle.RUNE_REG;
+        }
+
+        @Override
         public Padding getPadding() {
             return new Padding(8);
         }
@@ -168,6 +192,11 @@ public interface ChatOverlayConfig
         @Override
         public int getTabFontSize() {
             return 16;
+        }
+
+        @Override
+        public int getTabBadgeFontSize() {
+            return 12;
         }
 
         @Override

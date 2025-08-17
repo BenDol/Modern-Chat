@@ -1,7 +1,7 @@
 package com.modernchat.overlay;
 
 import com.modernchat.common.ChatMode;
-import com.modernchat.common.RuneFontStyle;
+import com.modernchat.common.FontStyle;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
 import com.modernchat.draw.RichLine;
@@ -9,6 +9,7 @@ import com.modernchat.draw.RowHit;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
+import com.modernchat.service.FontService;
 import com.modernchat.util.ColorUtil;
 import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
@@ -20,7 +21,6 @@ import net.runelite.api.Point;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.input.MouseWheelListener;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -52,6 +52,7 @@ public class MessageContainer extends Overlay
     private static final int SCROLL_TO_BOTTOM_SENTINEL = Integer.MAX_VALUE;
 
     @Inject private MouseManager mouseManager;
+    @Inject private FontService fontService;
 
     // Config
     @Getter private MessageContainerConfig config;
@@ -67,7 +68,7 @@ public class MessageContainer extends Overlay
 
     private final Deque<RichLine> lines = new ArrayDeque<>();
     private Font lineFont = null;
-    private RuneFontStyle lineFontStyle = null;
+    private FontStyle lineFontStyle = null;
 
     // Viewport and scrolling
     private Rectangle lastViewport = null;                 // full container viewport
@@ -254,19 +255,10 @@ public class MessageContainer extends Overlay
     private Font getLineFont() {
         if (lineFontStyle == null || lineFontStyle != config.getLineFontStyle()) {
             lineFontStyle = config.getLineFontStyle();
-            switch (lineFontStyle) {
-                case NORMAL:
-                    lineFont = FontManager.getRunescapeFont();
-                    break;
-                case SMALL:
-                    lineFont = FontManager.getRunescapeSmallFont();
-                    break;
-                case BOLD:
-                    lineFont = FontManager.getRunescapeBoldFont();
-                    break;
-            }
+            lineFont = null;
         }
-        if (lineFont == null) lineFont = FontManager.getRunescapeFont();
+        if (lineFont == null)
+            lineFont = fontService.getFont(lineFontStyle != null ? lineFontStyle : FontStyle.RUNE_REG);
         return lineFont;
     }
 

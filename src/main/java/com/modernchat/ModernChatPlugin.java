@@ -22,7 +22,9 @@ import com.modernchat.feature.MessageHistoryChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.PeekChatFeature;
+import com.modernchat.service.FontService;
 import com.modernchat.service.PrivateChatService;
+import com.modernchat.service.ProfileService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.ChatUtil;
@@ -56,16 +58,22 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import java.awt.Color;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 @Slf4j
 @PluginDescriptor(
@@ -77,10 +85,13 @@ public class ModernChatPlugin extends Plugin {
 
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
+	@Inject private ClientToolbar clientToolbar;
 	@Inject private EventBus eventBus;
 	@Inject private ConfigManager configManager;
 	@Inject private ChatMessageManager chatMessageManager;
+	@Inject private FontService fontService;
 	@Inject private MessageService messageService;
+	@Inject private ProfileService profileService;
 	@Inject private ModernChatConfig config;
 	@Inject private PrivateChatService privateChatService;
 	@Inject private WidgetBucket widgetBucket;
@@ -92,6 +103,9 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private CommandsChatFeature commandsChatFeature;
 	@Inject private MessageHistoryChatFeature messageHistoryChatFeature;
 	@Inject private ChatRedesignFeature chatRedesignFeature;
+
+	private ModernChatPanel panel;
+	private NavigationButton navButton;
 
 	private Set<ChatFeature<?>> features;
 	private volatile boolean chatVisible = false;
@@ -105,6 +119,26 @@ public class ModernChatPlugin extends Plugin {
 
 	@Override
 	protected void startUp() {
+		profileService.startUp();
+		panel = new ModernChatPanel(profileService, configManager);
+
+		fontService.startUp();
+
+		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/modernchat/images/icon.png");
+		if (icon == null) {
+			// Fallback: 16x16 transparent
+			icon = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+		}
+
+		navButton = NavigationButton.builder()
+			.tooltip("Modern Chat")
+			.icon(icon)
+			.priority(5)
+			.panel(panel)
+			.build();
+
+		clientToolbar.addNavigation(navButton);
+
 		features = new HashSet<>();
 		//addFeature(exampleChatFeature);
 		addFeature(chatRedesignFeature);
@@ -133,13 +167,23 @@ public class ModernChatPlugin extends Plugin {
 
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
-				showInstallMessage();
+				startInstallIntro();
 			}
 		}
 	}
 
 	@Override
 	protected void shutDown() {
+		if (navButton != null) {
+			clientToolbar.removeNavigation(navButton);
+			navButton = null;
+		}
+		if (panel != null) {
+			panel.onClose();
+			panel = null;
+		}
+		profileService.shutDown();
+
 		if (features != null) {
 			features.forEach((feature) -> {
 				try {
@@ -252,7 +296,7 @@ public class ModernChatPlugin extends Plugin {
 				return;
 
 			if (e.getValue() == 0 && config.general_AnchorPrivateChat()) {
-				messageService.pushChatMessage("Split PM chat was disabled, resetting anchor.");
+				messageService.pushHelperNotification("Split PM chat was disabled, resetting anchor.");
 				resetSplitPmAnchor();
 			}
 		}
@@ -269,7 +313,7 @@ public class ModernChatPlugin extends Plugin {
 
 		if (key.endsWith("AnchorPrivateChat")) {
 			if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
-				messageService.pushChatMessage(new ChatMessageBuilder()
+				messageService.pushHelperNotification(new ChatMessageBuilder()
 					.append("Please enable ")
 					.append(Color.ORANGE, "Split friends private chat")
 					.append(" in the OSRS settings for the 'Anchor Private Chat' feature."));
@@ -363,7 +407,7 @@ public class ModernChatPlugin extends Plugin {
 			if (!config.featureExample_Enabled()) {
 				Player localPlayer = client.getLocalPlayer();
 				if (localPlayer != null) {
-					showInstallMessage();
+					startInstallIntro();
 				}
 			}
 		}
@@ -449,6 +493,28 @@ public class ModernChatPlugin extends Plugin {
 		if (pmAnchor != null) {
 			pmAnchor.reset(pmParent);
 		}
+	}
+
+	private void startInstallIntro() {
+		showInstallMessage();
+
+		new Timer().schedule(new TimerTask() {
+			@Override
+			public void run() {
+				/*messageService.showQuestionConfirmDialog(
+					"Modern Chat Plugin",
+					"Welcome to the Modern Chat plugin! Would you like to continue using the modern chat design?\n\n(Can be enabled/disabled in the settings at any time)",
+					(choice) -> {
+						if (choice == 0) {
+							clientThread.invokeLater(() -> {
+								toggleChatFeature.scheduleDeferredHide();
+							});
+						} else {
+							log.info("User declined to learn more about Modern Chat features.");
+						}
+					});*/
+			}
+		}, 8000); // Show after 5 seconds to allow initial login and chat setup
 	}
 
 	private void showInstallMessage() {
