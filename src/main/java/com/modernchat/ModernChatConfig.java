@@ -651,7 +651,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Range(min = -500, max = 500)
     @Override
     default int featureRedesign_MessageContainer_PaddingTop() {
-        return 2;
+        return 4;
     }
 
     @ConfigItem(
@@ -664,7 +664,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Range(min = -500, max = 500)
     @Override
     default int featureRedesign_MessageContainer_PaddingLeft() {
-        return 2;
+        return 5;
     }
 
     @ConfigItem(
