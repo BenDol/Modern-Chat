@@ -4,6 +4,7 @@
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/a6H9e2_dk3s/0.jpg)](https://www.youtube.com/watch?v=a6H9e2_dk3s)
 
+[modern-chat-input.webm](https://github.com/user-attachments/assets/c5a8e472-12b4-4420-a2be-924fe8977a51)
 
 [Chat Toggle](https://github.com/user-attachments/assets/60398bed-d005-4f74-91b9-3988c2187ce2)
 
@@ -46,6 +47,7 @@ _Note: Previous / next keybinds can be configured in the settings_
 _Note: Private chats can be closed using **Escape** key or submitting an empty message_
 
 ---
+
 
 
 
