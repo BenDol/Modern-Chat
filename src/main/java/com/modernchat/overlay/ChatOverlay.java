@@ -1551,7 +1551,7 @@ public class ChatOverlay extends OverlayPanel
         eventBus.post(new ChatResizedEvent(width, height));
     }
 
-    private void resetChatbox() {
+    public void resetChatbox() {
         Widget chatViewport = widgetBucket.getChatboxViewportWidget();
         if (chatViewport != null && !chatViewport.isHidden()) {
             chatViewport.setOriginalHeight(165);

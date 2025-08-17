@@ -11,12 +11,14 @@ import com.modernchat.event.ChatResizedEvent;
 import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
+import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatOverlayConfig;
 import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.StringUtil;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -30,6 +32,7 @@ import net.runelite.api.events.FriendsChatChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.callback.ClientThread;
@@ -125,6 +128,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private ChatOverlay overlay;
 
     private final ModernChatConfig mainConfig;
+
+    @Getter private boolean sizeApplied;
 
     @Inject
     public ChatRedesignFeature(ModernChatConfig config, EventBus eventBus) {
@@ -301,6 +306,13 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     }
 
     @Subscribe
+    public void onModernChatVisibilityChangeEvent(ModernChatVisibilityChangeEvent e) {
+        // load on the first show to avoid legacy chat size bricking the original view
+        if (e.isVisible() && !sizeApplied)
+            loadChatSize();
+    }
+
+    @Subscribe
     public void onChatResizedEvent(ChatResizedEvent e) {
         configManager.setRSProfileConfiguration(GROUP, CHAT_WIDTH, e.getWidth());
         configManager.setRSProfileConfiguration(GROUP, CHAT_HEIGHT, e.getHeight());
@@ -309,7 +321,10 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Subscribe
     public void onProfileChanged(ProfileChanged e) {
         // When the profile changes, we need to refresh
-        loadChatSize();
+        if (!overlay.isHidden())
+            loadChatSize();
+        else
+            sizeApplied = false;
     }
 
     @Subscribe
@@ -353,13 +368,21 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         // If the chatbox is loaded, we can suppress original message lines
         if (e.getGroupId() == InterfaceID.CHATBOX) {
             clientThread.invoke(() -> overlay.hideLegacyChat(false));
+            //clientThread.invokeAtTickEnd(this::loadChatSize);
+        }
+    }
+
+    @Subscribe
+    public void onWidgetClosed(WidgetClosed e) {
+        // If the chatbox is loaded, we can suppress original message lines
+        if (e.getGroupId() == InterfaceID.CHATBOX) {
+            clientThread.invoke(() -> overlay.resetChatbox());
         }
     }
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged e) {
         if (e.getGameState() == GameState.LOGGED_IN) {
-            clientThread.invokeAtTickEnd(this::loadChatSize);
             clientThread.invoke(() -> overlay.hideLegacyChat(false));
         }
 
