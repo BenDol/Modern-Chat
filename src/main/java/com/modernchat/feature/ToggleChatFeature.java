@@ -186,7 +186,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	@Subscribe
 	public void onModernChatVisibilityChangeEvent(ModernChatVisibilityChangeEvent e) {
-		//chatHidden.set(!e.isVisible());
+		chatHidden.set(!e.isVisible());
 		cancelDeferredHide();
 	}
 
