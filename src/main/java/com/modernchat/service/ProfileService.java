@@ -200,10 +200,12 @@ public class ProfileService implements ChatService
     }
 
     public static void applyProfileToConfig(ConfigManager cm, ModernChatConfigBase cfg) {
-        final String G = GROUP;
         for (Field k : ModernChatConfigBase.Field.values()) {
+            if (k.key.equals(Field.FEATURE_EXAMPLE.key))
+                continue; // skip example feature, not a real config key
+
             Object v = k.read(cfg);
-            setCfg(cm, G, k.key, v);
+            setCfg(cm, GROUP, k.key, v);
         }
     }
 
