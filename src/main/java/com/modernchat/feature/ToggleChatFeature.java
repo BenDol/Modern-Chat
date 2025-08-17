@@ -4,6 +4,7 @@ import com.modernchat.ModernChatConfig;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -186,8 +187,11 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	@Subscribe
 	public void onModernChatVisibilityChangeEvent(ModernChatVisibilityChangeEvent e) {
-		chatHidden.set(!e.isVisible());
-		cancelDeferredHide();
+		clientThread.invoke(() -> {
+			if (!e.isVisible() && widgetBucket.getChatWidget().isHidden())
+				chatHidden.set(true);
+			cancelDeferredHide();
+		});
 	}
 
 	@Subscribe
