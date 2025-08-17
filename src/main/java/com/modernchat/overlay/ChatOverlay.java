@@ -11,6 +11,7 @@ import com.modernchat.draw.RowHit;
 import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
+import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ChatMessageSentEvent;
 import com.modernchat.event.ChatPrivateMessageSentEvent;
 import com.modernchat.event.ChatResizedEvent;
@@ -1004,7 +1005,6 @@ public class ChatOverlay extends OverlayPanel
                         focusInput();
                     });
             }
-            return;
         }
 
         // Tab bar menu
@@ -1045,6 +1045,8 @@ public class ChatOverlay extends OverlayPanel
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> hovered.setUnread(0));
         }
+
+        eventBus.post(new ChatMenuOpenedEvent());
     }
 
     private String getLocalPlayerName() {

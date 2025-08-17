@@ -4,6 +4,7 @@ import com.modernchat.ModernChatConfig;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.ChatColors;
+import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.overlay.ChatPeekOverlay;
 import com.modernchat.util.ChatUtil;
@@ -129,6 +130,11 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		if (pmWidget != null) {
 			pmWidget.setHidden(false);
 		}
+	}
+
+	@Subscribe
+	public void onChatMenuOpenedEvent(ChatMenuOpenedEvent e) {
+		tryAddClearPeekMessagesMenuOption(client.getMenu().getMenuEntries());
 	}
 
 	@Subscribe
