@@ -239,8 +239,10 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void shutDown() {
-        setHidden(true);
-        clientThread.invoke(this::resetChatbox);
+        clientThread.invoke(() -> {
+            setHidden(true);
+            resetChatbox();
+        });
 
         reset();
         unregisterMouseListener();
@@ -1526,10 +1528,6 @@ public class ChatOverlay extends OverlayPanel
         if (chatViewport == null)
             return;
 
-        Widget chatFrame = widgetBucket.getChatBoxArea();
-        if (chatFrame == null)
-            return;
-
         Widget chatboxParent = widgetBucket.getChatParentWidget();
         if (chatboxParent == null)
             return;
@@ -1543,7 +1541,6 @@ public class ChatOverlay extends OverlayPanel
         chatboxParent.setOriginalWidth(chatViewport.getOriginalWidth());
 
         chatboxParent.revalidate();
-        chatFrame.revalidate();
         chatViewport.revalidate();
 
         client.refreshChat();

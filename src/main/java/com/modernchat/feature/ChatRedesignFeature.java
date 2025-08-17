@@ -359,8 +359,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Subscribe
     public void onGameStateChanged(GameStateChanged e) {
         if (e.getGameState() == GameState.LOGGED_IN) {
-            loadChatSize();
-
+            clientThread.invokeAtTickEnd(this::loadChatSize);
             clientThread.invoke(() -> overlay.hideLegacyChat(false));
         }
 
