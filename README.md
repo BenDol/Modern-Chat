@@ -1,5 +1,8 @@
 # Modern Chat
 
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/a6H9e2_dk3s/0.jpg)](https://www.youtube.com/watch?v=a6H9e2_dk3s)
+
+
 [Chat Toggle](https://github.com/user-attachments/assets/60398bed-d005-4f74-91b9-3988c2187ce2)
 
 _Note: Keystrokes are **NOT** captured in the chat input while the chat is hidden_
@@ -41,6 +44,7 @@ _Note: Previous / next keybinds can be configured in the settings_
 _Note: Private chats can be closed using **Escape** key or submitting an empty message_
 
 ---
+
 
 
 
