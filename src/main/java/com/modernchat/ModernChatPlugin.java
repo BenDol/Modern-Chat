@@ -162,14 +162,14 @@ public class ModernChatPlugin extends Plugin {
 		// Force an initial re-anchor if enabled once widgets are available
 		lastChatBounds = null;
 
-		//if (!config.featureExample_Enabled()) {
+		if (!config.featureExample_Enabled()) {
 			toggleChatFeature.scheduleDeferredHide();
 
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
 				startInstallIntro();
 			}
-		//}
+		}
 	}
 
 	@Override
@@ -281,7 +281,7 @@ public class ModernChatPlugin extends Plugin {
 	}
 
 	private void onPrivateMessageRightClick(String target) {
-		log.info("Private message right-clicked: {}", target);
+		log.debug("Private message right-clicked: {}", target);
 		String cleanedTarget = Text.removeTags(target);
 		int index = cleanedTarget.indexOf(" (");
 		if (index != -1)
