@@ -194,7 +194,7 @@ public class MessageService
     }
 
     public void pushHelperNotification(ChatMessageBuilder builder) {
-        if (!config.featureRedesign_HelperNotifications())
+        if (!config.general_HelperNotifications())
             return;
 
         pushChatMessage(builder);

@@ -24,7 +24,9 @@ public interface ChatOverlayConfig
 
     boolean isAllowClickThrough();
 
-    boolean isHelperNotifications();
+    boolean isAutoSelectPrivateTab();
+
+    boolean isResizeable();
 
     FontStyle getFontStyle();
 
@@ -120,12 +122,17 @@ public interface ChatOverlayConfig
         }
 
         @Override
-        public boolean isHelperNotifications() {
+        public boolean isAllowClickThrough() {
             return true;
         }
 
         @Override
-        public boolean isAllowClickThrough() {
+        public boolean isAutoSelectPrivateTab() {
+            return false;
+        }
+
+        @Override
+        public boolean isResizeable() {
             return true;
         }
 

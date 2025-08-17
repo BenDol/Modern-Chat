@@ -6,6 +6,8 @@ import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.ChatColors;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.overlay.ChatPeekOverlay;
+import com.modernchat.util.ChatUtil;
+import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -179,15 +181,52 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Subscribe
 	public void onChatMessage(ChatMessage e) {
 		Player localPlayer = client.getLocalPlayer();
-		ChatMessageType type = e.getType();
-		String name = (type == ChatMessageType.PRIVATECHATOUT
-			? (localPlayer != null ? localPlayer.getName() : "You")
-			: e.getName());
-		String msg = e.getMessage();
-		String line = (name != null && !name.isEmpty()) ? name + ": " + msg : msg;
+		if (localPlayer == null)
+			return;
+
+		String localPlayerName = localPlayer.getName();
+		if (StringUtil.isNullOrEmpty(localPlayerName))
+			return;
+
 		long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() : System.currentTimeMillis();
 
-		chatPeekOverlay.pushLine(line, type, timestamp);
+		ChatMessageType type = e.getType();
+		String msg = e.getMessage();
+		String name = e.getName();
+		String receiverName = null;
+		String senderName = e.getSender();
+		String prefix = "";
+
+		if (type == ChatMessageType.PRIVATECHATOUT) {
+			receiverName = name;
+			senderName = "You";
+		}
+		else if (type == ChatMessageType.PRIVATECHAT) {
+			receiverName = localPlayerName;
+			senderName = name;
+		}
+		else if (ChatUtil.isClanMessage(type) || ChatUtil.isFriendsChatMessage(type)) {
+			senderName = name;
+			prefix = e.getSender() != null ? "(" + e.getSender() + ") " : "";
+		}
+		else if (senderName == null) {
+			senderName = name;
+		}
+
+		if (receiverName == null) {
+			receiverName = localPlayerName;
+		}
+
+		if (type == ChatMessageType.DIALOG) {
+			msg = msg.replaceFirst("\\|", ": ");
+		}
+
+		String line = (senderName != null && !senderName.isEmpty()) ? senderName + ": " + msg : msg;
+
+		log.debug("Chat message received: type={}, sender={}, receiver={}, message={}",
+			type, senderName, receiverName, line);
+
+		chatPeekOverlay.pushLine(line, type, timestamp/*, senderName, receiverName, prefix*/);
 	}
 
 	@Subscribe

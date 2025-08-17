@@ -67,7 +67,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         boolean featureRedesign_ClickOutsideToClose();
         boolean featureRedesign_ShowNotificationBadge();
         boolean featureRedesign_AllowClickThrough();
-        boolean featureRedesign_HelperNotifications();
+        boolean featureRedesign_AutoSelectPrivateTab();
+        boolean featureRedesign_Resizeable();
         ChatMode featureRedesign_DefaultChatMode();
         FontStyle featureRedesign_FontStyle();
         int featureRedesign_Padding();
@@ -150,7 +151,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean featureRedesign_ClickOutsideToClose() { return cfg.featureRedesign_ClickOutsideToClose(); }
             @Override public boolean featureRedesign_ShowNotificationBadge() { return cfg.featureRedesign_ShowNotificationBadge(); }
             @Override public boolean featureRedesign_AllowClickThrough() { return cfg.featureRedesign_AllowClickThrough(); }
-            @Override public boolean featureRedesign_HelperNotifications() { return cfg.featureRedesign_HelperNotifications(); }
+            @Override public boolean featureRedesign_AutoSelectPrivateTab() { return cfg.featureRedesign_AutoSelectPrivateTab(); }
+            @Override public boolean featureRedesign_Resizeable() { return cfg.featureRedesign_Resizeable(); }
             @Override public FontStyle featureRedesign_FontStyle() { return cfg.featureRedesign_FontStyle(); }
             @Override public int featureRedesign_Padding() { return cfg.featureRedesign_Padding(); }
             @Override public int featureRedesign_InputFontSize() { return cfg.featureRedesign_InputFontSize(); }
@@ -210,7 +212,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean isStartHidden() { return mainConfig.featureToggle_StartHidden(); }
             @Override public boolean isShowNotificationBadge() { return cfg.featureRedesign_ShowNotificationBadge(); }
             @Override public boolean isAllowClickThrough() { return cfg.featureRedesign_AllowClickThrough(); }
-            @Override public boolean isHelperNotifications() { return cfg.featureRedesign_HelperNotifications(); }
+            @Override public boolean isAutoSelectPrivateTab() { return cfg.featureRedesign_AutoSelectPrivateTab(); }
+            @Override public boolean isResizeable() { return cfg.featureRedesign_Resizeable(); }
             @Override public FontStyle getFontStyle() { return cfg.featureRedesign_FontStyle(); }
             @Override public Padding getPadding() { return new Padding(cfg.featureRedesign_Padding()); }
             @Override public boolean isOpenTabOnIncomingPM() { return cfg.featureRedesign_OpenTabOnIncomingPM(); }
@@ -435,6 +438,10 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
         if (receiverName == null) {
             receiverName = localPlayerName;
+        }
+
+        if (type == ChatMessageType.DIALOG) {
+            msg = msg.replaceFirst("\\|", ": ");
         }
 
         String line = (senderName != null && !senderName.isEmpty()) ? senderName + ": " + msg : msg;

@@ -54,11 +54,12 @@ public interface ModernChatConfigBase extends
         String featureRedesign_OpenTabOnIncomingPM = "featureRedesign_OpenTabOnIncomingPM";
         String featureRedesign_MessageContainer_PrefixChatType = "featureRedesign_MessageContainer_PrefixChatType";
         String featureRedesign_MessageContainer_ShowTimestamp = "featureRedesign_MessageContainer_ShowTimestamp";
+        String featureRedesign_Resizeable = "featureRedesign_Resizeable";
         String featureRedesign_MessageContainer_Scrollable = "featureRedesign_MessageContainer_Scrollable";
         String featureRedesign_ClickOutsideToClose = "featureRedesign_ClickOutsideToClose";
         String featureRedesign_ShowNotificationBadge = "featureRedesign_ShowNotificationBadge";
         String featureRedesign_AllowClickThrough = "featureRedesign_AllowClickThrough";
-        String featureRedesign_HelperNotifications = "featureRedesign_HelperNotifications";
+        String featureRedesign_AutoSelectPrivateTab = "featureRedesign_AutoSelectPrivateTab";
 
         // Style: fonts & sizes
         String featureRedesign_FontStyle = "featureRedesign_FontStyle";
@@ -116,6 +117,7 @@ public interface ModernChatConfigBase extends
         String general_AnchorPrivateChat = "general_AnchorPrivateChat";
         String general_AnchorPrivateChatOffsetX = "general_AnchorPrivateChatOffsetX";
         String general_AnchorPrivateChatOffsetY = "general_AnchorPrivateChatOffsetY";
+        String general_HelperNotifications = "general_HelperNotifications";
         String general_PublicChatColor   = "general_PublicChatColor";
         String general_FriendsChatColor  = "general_FriendsChatColor";
         String general_ClanChatColor     = "general_ClanChatColor";
@@ -182,11 +184,12 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_OPEN_TAB_ON_INCOMING_PM(Keys.featureRedesign_OpenTabOnIncomingPM, Kind.BOOL, ModernChatConfigBase::featureRedesign_OpenTabOnIncomingPM),
         FEATURE_REDESIGN_PREFIX_CHAT_TYPE(Keys.featureRedesign_MessageContainer_PrefixChatType, Kind.BOOL, ModernChatConfigBase::featureRedesign_MessageContainer_PrefixChatType),
         FEATURE_REDESIGN_SHOW_TIMESTAMP(Keys.featureRedesign_MessageContainer_ShowTimestamp, Kind.BOOL, ModernChatConfigBase::featureRedesign_MessageContainer_ShowTimestamp),
+        FEATURE_REDESIGN_RESIZEABLE(Keys.featureRedesign_Resizeable, Kind.BOOL, ModernChatConfigBase::featureRedesign_Resizeable),
         FEATURE_REDESIGN_SCROLLABLE(Keys.featureRedesign_MessageContainer_Scrollable, Kind.BOOL, ModernChatConfigBase::featureRedesign_MessageContainer_Scrollable),
         FEATURE_REDESIGN_CLICK_OUTSIDE_TO_CLOSE(Keys.featureRedesign_ClickOutsideToClose, Kind.BOOL, ModernChatConfigBase::featureRedesign_ClickOutsideToClose),
         FEATURE_REDESIGN_SHOW_BADGE(Keys.featureRedesign_ShowNotificationBadge, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowNotificationBadge),
         FEATURE_REDESIGN_ALLOW_CLICK_THROUGH(Keys.featureRedesign_AllowClickThrough, Kind.BOOL, ModernChatConfigBase::featureRedesign_AllowClickThrough),
-        FEATURE_REDESIGN_HELPER_NOTIFICATIONS(Keys.featureRedesign_HelperNotifications, Kind.BOOL, ModernChatConfigBase::featureRedesign_HelperNotifications),
+        FEATURE_REDESIGN_AUTO_SELECT_PRIVATE_TAB(Keys.featureRedesign_AutoSelectPrivateTab, Kind.BOOL, ModernChatConfigBase::featureRedesign_AutoSelectPrivateTab),
 
         // ---- Style: fonts & sizes ----
         FEATURE_REDESIGN_FONT_STYLE(Keys.featureRedesign_FontStyle, FontStyle.class, ModernChatConfigBase::featureRedesign_FontStyle),
@@ -246,6 +249,7 @@ public interface ModernChatConfigBase extends
         GENERAL_ANCHOR_PM(Keys.general_AnchorPrivateChat, Kind.BOOL, ModernChatConfigBase::general_AnchorPrivateChat),
         GENERAL_ANCHOR_PM_OFFSET_X(Keys.general_AnchorPrivateChatOffsetX, Kind.INT, ModernChatConfigBase::general_AnchorPrivateChatOffsetX),
         GENERAL_ANCHOR_PM_OFFSET_Y(Keys.general_AnchorPrivateChatOffsetY, Kind.INT, ModernChatConfigBase::general_AnchorPrivateChatOffsetY),
+        GENERAL_HELPER_NOTIFICATIONS(Keys.general_HelperNotifications, Kind.BOOL, ModernChatConfigBase::general_HelperNotifications),
         GENERAL_PUBLIC_COLOR(Keys.general_PublicChatColor, Kind.COLOR, ModernChatConfigBase::general_PublicChatColor),
         GENERAL_FRIENDS_COLOR(Keys.general_FriendsChatColor, Kind.COLOR, ModernChatConfigBase::general_FriendsChatColor),
         GENERAL_CLAN_COLOR(Keys.general_ClanChatColor, Kind.COLOR, ModernChatConfigBase::general_ClanChatColor),
@@ -333,6 +337,7 @@ public interface ModernChatConfigBase extends
     boolean general_AnchorPrivateChat();
     int general_AnchorPrivateChatOffsetX();
     int general_AnchorPrivateChatOffsetY();
+    boolean general_HelperNotifications();
     Color general_PublicChatColor();
     Color general_FriendsChatColor();
     Color general_ClanChatColor();
@@ -399,6 +404,133 @@ public interface ModernChatConfigBase extends
         public ModernChatProfile(JsonObject src) {
             this.obj = Objects.requireNonNull(src);
         }
+
+        // ModernChatConfigBase overrides using centralized Keys
+
+        @Override public boolean featureExample_Enabled() { return true; }
+
+        // Modern design
+        @Override public boolean featureRedesign_Enabled() { return getBool(Keys.featureRedesign_Enabled, DEFAULTS.featureRedesign_Enabled()); }
+        @Override public ChatMode featureRedesign_DefaultChatMode() { return getEnum(Keys.featureRedesign_DefaultChatMode, DEFAULTS.featureRedesign_DefaultChatMode(), ChatMode.class); }
+        @Override public boolean featureRedesign_OpenTabOnIncomingPM() { return getBool(Keys.featureRedesign_OpenTabOnIncomingPM, DEFAULTS.featureRedesign_OpenTabOnIncomingPM()); }
+        @Override public boolean featureRedesign_MessageContainer_PrefixChatType() { return getBool(Keys.featureRedesign_MessageContainer_PrefixChatType, DEFAULTS.featureRedesign_MessageContainer_PrefixChatType()); }
+        @Override public boolean featureRedesign_MessageContainer_ShowTimestamp() { return getBool(Keys.featureRedesign_MessageContainer_ShowTimestamp, DEFAULTS.featureRedesign_MessageContainer_ShowTimestamp()); }
+        @Override public boolean featureRedesign_Resizeable() { return getBool(Keys.featureRedesign_Resizeable, DEFAULTS.featureRedesign_Resizeable()); }
+        @Override public boolean featureRedesign_MessageContainer_Scrollable() { return getBool(Keys.featureRedesign_MessageContainer_Scrollable, DEFAULTS.featureRedesign_MessageContainer_Scrollable()); }
+        @Override public boolean featureRedesign_ClickOutsideToClose() { return getBool(Keys.featureRedesign_ClickOutsideToClose, DEFAULTS.featureRedesign_ClickOutsideToClose()); }
+        @Override public boolean featureRedesign_ShowNotificationBadge() { return getBool(Keys.featureRedesign_ShowNotificationBadge, DEFAULTS.featureRedesign_ShowNotificationBadge()); }
+        @Override public boolean featureRedesign_AllowClickThrough() { return getBool(Keys.featureRedesign_AllowClickThrough, DEFAULTS.featureRedesign_AllowClickThrough()); }
+        @Override public boolean featureRedesign_AutoSelectPrivateTab() { return getBool(Keys.featureRedesign_AutoSelectPrivateTab, DEFAULTS.featureRedesign_AutoSelectPrivateTab()); }
+
+        // Style: fonts & sizes
+        @Override public FontStyle featureRedesign_FontStyle() { return getEnum(Keys.featureRedesign_FontStyle, DEFAULTS.featureRedesign_FontStyle(), FontStyle.class); }
+        @Override public int featureRedesign_InputFontSize() { return getInt(Keys.featureRedesign_InputFontSize, DEFAULTS.featureRedesign_InputFontSize()); }
+        @Override public int featureRedesign_TabFontSize() { return getInt(Keys.featureRedesign_TabFontSize, DEFAULTS.featureRedesign_TabFontSize()); }
+        @Override public int featureRedesign_TabBadgeFontSize() { return getInt(Keys.featureRedesign_TabBadgeFontSize, DEFAULTS.featureRedesign_TabBadgeFontSize()); }
+        @Override public FontStyle featureRedesign_MessageContainer_LineFontStyle() { return getEnum(Keys.featureRedesign_MessageContainer_LineFontStyle, DEFAULTS.featureRedesign_MessageContainer_LineFontStyle(), FontStyle.class); }
+        @Override public int featureRedesign_MessageContainer_LineFontSize() { return getInt(Keys.featureRedesign_MessageContainer_LineFontSize, DEFAULTS.featureRedesign_MessageContainer_LineFontSize()); }
+
+        // Layout / metrics
+        @Override public int featureRedesign_Padding() { return getInt(Keys.featureRedesign_Padding, DEFAULTS.featureRedesign_Padding()); }
+        @Override public boolean featureRedesign_MessageContainer_DrawScrollbar() { return getBool(Keys.featureRedesign_MessageContainer_DrawScrollbar, DEFAULTS.featureRedesign_MessageContainer_DrawScrollbar()); }
+        @Override public int featureRedesign_MessageContainer_ScrollbarWidth() { return getInt(Keys.featureRedesign_MessageContainer_ScrollbarWidth, DEFAULTS.featureRedesign_MessageContainer_ScrollbarWidth()); }
+
+        // Colors (outer)
+        @Override public Color featureRedesign_BackdropColor() { return getColor(Keys.featureRedesign_BackdropColor, DEFAULTS.featureRedesign_BackdropColor()); }
+        @Override public Color featureRedesign_BorderColor() { return getColor(Keys.featureRedesign_BorderColor, DEFAULTS.featureRedesign_BorderColor()); }
+        @Override public Color featureRedesign_InputPrefixColor() { return getColor(Keys.featureRedesign_InputPrefixColor, DEFAULTS.featureRedesign_InputPrefixColor()); }
+        @Override public Color featureRedesign_InputBackgroundColor() { return getColor(Keys.featureRedesign_InputBackgroundColor, DEFAULTS.featureRedesign_InputBackgroundColor()); }
+        @Override public Color featureRedesign_InputBorderColor() { return getColor(Keys.featureRedesign_InputBorderColor, DEFAULTS.featureRedesign_InputBorderColor()); }
+        @Override public Color featureRedesign_InputShadowColor() { return getColor(Keys.featureRedesign_InputShadowColor, DEFAULTS.featureRedesign_InputShadowColor()); }
+        @Override public Color featureRedesign_InputTextColor() { return getColor(Keys.featureRedesign_InputTextColor, DEFAULTS.featureRedesign_InputTextColor()); }
+        @Override public Color featureRedesign_InputCaretColor() { return getColor(Keys.featureRedesign_InputCaretColor, DEFAULTS.featureRedesign_InputCaretColor()); }
+        @Override public Color featureRedesign_TabBarBackgroundColor() { return getColor(Keys.featureRedesign_TabBarBackgroundColor, DEFAULTS.featureRedesign_TabBarBackgroundColor()); }
+        @Override public Color featureRedesign_TabColor() { return getColor(Keys.featureRedesign_TabColor, DEFAULTS.featureRedesign_TabColor()); }
+        @Override public Color featureRedesign_TabSelectedColor() { return getColor(Keys.featureRedesign_TabSelectedColor, DEFAULTS.featureRedesign_TabSelectedColor()); }
+        @Override public Color featureRedesign_TabBorderColor() { return getColor(Keys.featureRedesign_TabBorderColor, DEFAULTS.featureRedesign_TabBorderColor()); }
+        @Override public Color featureRedesign_TabBorderSelectedColor() { return getColor(Keys.featureRedesign_TabBorderSelectedColor, DEFAULTS.featureRedesign_TabBorderSelectedColor()); }
+        @Override public Color featureRedesign_TabTextColor() { return getColor(Keys.featureRedesign_TabTextColor, DEFAULTS.featureRedesign_TabTextColor()); }
+        @Override public Color featureRedesign_TabUnreadPulseToColor() { return getColor(Keys.featureRedesign_TabUnreadPulseToColor, DEFAULTS.featureRedesign_TabUnreadPulseToColor()); }
+        @Override public Color featureRedesign_TabUnreadPulseFromColor() { return getColor(Keys.featureRedesign_TabUnreadPulseFromColor, DEFAULTS.featureRedesign_TabUnreadPulseFromColor()); }
+        @Override public Color featureRedesign_TabNotificationColor() { return getColor(Keys.featureRedesign_TabNotificationColor, DEFAULTS.featureRedesign_TabNotificationColor()); }
+        @Override public Color featureRedesign_TabNotificationTextColor() { return getColor(Keys.featureRedesign_TabNotificationTextColor, DEFAULTS.featureRedesign_TabNotificationTextColor()); }
+        @Override public Color featureRedesign_TabCloseButtonColor() { return getColor(Keys.featureRedesign_TabCloseButtonColor, DEFAULTS.featureRedesign_TabCloseButtonColor()); }
+        @Override public Color featureRedesign_TabCloseButtonTextColor() { return getColor(Keys.featureRedesign_TabCloseButtonTextColor, DEFAULTS.featureRedesign_TabCloseButtonTextColor()); }
+
+        // Message container geometry
+        @Override public int featureRedesign_MessageContainer_OffsetX() { return getInt(Keys.featureRedesign_MessageContainer_OffsetX, DEFAULTS.featureRedesign_MessageContainer_OffsetX()); }
+        @Override public int featureRedesign_MessageContainer_OffsetY() { return getInt(Keys.featureRedesign_MessageContainer_OffsetY, DEFAULTS.featureRedesign_MessageContainer_OffsetY()); }
+        @Override public int featureRedesign_MessageContainer_Margin() { return getInt(Keys.featureRedesign_MessageContainer_Margin, DEFAULTS.featureRedesign_MessageContainer_Margin()); }
+        @Override public int featureRedesign_MessageContainer_PaddingTop() { return getInt(Keys.featureRedesign_MessageContainer_PaddingTop, DEFAULTS.featureRedesign_MessageContainer_PaddingTop()); }
+        @Override public int featureRedesign_MessageContainer_PaddingLeft() { return getInt(Keys.featureRedesign_MessageContainer_PaddingLeft, DEFAULTS.featureRedesign_MessageContainer_PaddingLeft()); }
+        @Override public int featureRedesign_MessageContainer_PaddingBottom() { return getInt(Keys.featureRedesign_MessageContainer_PaddingBottom, DEFAULTS.featureRedesign_MessageContainer_PaddingBottom()); }
+        @Override public int featureRedesign_MessageContainer_PaddingRight() { return getInt(Keys.featureRedesign_MessageContainer_PaddingRight, DEFAULTS.featureRedesign_MessageContainer_PaddingRight()); }
+        @Override public int featureRedesign_MessageContainer_LineSpacing() { return getInt(Keys.featureRedesign_MessageContainer_LineSpacing, DEFAULTS.featureRedesign_MessageContainer_LineSpacing()); }
+        @Override public int featureRedesign_MessageContainer_ScrollStep() { return getInt(Keys.featureRedesign_MessageContainer_ScrollStep, DEFAULTS.featureRedesign_MessageContainer_ScrollStep()); }
+        @Override public int featureRedesign_MessageContainer_TextShadow() { return getInt(Keys.featureRedesign_MessageContainer_TextShadow, DEFAULTS.featureRedesign_MessageContainer_TextShadow()); }
+
+        // Message container colors
+        @Override public Color featureRedesign_MessageContainer_BackdropColor() { return getColor(Keys.featureRedesign_MessageContainer_BackdropColor, DEFAULTS.featureRedesign_MessageContainer_BackdropColor()); }
+        @Override public Color featureRedesign_MessageContainer_BorderColor() { return getColor(Keys.featureRedesign_MessageContainer_BorderColor, DEFAULTS.featureRedesign_MessageContainer_BorderColor()); }
+        @Override public Color featureRedesign_MessageContainer_ShadowColor() { return getColor(Keys.featureRedesign_MessageContainer_ShadowColor, DEFAULTS.featureRedesign_MessageContainer_ShadowColor()); }
+        @Override public Color featureRedesign_MessageContainer_ScrollbarTrackColor() { return getColor(Keys.featureRedesign_MessageContainer_ScrollbarTrackColor, DEFAULTS.featureRedesign_MessageContainer_ScrollbarTrackColor()); }
+        @Override public Color featureRedesign_MessageContainer_ScrollbarThumbColor() { return getColor(Keys.featureRedesign_MessageContainer_ScrollbarThumbColor, DEFAULTS.featureRedesign_MessageContainer_ScrollbarThumbColor()); }
+
+        // General colors & options
+        @Override public boolean general_AnchorPrivateChat() { return getBool(Keys.general_AnchorPrivateChat, DEFAULTS.general_AnchorPrivateChat()); }
+        @Override public int general_AnchorPrivateChatOffsetX() { return getInt(Keys.general_AnchorPrivateChatOffsetX, DEFAULTS.general_AnchorPrivateChatOffsetX()); }
+        @Override public int general_AnchorPrivateChatOffsetY() { return getInt(Keys.general_AnchorPrivateChatOffsetY, DEFAULTS.general_AnchorPrivateChatOffsetY()); }
+        @Override public boolean general_HelperNotifications() { return getBool(Keys.general_HelperNotifications, DEFAULTS.general_HelperNotifications()); }
+        @Override public Color general_PublicChatColor() { return getColor(Keys.general_PublicChatColor, DEFAULTS.general_PublicChatColor()); }
+        @Override public Color general_FriendsChatColor() { return getColor(Keys.general_FriendsChatColor, DEFAULTS.general_FriendsChatColor()); }
+        @Override public Color general_ClanChatColor() { return getColor(Keys.general_ClanChatColor, DEFAULTS.general_ClanChatColor()); }
+        @Override public Color general_PrivateChatColor() { return getColor(Keys.general_PrivateChatColor, DEFAULTS.general_PrivateChatColor()); }
+        @Override public Color general_SystemChatColor() { return getColor(Keys.general_SystemChatColor, DEFAULTS.general_SystemChatColor()); }
+        @Override public Color general_WelcomeChatColor() { return getColor(Keys.general_WelcomeChatColor, DEFAULTS.general_WelcomeChatColor()); }
+        @Override public Color general_TradeChatColor() { return getColor(Keys.general_TradeChatColor, DEFAULTS.general_TradeChatColor()); }
+
+        // Toggle feature
+        @Override public boolean featureToggle_Enabled() { return getBool(Keys.featureToggle_Enabled, DEFAULTS.featureToggle_Enabled()); }
+        @Override public Keybind featureToggle_ToggleKey() { return getKeybind(Keys.featureToggle_ToggleKey, DEFAULTS.featureToggle_ToggleKey()); }
+        @Override public boolean featureToggle_AutoHideOnSend() { return getBool(Keys.featureToggle_AutoHideOnSend, DEFAULTS.featureToggle_AutoHideOnSend()); }
+        @Override public boolean featureToggle_EscapeHides() { return getBool(Keys.featureToggle_EscapeHides, DEFAULTS.featureToggle_EscapeHides()); }
+        @Override public boolean featureToggle_StartHidden() { return getBool(Keys.featureToggle_StartHidden, DEFAULTS.featureToggle_StartHidden()); }
+        @Override public boolean featureToggle_LockCameraWhenVisible() { return getBool(Keys.featureToggle_LockCameraWhenVisible, DEFAULTS.featureToggle_LockCameraWhenVisible()); }
+
+        // Peek overlay
+        @Override public boolean featurePeek_Enabled() { return getBool(Keys.featurePeek_Enabled, DEFAULTS.featurePeek_Enabled()); }
+        @Override public boolean featurePeek_FollowChatBox() { return getBool(Keys.featurePeek_FollowChatBox, DEFAULTS.featurePeek_FollowChatBox()); }
+        @Override public boolean featurePeek_ShowPrivateMessages() { return getBool(Keys.featurePeek_ShowPrivateMessages, DEFAULTS.featurePeek_ShowPrivateMessages()); }
+        @Override public boolean featurePeek_HideSplitPrivateMessages() { return getBool(Keys.featurePeek_HideSplitPrivateMessages, DEFAULTS.featurePeek_HideSplitPrivateMessages()); }
+        @Override public boolean featurePeek_ShowTimestamp() { return getBool(Keys.featurePeek_ShowTimestamp, DEFAULTS.featurePeek_ShowTimestamp()); }
+        @Override public boolean featurePeek_PrefixChatTypes() { return getBool(Keys.featurePeek_PrefixChatTypes, DEFAULTS.featurePeek_PrefixChatTypes()); }
+        @Override public Color featurePeek_BackgroundColor() { return getColor(Keys.featurePeek_BackgroundColor, DEFAULTS.featurePeek_BackgroundColor()); }
+        @Override public Color featurePeek_BorderColor() { return getColor(Keys.featurePeek_BorderColor, DEFAULTS.featurePeek_BorderColor()); }
+        @Override public FontStyle featurePeek_FontStyle() { return getEnum(Keys.featurePeek_FontStyle, DEFAULTS.featurePeek_FontStyle(), FontStyle.class); }
+        @Override public int featurePeek_FontSize() { return getInt(Keys.featurePeek_FontSize, DEFAULTS.featurePeek_FontSize()); }
+        @Override public int featurePeek_TextShadow() { return getInt(Keys.featurePeek_TextShadow, DEFAULTS.featurePeek_TextShadow()); }
+        @Override public int featurePeek_OffsetX() { return getInt(Keys.featurePeek_OffsetX, DEFAULTS.featurePeek_OffsetX()); }
+        @Override public int featurePeek_OffsetY() { return getInt(Keys.featurePeek_OffsetY, DEFAULTS.featurePeek_OffsetY()); }
+        @Override public int featurePeek_Padding() { return getInt(Keys.featurePeek_Padding, DEFAULTS.featurePeek_Padding()); }
+        @Override public int featurePeek_MarginRight() { return getInt(Keys.featurePeek_MarginRight, DEFAULTS.featurePeek_MarginRight()); }
+        @Override public int featurePeek_MarginBottom() { return getInt(Keys.featurePeek_MarginBottom, DEFAULTS.featurePeek_MarginBottom()); }
+        @Override public boolean featurePeek_FadeEnabled() { return getBool(Keys.featurePeek_FadeEnabled, DEFAULTS.featurePeek_FadeEnabled()); }
+        @Override public int featurePeek_FadeDelay() { return getInt(Keys.featurePeek_FadeDelay, DEFAULTS.featurePeek_FadeDelay()); }
+        @Override public int featurePeek_FadeDuration() { return getInt(Keys.featurePeek_FadeDuration, DEFAULTS.featurePeek_FadeDuration()); }
+
+        // Commands
+        @Override public boolean featureCommands_Enabled() { return getBool(Keys.featureCommands_Enabled, DEFAULTS.featureCommands_Enabled()); }
+        @Override public boolean featureCommands_ReplyEnabled() { return getBool(Keys.featureCommands_ReplyEnabled, DEFAULTS.featureCommands_ReplyEnabled()); }
+        @Override public boolean featureCommands_WhisperEnabled() { return getBool(Keys.featureCommands_WhisperEnabled, DEFAULTS.featureCommands_WhisperEnabled()); }
+        @Override public boolean featureCommands_PrivateMessageEnabled() { return getBool(Keys.featureCommands_PrivateMessageEnabled, DEFAULTS.featureCommands_PrivateMessageEnabled()); }
+
+        // Message history
+        @Override public boolean featureMessageHistory_Enabled() { return getBool(Keys.featureMessageHistory_Enabled, DEFAULTS.featureMessageHistory_Enabled()); }
+        @Override public int featureMessageHistory_MaxEntries() { return getInt(Keys.featureMessageHistory_MaxEntries, DEFAULTS.featureMessageHistory_MaxEntries()); }
+        @Override public boolean featureMessageHistory_IncludeCommands() { return getBool(Keys.featureMessageHistory_IncludeCommands, DEFAULTS.featureMessageHistory_IncludeCommands()); }
+        @Override public boolean featureMessageHistory_SkipDuplicates() { return getBool(Keys.featureMessageHistory_SkipDuplicates, DEFAULTS.featureMessageHistory_SkipDuplicates()); }
+        @Override public Keybind featureMessageHistory_PrevKey() { return getKeybind(Keys.featureMessageHistory_PrevKey, DEFAULTS.featureMessageHistory_PrevKey()); }
+        @Override public Keybind featureMessageHistory_NextKey() { return getKeybind(Keys.featureMessageHistory_NextKey, DEFAULTS.featureMessageHistory_NextKey()); }
 
         public JsonElement get(String key) {
             String kl = key.toLowerCase(Locale.ROOT);
@@ -549,130 +681,5 @@ public interface ModernChatConfigBase extends
             } catch (Exception ignore) {}
             return def;
         }
-
-        // ModernChatConfigBase overrides using centralized Keys
-
-        @Override public boolean featureExample_Enabled() { return true; }
-
-        // Modern design
-        @Override public boolean featureRedesign_Enabled() { return getBool(Keys.featureRedesign_Enabled, DEFAULTS.featureRedesign_Enabled()); }
-        @Override public ChatMode featureRedesign_DefaultChatMode() { return getEnum(Keys.featureRedesign_DefaultChatMode, DEFAULTS.featureRedesign_DefaultChatMode(), ChatMode.class); }
-        @Override public boolean featureRedesign_OpenTabOnIncomingPM() { return getBool(Keys.featureRedesign_OpenTabOnIncomingPM, DEFAULTS.featureRedesign_OpenTabOnIncomingPM()); }
-        @Override public boolean featureRedesign_MessageContainer_PrefixChatType() { return getBool(Keys.featureRedesign_MessageContainer_PrefixChatType, DEFAULTS.featureRedesign_MessageContainer_PrefixChatType()); }
-        @Override public boolean featureRedesign_MessageContainer_ShowTimestamp() { return getBool(Keys.featureRedesign_MessageContainer_ShowTimestamp, DEFAULTS.featureRedesign_MessageContainer_ShowTimestamp()); }
-        @Override public boolean featureRedesign_MessageContainer_Scrollable() { return getBool(Keys.featureRedesign_MessageContainer_Scrollable, DEFAULTS.featureRedesign_MessageContainer_Scrollable()); }
-        @Override public boolean featureRedesign_ClickOutsideToClose() { return getBool(Keys.featureRedesign_ClickOutsideToClose, DEFAULTS.featureRedesign_ClickOutsideToClose()); }
-        @Override public boolean featureRedesign_ShowNotificationBadge() { return getBool(Keys.featureRedesign_ShowNotificationBadge, DEFAULTS.featureRedesign_ShowNotificationBadge()); }
-        @Override public boolean featureRedesign_AllowClickThrough() { return getBool(Keys.featureRedesign_AllowClickThrough, DEFAULTS.featureRedesign_AllowClickThrough()); }
-        @Override public boolean featureRedesign_HelperNotifications() { return getBool(Keys.featureRedesign_HelperNotifications, DEFAULTS.featureRedesign_HelperNotifications()); }
-
-        // Style: fonts & sizes
-        @Override public FontStyle featureRedesign_FontStyle() { return getEnum(Keys.featureRedesign_FontStyle, DEFAULTS.featureRedesign_FontStyle(), FontStyle.class); }
-        @Override public int featureRedesign_InputFontSize() { return getInt(Keys.featureRedesign_InputFontSize, DEFAULTS.featureRedesign_InputFontSize()); }
-        @Override public int featureRedesign_TabFontSize() { return getInt(Keys.featureRedesign_TabFontSize, DEFAULTS.featureRedesign_TabFontSize()); }
-        @Override public int featureRedesign_TabBadgeFontSize() { return getInt(Keys.featureRedesign_TabBadgeFontSize, DEFAULTS.featureRedesign_TabBadgeFontSize()); }
-        @Override public FontStyle featureRedesign_MessageContainer_LineFontStyle() { return getEnum(Keys.featureRedesign_MessageContainer_LineFontStyle, DEFAULTS.featureRedesign_MessageContainer_LineFontStyle(), FontStyle.class); }
-        @Override public int featureRedesign_MessageContainer_LineFontSize() { return getInt(Keys.featureRedesign_MessageContainer_LineFontSize, DEFAULTS.featureRedesign_MessageContainer_LineFontSize()); }
-
-        // Layout / metrics
-        @Override public int featureRedesign_Padding() { return getInt(Keys.featureRedesign_Padding, DEFAULTS.featureRedesign_Padding()); }
-        @Override public boolean featureRedesign_MessageContainer_DrawScrollbar() { return getBool(Keys.featureRedesign_MessageContainer_DrawScrollbar, DEFAULTS.featureRedesign_MessageContainer_DrawScrollbar()); }
-        @Override public int featureRedesign_MessageContainer_ScrollbarWidth() { return getInt(Keys.featureRedesign_MessageContainer_ScrollbarWidth, DEFAULTS.featureRedesign_MessageContainer_ScrollbarWidth()); }
-
-        // Colors (outer)
-        @Override public Color featureRedesign_BackdropColor() { return getColor(Keys.featureRedesign_BackdropColor, DEFAULTS.featureRedesign_BackdropColor()); }
-        @Override public Color featureRedesign_BorderColor() { return getColor(Keys.featureRedesign_BorderColor, DEFAULTS.featureRedesign_BorderColor()); }
-        @Override public Color featureRedesign_InputPrefixColor() { return getColor(Keys.featureRedesign_InputPrefixColor, DEFAULTS.featureRedesign_InputPrefixColor()); }
-        @Override public Color featureRedesign_InputBackgroundColor() { return getColor(Keys.featureRedesign_InputBackgroundColor, DEFAULTS.featureRedesign_InputBackgroundColor()); }
-        @Override public Color featureRedesign_InputBorderColor() { return getColor(Keys.featureRedesign_InputBorderColor, DEFAULTS.featureRedesign_InputBorderColor()); }
-        @Override public Color featureRedesign_InputShadowColor() { return getColor(Keys.featureRedesign_InputShadowColor, DEFAULTS.featureRedesign_InputShadowColor()); }
-        @Override public Color featureRedesign_InputTextColor() { return getColor(Keys.featureRedesign_InputTextColor, DEFAULTS.featureRedesign_InputTextColor()); }
-        @Override public Color featureRedesign_InputCaretColor() { return getColor(Keys.featureRedesign_InputCaretColor, DEFAULTS.featureRedesign_InputCaretColor()); }
-        @Override public Color featureRedesign_TabBarBackgroundColor() { return getColor(Keys.featureRedesign_TabBarBackgroundColor, DEFAULTS.featureRedesign_TabBarBackgroundColor()); }
-        @Override public Color featureRedesign_TabColor() { return getColor(Keys.featureRedesign_TabColor, DEFAULTS.featureRedesign_TabColor()); }
-        @Override public Color featureRedesign_TabSelectedColor() { return getColor(Keys.featureRedesign_TabSelectedColor, DEFAULTS.featureRedesign_TabSelectedColor()); }
-        @Override public Color featureRedesign_TabBorderColor() { return getColor(Keys.featureRedesign_TabBorderColor, DEFAULTS.featureRedesign_TabBorderColor()); }
-        @Override public Color featureRedesign_TabBorderSelectedColor() { return getColor(Keys.featureRedesign_TabBorderSelectedColor, DEFAULTS.featureRedesign_TabBorderSelectedColor()); }
-        @Override public Color featureRedesign_TabTextColor() { return getColor(Keys.featureRedesign_TabTextColor, DEFAULTS.featureRedesign_TabTextColor()); }
-        @Override public Color featureRedesign_TabUnreadPulseToColor() { return getColor(Keys.featureRedesign_TabUnreadPulseToColor, DEFAULTS.featureRedesign_TabUnreadPulseToColor()); }
-        @Override public Color featureRedesign_TabUnreadPulseFromColor() { return getColor(Keys.featureRedesign_TabUnreadPulseFromColor, DEFAULTS.featureRedesign_TabUnreadPulseFromColor()); }
-        @Override public Color featureRedesign_TabNotificationColor() { return getColor(Keys.featureRedesign_TabNotificationColor, DEFAULTS.featureRedesign_TabNotificationColor()); }
-        @Override public Color featureRedesign_TabNotificationTextColor() { return getColor(Keys.featureRedesign_TabNotificationTextColor, DEFAULTS.featureRedesign_TabNotificationTextColor()); }
-        @Override public Color featureRedesign_TabCloseButtonColor() { return getColor(Keys.featureRedesign_TabCloseButtonColor, DEFAULTS.featureRedesign_TabCloseButtonColor()); }
-        @Override public Color featureRedesign_TabCloseButtonTextColor() { return getColor(Keys.featureRedesign_TabCloseButtonTextColor, DEFAULTS.featureRedesign_TabCloseButtonTextColor()); }
-
-        // Message container geometry
-        @Override public int featureRedesign_MessageContainer_OffsetX() { return getInt(Keys.featureRedesign_MessageContainer_OffsetX, DEFAULTS.featureRedesign_MessageContainer_OffsetX()); }
-        @Override public int featureRedesign_MessageContainer_OffsetY() { return getInt(Keys.featureRedesign_MessageContainer_OffsetY, DEFAULTS.featureRedesign_MessageContainer_OffsetY()); }
-        @Override public int featureRedesign_MessageContainer_Margin() { return getInt(Keys.featureRedesign_MessageContainer_Margin, DEFAULTS.featureRedesign_MessageContainer_Margin()); }
-        @Override public int featureRedesign_MessageContainer_PaddingTop() { return getInt(Keys.featureRedesign_MessageContainer_PaddingTop, DEFAULTS.featureRedesign_MessageContainer_PaddingTop()); }
-        @Override public int featureRedesign_MessageContainer_PaddingLeft() { return getInt(Keys.featureRedesign_MessageContainer_PaddingLeft, DEFAULTS.featureRedesign_MessageContainer_PaddingLeft()); }
-        @Override public int featureRedesign_MessageContainer_PaddingBottom() { return getInt(Keys.featureRedesign_MessageContainer_PaddingBottom, DEFAULTS.featureRedesign_MessageContainer_PaddingBottom()); }
-        @Override public int featureRedesign_MessageContainer_PaddingRight() { return getInt(Keys.featureRedesign_MessageContainer_PaddingRight, DEFAULTS.featureRedesign_MessageContainer_PaddingRight()); }
-        @Override public int featureRedesign_MessageContainer_LineSpacing() { return getInt(Keys.featureRedesign_MessageContainer_LineSpacing, DEFAULTS.featureRedesign_MessageContainer_LineSpacing()); }
-        @Override public int featureRedesign_MessageContainer_ScrollStep() { return getInt(Keys.featureRedesign_MessageContainer_ScrollStep, DEFAULTS.featureRedesign_MessageContainer_ScrollStep()); }
-        @Override public int featureRedesign_MessageContainer_TextShadow() { return getInt(Keys.featureRedesign_MessageContainer_TextShadow, DEFAULTS.featureRedesign_MessageContainer_TextShadow()); }
-
-        // Message container colors
-        @Override public Color featureRedesign_MessageContainer_BackdropColor() { return getColor(Keys.featureRedesign_MessageContainer_BackdropColor, DEFAULTS.featureRedesign_MessageContainer_BackdropColor()); }
-        @Override public Color featureRedesign_MessageContainer_BorderColor() { return getColor(Keys.featureRedesign_MessageContainer_BorderColor, DEFAULTS.featureRedesign_MessageContainer_BorderColor()); }
-        @Override public Color featureRedesign_MessageContainer_ShadowColor() { return getColor(Keys.featureRedesign_MessageContainer_ShadowColor, DEFAULTS.featureRedesign_MessageContainer_ShadowColor()); }
-        @Override public Color featureRedesign_MessageContainer_ScrollbarTrackColor() { return getColor(Keys.featureRedesign_MessageContainer_ScrollbarTrackColor, DEFAULTS.featureRedesign_MessageContainer_ScrollbarTrackColor()); }
-        @Override public Color featureRedesign_MessageContainer_ScrollbarThumbColor() { return getColor(Keys.featureRedesign_MessageContainer_ScrollbarThumbColor, DEFAULTS.featureRedesign_MessageContainer_ScrollbarThumbColor()); }
-
-        // General colors & options
-        @Override public boolean general_AnchorPrivateChat() { return getBool(Keys.general_AnchorPrivateChat, DEFAULTS.general_AnchorPrivateChat()); }
-        @Override public int general_AnchorPrivateChatOffsetX() { return getInt(Keys.general_AnchorPrivateChatOffsetX, DEFAULTS.general_AnchorPrivateChatOffsetX()); }
-        @Override public int general_AnchorPrivateChatOffsetY() { return getInt(Keys.general_AnchorPrivateChatOffsetY, DEFAULTS.general_AnchorPrivateChatOffsetY()); }
-        @Override public Color general_PublicChatColor() { return getColor(Keys.general_PublicChatColor, DEFAULTS.general_PublicChatColor()); }
-        @Override public Color general_FriendsChatColor() { return getColor(Keys.general_FriendsChatColor, DEFAULTS.general_FriendsChatColor()); }
-        @Override public Color general_ClanChatColor() { return getColor(Keys.general_ClanChatColor, DEFAULTS.general_ClanChatColor()); }
-        @Override public Color general_PrivateChatColor() { return getColor(Keys.general_PrivateChatColor, DEFAULTS.general_PrivateChatColor()); }
-        @Override public Color general_SystemChatColor() { return getColor(Keys.general_SystemChatColor, DEFAULTS.general_SystemChatColor()); }
-        @Override public Color general_WelcomeChatColor() { return getColor(Keys.general_WelcomeChatColor, DEFAULTS.general_WelcomeChatColor()); }
-        @Override public Color general_TradeChatColor() { return getColor(Keys.general_TradeChatColor, DEFAULTS.general_TradeChatColor()); }
-
-        // Toggle feature
-        @Override public boolean featureToggle_Enabled() { return getBool(Keys.featureToggle_Enabled, DEFAULTS.featureToggle_Enabled()); }
-        @Override public Keybind featureToggle_ToggleKey() { return getKeybind(Keys.featureToggle_ToggleKey, DEFAULTS.featureToggle_ToggleKey()); }
-        @Override public boolean featureToggle_AutoHideOnSend() { return getBool(Keys.featureToggle_AutoHideOnSend, DEFAULTS.featureToggle_AutoHideOnSend()); }
-        @Override public boolean featureToggle_EscapeHides() { return getBool(Keys.featureToggle_EscapeHides, DEFAULTS.featureToggle_EscapeHides()); }
-        @Override public boolean featureToggle_StartHidden() { return getBool(Keys.featureToggle_StartHidden, DEFAULTS.featureToggle_StartHidden()); }
-        @Override public boolean featureToggle_LockCameraWhenVisible() { return getBool(Keys.featureToggle_LockCameraWhenVisible, DEFAULTS.featureToggle_LockCameraWhenVisible()); }
-
-        // Peek overlay
-        @Override public boolean featurePeek_Enabled() { return getBool(Keys.featurePeek_Enabled, DEFAULTS.featurePeek_Enabled()); }
-        @Override public boolean featurePeek_FollowChatBox() { return getBool(Keys.featurePeek_FollowChatBox, DEFAULTS.featurePeek_FollowChatBox()); }
-        @Override public boolean featurePeek_ShowPrivateMessages() { return getBool(Keys.featurePeek_ShowPrivateMessages, DEFAULTS.featurePeek_ShowPrivateMessages()); }
-        @Override public boolean featurePeek_HideSplitPrivateMessages() { return getBool(Keys.featurePeek_HideSplitPrivateMessages, DEFAULTS.featurePeek_HideSplitPrivateMessages()); }
-        @Override public boolean featurePeek_ShowTimestamp() { return getBool(Keys.featurePeek_ShowTimestamp, DEFAULTS.featurePeek_ShowTimestamp()); }
-        @Override public boolean featurePeek_PrefixChatTypes() { return getBool(Keys.featurePeek_PrefixChatTypes, DEFAULTS.featurePeek_PrefixChatTypes()); }
-        @Override public Color featurePeek_BackgroundColor() { return getColor(Keys.featurePeek_BackgroundColor, DEFAULTS.featurePeek_BackgroundColor()); }
-        @Override public Color featurePeek_BorderColor() { return getColor(Keys.featurePeek_BorderColor, DEFAULTS.featurePeek_BorderColor()); }
-        @Override public FontStyle featurePeek_FontStyle() { return getEnum(Keys.featurePeek_FontStyle, DEFAULTS.featurePeek_FontStyle(), FontStyle.class); }
-        @Override public int featurePeek_FontSize() { return getInt(Keys.featurePeek_FontSize, DEFAULTS.featurePeek_FontSize()); }
-        @Override public int featurePeek_TextShadow() { return getInt(Keys.featurePeek_TextShadow, DEFAULTS.featurePeek_TextShadow()); }
-        @Override public int featurePeek_OffsetX() { return getInt(Keys.featurePeek_OffsetX, DEFAULTS.featurePeek_OffsetX()); }
-        @Override public int featurePeek_OffsetY() { return getInt(Keys.featurePeek_OffsetY, DEFAULTS.featurePeek_OffsetY()); }
-        @Override public int featurePeek_Padding() { return getInt(Keys.featurePeek_Padding, DEFAULTS.featurePeek_Padding()); }
-        @Override public int featurePeek_MarginRight() { return getInt(Keys.featurePeek_MarginRight, DEFAULTS.featurePeek_MarginRight()); }
-        @Override public int featurePeek_MarginBottom() { return getInt(Keys.featurePeek_MarginBottom, DEFAULTS.featurePeek_MarginBottom()); }
-        @Override public boolean featurePeek_FadeEnabled() { return getBool(Keys.featurePeek_FadeEnabled, DEFAULTS.featurePeek_FadeEnabled()); }
-        @Override public int featurePeek_FadeDelay() { return getInt(Keys.featurePeek_FadeDelay, DEFAULTS.featurePeek_FadeDelay()); }
-        @Override public int featurePeek_FadeDuration() { return getInt(Keys.featurePeek_FadeDuration, DEFAULTS.featurePeek_FadeDuration()); }
-
-        // Commands
-        @Override public boolean featureCommands_Enabled() { return getBool(Keys.featureCommands_Enabled, DEFAULTS.featureCommands_Enabled()); }
-        @Override public boolean featureCommands_ReplyEnabled() { return getBool(Keys.featureCommands_ReplyEnabled, DEFAULTS.featureCommands_ReplyEnabled()); }
-        @Override public boolean featureCommands_WhisperEnabled() { return getBool(Keys.featureCommands_WhisperEnabled, DEFAULTS.featureCommands_WhisperEnabled()); }
-        @Override public boolean featureCommands_PrivateMessageEnabled() { return getBool(Keys.featureCommands_PrivateMessageEnabled, DEFAULTS.featureCommands_PrivateMessageEnabled()); }
-
-        // Message history
-        @Override public boolean featureMessageHistory_Enabled() { return getBool(Keys.featureMessageHistory_Enabled, DEFAULTS.featureMessageHistory_Enabled()); }
-        @Override public int featureMessageHistory_MaxEntries() { return getInt(Keys.featureMessageHistory_MaxEntries, DEFAULTS.featureMessageHistory_MaxEntries()); }
-        @Override public boolean featureMessageHistory_IncludeCommands() { return getBool(Keys.featureMessageHistory_IncludeCommands, DEFAULTS.featureMessageHistory_IncludeCommands()); }
-        @Override public boolean featureMessageHistory_SkipDuplicates() { return getBool(Keys.featureMessageHistory_SkipDuplicates, DEFAULTS.featureMessageHistory_SkipDuplicates()); }
-        @Override public Keybind featureMessageHistory_PrevKey() { return getKeybind(Keys.featureMessageHistory_PrevKey, DEFAULTS.featureMessageHistory_PrevKey()); }
-        @Override public Keybind featureMessageHistory_NextKey() { return getKeybind(Keys.featureMessageHistory_NextKey, DEFAULTS.featureMessageHistory_NextKey()); }
     }
 }

@@ -154,10 +154,22 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = "featureRedesign_Resizeable",
+        name = "Resizeable",
+        description = "Allow resizing the chat window",
+        position = 5,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_Resizeable() {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "featureRedesign_MessageContainer_Scrollable",
         name = "Scrollable",
         description = "Allow scrolling in the message container",
-        position = 5,
+        position = 6,
         section = modernChatSection
     )
     @Override
@@ -169,7 +181,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "featureRedesign_ClickOutsideToClose",
         name = "Click Outside Closes",
         description = "Close chat by clicking outside the chat area",
-        position = 6,
+        position = 7,
         section = modernChatSection
     )
     @Override
@@ -181,7 +193,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "featureRedesign_ShowNotificationBadge",
         name = "Show Notification Badge",
         description = "Show a notification badge on the tab button when there are unread messages",
-        position = 7,
+        position = 8,
         section = modernChatSection
     )
     @Override
@@ -193,7 +205,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "featureRedesign_AllowClickThrough",
         name = "Allow Click-Through",
         description = "Allow clicking through the chat overlay to interact with game elements",
-        position = 8,
+        position = 9,
         section = modernChatSection
     )
     @Override
@@ -202,14 +214,14 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
-        keyName = "featureRedesign_HelperNotifications",
-        name = "Helper Notifications",
-        description = "Show helper notifications for new features and updates",
-        position = 9,
+        keyName = "featureRedesign_AutoSelectPrivateTab",
+        name = "Auto Select Private Tab",
+        description = "Automatically select the private chat tab when receiving a private message",
+        position = 10,
         section = modernChatSection
     )
     @Override
-    default boolean featureRedesign_HelperNotifications() {
+    default boolean featureRedesign_AutoSelectPrivateTab() {
         return true;
     }
 
@@ -835,12 +847,24 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return 0;
     }
 
+    @ConfigItem(
+        keyName = "general_HelperNotifications",
+        name = "Helper Notifications",
+        description = "Show notifications for helper messages in the chat",
+        position = 3,
+        section = generalSection
+    )
+    @Override
+    default boolean general_HelperNotifications() {
+        return true;
+    }
+
     @Alpha
     @ConfigItem(
         keyName = "general_PublicChatColor",
         name = "Public Chat Color",
         description = "Color for public chat messages in the peek overlay",
-        position = 3,
+        position = 4,
         section = generalSection
     )
     @Override
@@ -853,7 +877,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "general_FriendsChatColor",
         name = "Friends Chat Color",
         description = "Color for friends chat messages in the peek overlay",
-        position = 4,
+        position = 5,
         section = generalSection
     )
     @Override
@@ -866,7 +890,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "general_ClanChatColor",
         name = "Clan Chat Color",
         description = "Color for clan chat messages in the peek overlay",
-        position = 5,
+        position = 6,
         section = generalSection
     )
     @Override
@@ -879,7 +903,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "general_PrivateChatColor",
         name = "Private Chat Color",
         description = "Color for private chat messages in the peek overlay",
-        position = 6,
+        position = 7,
         section = generalSection
     )
     @Override
@@ -892,7 +916,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "general_SystemChatColor",
         name = "System Chat Color",
         description = "Color for system chat messages in the peek overlay",
-        position = 7,
+        position = 8,
         section = generalSection
     )
     @Override
@@ -905,7 +929,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "general_WelcomeChatColor",
         name = "Welcome Chat Color",
         description = "Color for welcome chat messages in the peek overlay",
-        position = 8,
+        position = 9,
         section = generalSection
     )
     @Override
@@ -918,7 +942,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "general_TradeChatColor",
         name = "Trade Chat Color",
         description = "Color for trade chat messages in the peek overlay",
-        position = 9,
+        position = 10,
         section = generalSection
     )
     @Override

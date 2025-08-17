@@ -17,10 +17,10 @@ import com.modernchat.event.ChatResizedEvent;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.DialogOptionsOpenedEvent;
-import com.modernchat.event.ModernChatVisibilityChangeEvent;
-import com.modernchat.event.NavigateHistoryEvent;
 import com.modernchat.event.LeftDialogClosedEvent;
 import com.modernchat.event.LeftDialogOpenedEvent;
+import com.modernchat.event.ModernChatVisibilityChangeEvent;
+import com.modernchat.event.NavigateHistoryEvent;
 import com.modernchat.event.RightDialogClosedEvent;
 import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.event.SubmitHistoryEvent;
@@ -216,7 +216,7 @@ public class ChatOverlay extends OverlayPanel
         resizePanel.setSidesEnabled(false, true, true, false);
         resizePanel.setBaseBoundsProvider(() -> lastViewport);
         resizePanel.setListener(this::setDesiredChatSize);
-        resizePanel.startUp(() -> !isHidden());
+        resizePanel.startUp(() -> !isHidden() && !client.isMenuOpen());
 
         messageContainers.putAll(Map.of(
             ChatMode.PUBLIC.name(), messageContainerProvider.get(),
@@ -1277,12 +1277,6 @@ public class ChatOverlay extends OverlayPanel
                 return; // skip the rest of the logic
         }
 
-        /* - String Message to send
-         * - int modes
-         * - int (clan type)
-         * - int (boolean) use target
-         * - int set target
-         * */
         final int modeValue = selectedMode.getValue();
         final int clanTypeValue = clanType.getValue();
 
@@ -1294,6 +1288,8 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private int getCharacterLimit() {
+        // Seems the limit is 80 for all chat modes, so I
+        // will leave this here in case it changes in the future
         switch (getCurrentMode()) {
             case PUBLIC:
                 return 80;
@@ -1302,9 +1298,9 @@ public class ChatOverlay extends OverlayPanel
             case CLAN_GUEST:
                 return 80;
             case CLAN_GIM:
-                return 80; // GIM chat has a lower limit
+                return 80;
             case PRIVATE:
-                return 80; // private messages have the same limit as public
+                return 80;
             default:
                 log.warn("Unknown chat mode: {}, using default character limit", getCurrentMode());
                 return 80; // fallback limit
@@ -1437,7 +1433,10 @@ public class ChatOverlay extends OverlayPanel
         if (!tabsByKey.containsKey(tabKey)) {
             tab = createPrivateTab(tabKey, targetName);
             addTab(tab);
-            //selectTabByKey(tabKey); // TODO: config for this
+
+            if (config.isAutoSelectPrivateTab()) {
+                selectTab(tab); // auto-select if configured
+            }
         } else {
             tab = tabsByKey.get(tabKey);
         }
@@ -1581,6 +1580,7 @@ public class ChatOverlay extends OverlayPanel
     public void showLegacyChat(boolean hideOverlay) {
         legacyShowing = true;
         wasHidden = hidden; // remember if we were hidden before
+        resetChatbox();
         ClientUtil.setChatHidden(client, false);
 
         if (hideOverlay)
@@ -1596,6 +1596,7 @@ public class ChatOverlay extends OverlayPanel
             return;
 
         legacyShowing = false;
+        resizeChatbox(desiredChatWidth, desiredChatHeight);
         ClientUtil.setChatHidden(client, true);
 
         if (showOverlay)
@@ -1613,6 +1614,8 @@ public class ChatOverlay extends OverlayPanel
         lastBlinkMs = 0;
         lastViewport = null;
         fontStyle = null;
+        dragTab = null;
+        dragTabWidth = 0;
 
         selStart = 0;
         selEnd = 0;
@@ -1726,7 +1729,7 @@ public class ChatOverlay extends OverlayPanel
         if (s == null || s.isEmpty()) return;
         int charLimit = getCharacterLimit();
         int canTake = Math.max(0, charLimit - inputBuf.length() + (hasSelection() ? Math.abs(selEnd - selStart) : 0));
-        if (canTake <= 0) return;
+        if (canTake == 0) return;
         if (s.length() > canTake) s = s.substring(0, canTake);
         if (hasSelection()) deleteSelection();
         inputBuf.insert(caret, s);
