@@ -56,6 +56,7 @@ import static com.modernchat.ModernChatConfigBase.setCfg;
 public class ProfileService implements ChatService
 {
     @Inject ConfigManager configManager;
+    @Inject Gson gson;
 
     @Getter
     private Path profilesDir;
@@ -65,8 +66,6 @@ public class ProfileService implements ChatService
 
     /** currently active profile key */
     private String activeProfile;
-
-    private final Gson gson = new Gson();
 
     public ProfileService() {
         this(resolveDefaultProfilesDir());
@@ -237,7 +236,7 @@ public class ProfileService implements ChatService
             throw new FileAlreadyExistsException(out.toString());
 
         JsonObject root = buildJsonFromConfig(cfg);
-        var gsonPretty = new GsonBuilder().setPrettyPrinting().create();
+        var gsonPretty = gson.newBuilder().setPrettyPrinting().create();
         try (var w = Files.newBufferedWriter(out, StandardCharsets.UTF_8,
             StandardOpenOption.CREATE, failIfExists ? StandardOpenOption.CREATE_NEW : StandardOpenOption.TRUNCATE_EXISTING,
             StandardOpenOption.WRITE))
