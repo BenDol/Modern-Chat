@@ -213,4 +213,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		chatPeekOverlay.setHidden(e.isVisible());
 		chatPeekOverlay.noteMessageActivity();
 	}
+
+	public void unFade() {
+		chatPeekOverlay.noteMessageActivity();
+	}
 }

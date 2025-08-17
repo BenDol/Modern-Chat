@@ -25,6 +25,7 @@ import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.service.FontService;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.service.ProfileService;
+import com.modernchat.service.TutorialService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.ChatUtil;
@@ -72,8 +73,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 
 @Slf4j
 @PluginDescriptor(
@@ -92,6 +91,7 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private FontService fontService;
 	@Inject private MessageService messageService;
 	@Inject private ProfileService profileService;
+	@Inject private TutorialService tutorialService;
 	@Inject private ModernChatConfig config;
 	@Inject private PrivateChatService privateChatService;
 	@Inject private WidgetBucket widgetBucket;
@@ -162,14 +162,14 @@ public class ModernChatPlugin extends Plugin {
 		// Force an initial re-anchor if enabled once widgets are available
 		lastChatBounds = null;
 
-		if (!config.featureExample_Enabled()) {
+		//if (!config.featureExample_Enabled()) {
 			toggleChatFeature.scheduleDeferredHide();
 
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
 				startInstallIntro();
 			}
-		}
+		//}
 	}
 
 	@Override
@@ -183,6 +183,8 @@ public class ModernChatPlugin extends Plugin {
 			panel = null;
 		}
 		profileService.shutDown();
+
+		tutorialService.shutDown();
 
 		if (features != null) {
 			features.forEach((feature) -> {
@@ -498,23 +500,18 @@ public class ModernChatPlugin extends Plugin {
 	private void startInstallIntro() {
 		showInstallMessage();
 
-		new Timer().schedule(new TimerTask() {
-			@Override
-			public void run() {
-				/*messageService.showQuestionConfirmDialog(
-					"Modern Chat Plugin",
-					"Welcome to the Modern Chat plugin! Would you like to continue using the modern chat design?\n\n(Can be enabled/disabled in the settings at any time)",
-					(choice) -> {
-						if (choice == 0) {
-							clientThread.invokeLater(() -> {
-								toggleChatFeature.scheduleDeferredHide();
-							});
-						} else {
-							log.info("User declined to learn more about Modern Chat features.");
-						}
-					});*/
+		messageService.showQuestionConfirmDialog(
+			"Plugin Installed",
+			"This plugin is designed to enhance your chat experience with additional features. " +
+				"Would you like to see a brief introduction to the main features?",
+			(choice) -> {
+				if (choice == 0 && client.getGameState() == GameState.LOGGED_IN) {
+					tutorialService.startUp();
+
+					clientThread.invoke(() -> peekChatFeature.unFade());
+				}
 			}
-		}, 8000); // Show after 5 seconds to allow initial login and chat setup
+		);
 	}
 
 	private void showInstallMessage() {
@@ -525,13 +522,16 @@ public class ModernChatPlugin extends Plugin {
 				.append("Plugin installed! This is the ")
 				.append(Color.CYAN, "Peek Overlay ")
 				.append("feature for a more subtle chat experience. ")
-				.append("You can press \"Enter\" to send messages and to hide/show the chat window. ");
+				.append("You can press ")
+				.append(Color.ORANGE, "Enter")
+				.append(" to show/hide the chat window (and send messages). ")
+				.append(Color.GREEN, "Give it a try! ");
 
 			boolean isSplitPmDisabled = client.getVarpValue(VarPlayerID.OPTION_PM) == 0;
 			if (isSplitPmDisabled) {
 				builder.append("We recommend turning on ")
 					.append(Color.ORANGE, "Split friends private chat")
-					.append(" OSRS setting for some private chat features. ")
+					.append(" OSRS setting for some private chat features with Modern Design disabled. ")
 					.build();
 			}
 

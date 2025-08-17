@@ -11,6 +11,8 @@ import com.modernchat.draw.RowHit;
 import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
+import com.modernchat.event.ChatMessageSentEvent;
+import com.modernchat.event.ChatPrivateMessageSentEvent;
 import com.modernchat.event.ChatResizedEvent;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
@@ -22,6 +24,7 @@ import com.modernchat.event.LeftDialogOpenedEvent;
 import com.modernchat.event.RightDialogClosedEvent;
 import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.event.SubmitHistoryEvent;
+import com.modernchat.event.TabChangeEvent;
 import com.modernchat.service.FontService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
@@ -109,7 +112,7 @@ public class ChatOverlay extends OverlayPanel
     private final ChatMouse mouse = new ChatMouse();
     private final InputKeys keys = new InputKeys();
 
-    private final List<Tab> tabOrder = new ArrayList<>();
+    @Getter private final List<Tab> tabOrder = new ArrayList<>();
     @Getter private Tab activeTab = null;
     @Getter private final Map<String, Tab> tabsByKey = new ConcurrentHashMap<>();
     @Getter private final Map<ChatMode, String> defaultTabNames = new ConcurrentHashMap<>();
@@ -227,10 +230,11 @@ public class ChatOverlay extends OverlayPanel
         messageContainers.forEach((mode, container) -> {
             container.setChromeEnabled(true);
             container.startUp(containerConfig, ChatMode.valueOf(mode));
-            //container.pushLines(Arrays.asList("Welcome to ModernChat!", "This is a redesigned chatbox with custom features.", "Use the input below; Left/Right move the caret, Enter sends.", "Esc unfocuses the input. Backspace/Delete/Home/End supported.", "Scroll with the mouse wheel, or drag the scrollbar on the right.", "You can customize the appearance in the settings.", "Enjoy your chat experience!", "This is a sample message to fill the chat buffer and demonstrate scrolling.", "Feel free to type here and see how the chat behaves.", "You can also resize the window to see how it adapts.", "Remember, this is just a demo; you can modify the code to suit your needs.", "Have fun exploring the features of ModernChat!", "This is another message to ensure the buffer has enough content for scrolling.", "Keep typing to see how the chatbox handles new messages.", "Here's a longer message to test the wrapping and scrolling behavior of the chatbox.", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.", "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.", "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.", "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.", mode));
         });
 
         refreshTabs();
+
+        clientThread.invoke(() -> selectTab(ChatMode.PUBLIC));
 
         if (config.isStartHidden())
             setHidden(true);
@@ -875,7 +879,9 @@ public class ChatOverlay extends OverlayPanel
             return;
         }
 
+        Tab lastActive = activeTab;
         activeTab = t;
+        eventBus.post(new TabChangeEvent(activeTab, lastActive));
 
         t.setUnread(0);
         if (t.isPrivate()) {
@@ -978,7 +984,7 @@ public class ChatOverlay extends OverlayPanel
                 .onClick(me -> copyToClipboard(rowText));
 
             String targetName = hit.getTargetName();
-            if (targetName != null && !targetName.isBlank()) {
+            if (targetName != null && !targetName.isBlank() && !targetName.equals(getLocalPlayerName())) {
                 rootMenu.createMenuEntry(1)
                     .setOption("Message " + ColorUtil.wrapWithColorTag(targetName, Color.ORANGE))
                     .setType(MenuAction.RUNELITE)
@@ -1029,6 +1035,11 @@ public class ChatOverlay extends OverlayPanel
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> hovered.setUnread(0));
         }
+    }
+
+    private String getLocalPlayerName() {
+        Player lp = client.getLocalPlayer();
+        return lp != null && lp.getName() != null ? Text.removeTags(lp.getName()) : "Player";
     }
 
     public void inputTick() {
@@ -1232,7 +1243,9 @@ public class ChatOverlay extends OverlayPanel
 
         clientThread.invoke(() -> {
             client.runScript(ScriptID.PRIVMSG, targetName, text);
+
             eventBus.post(new SubmitHistoryEvent(text));
+            eventBus.post(new ChatPrivateMessageSentEvent(text, targetName));
         });
     }
 
@@ -1273,28 +1286,11 @@ public class ChatOverlay extends OverlayPanel
         final int modeValue = selectedMode.getValue();
         final int clanTypeValue = clanType.getValue();
 
-        int charLimit = getCharacterLimit();
-        if (text.length() >= charLimit) {
-            // split into multiple messages if too long
-            List<String> parts = ChatUtil.chunk(text, charLimit);
-            int delay = 0;
-            for (String part : parts) {
-                new Timer().schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        clientThread.invoke(() -> {
-                            client.runScript(ScriptID.CHAT_SEND, part, modeValue, clanTypeValue, 0, 0);
-                        });
-                    }
-                }, delay);
+        clientThread.invoke(() -> {
+            client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
 
-                delay += 1500;
-            }
-        } else {
-            clientThread.invoke(() -> {
-                client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
-            });
-        }
+            eventBus.post(new ChatMessageSentEvent(text, modeValue, clanTypeValue));
+        });
     }
 
     private int getCharacterLimit() {
@@ -1331,12 +1327,12 @@ public class ChatOverlay extends OverlayPanel
         MessageContainer container;
         ChatMode mode = ChatUtil.toChatMode(type);
 
-        String targetName = type == ChatMessageType.PRIVATECHATOUT
+        String targetName = type == ChatMessageType.PRIVATECHATOUT || type == ChatMessageType.FRIENDNOTIFICATION
             ? receiverName
             : senderName;
 
         if (mode == ChatMode.PRIVATE) {
-            if (StringUtil.isNullOrEmpty(targetName)) {
+            if (StringUtil.isNullOrEmpty(targetName) && !line.startsWith("Unable to send message ")) {
                 log.warn("Attempted to add private message without a receiver name");
                 return;
             }
@@ -1351,10 +1347,13 @@ public class ChatOverlay extends OverlayPanel
                 tab = pair.getLeft();
                 container = pair.getRight();
             } else {
-                container = openPrivateMessageContainer(targetName);
+                if (!targetName.equals(getLocalPlayerName()))
+                    container = openPrivateMessageContainer(targetName);
+                else
+                    container = messageContainer;
             }
 
-            if (type != ChatMessageType.PRIVATECHATOUT && !isPrivateTabOpen(targetName)) {
+            if (type != ChatMessageType.PRIVATECHATOUT && type != ChatMessageType.FRIENDNOTIFICATION && !isPrivateTabOpen(targetName)) {
                 MessageContainer publicContainer = messageContainers.get(ChatMode.PUBLIC.name());
                 if (publicContainer != null) {
                     publicContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);

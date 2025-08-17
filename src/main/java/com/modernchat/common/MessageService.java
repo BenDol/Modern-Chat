@@ -139,7 +139,7 @@ public class MessageService
         showConfirmDialog(title, message, JOptionPane.WARNING_MESSAGE, icon, callback);
     }
 
-    private void showQuestionConfirmDialog(String title, String message,
+    public void showQuestionConfirmDialog(String title, String message,
                                            Consumer<Integer> callback) {
         showQuestionConfirmDialog(title, message, null, callback);
     }

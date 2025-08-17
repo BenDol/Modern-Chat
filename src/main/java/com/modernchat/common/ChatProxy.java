@@ -51,6 +51,7 @@ public class ChatProxy
     public boolean startPrivateMessage(String currentTarget, String body, Runnable callback) {
         if (modernChat.isEnabled()) {
             if (!modernChat.isPrivateTabOpen(currentTarget)) {
+                modernChat.setHidden(false);
                 modernChat.selectPrivateTab(currentTarget);
             }
             return false;
@@ -70,5 +71,16 @@ public class ChatProxy
 
     public String getInputText() {
         return modernChat.isEnabled() ? modernChat.getInputText() : ClientUtil.getChatInputText(client);
+    }
+
+    public void setHidden(boolean hidden) {
+        if (modernChat.isEnabled()) {
+            modernChat.setHidden(hidden);
+        } else {
+            Widget legacyChat = widgetBucket.getChatWidget();
+            if (legacyChat != null) {
+                legacyChat.setHidden(hidden);
+            }
+        }
     }
 }

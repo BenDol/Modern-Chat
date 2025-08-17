@@ -267,7 +267,8 @@ public class ModernChatPanel extends PluginPanel
         String s = in.trim().replaceAll("\\s+", "-");
         s = s.replaceAll("[^A-Za-z0-9_\\-\\.]", "");
         // avoid hidden dotfiles or just ".json"
-        if (s.equalsIgnoreCase(".json")) s = "profile";
+        if (s.equalsIgnoreCase(".json"))
+            s = "profile";
         // strip trailing ".json" if user typed it
         if (s.toLowerCase(Locale.ROOT).endsWith(".json"))
             s = s.substring(0, s.length() - 5);
