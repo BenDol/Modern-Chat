@@ -88,8 +88,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -350,7 +348,7 @@ public class ChatOverlay extends OverlayPanel
             font = null;
         }
         if (font == null) {
-            font = fontService.getFont(fontStyle != null ? fontStyle : FontStyle.RUNE_REG);
+            font = fontService.getFont(fontStyle != null ? fontStyle : FontStyle.RUNE);
         }
         return font;
     }

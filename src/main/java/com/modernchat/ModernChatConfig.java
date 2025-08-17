@@ -224,7 +224,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default FontStyle featureRedesign_FontStyle() {
-        return FontStyle.RUNE_REG;
+        return FontStyle.RUNE;
     }
 
     @ConfigItem(
@@ -275,7 +275,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default FontStyle featureRedesign_MessageContainer_LineFontStyle() {
-        return FontStyle.RUNE_REG;
+        return FontStyle.RUNE;
     }
 
     @ConfigItem(
@@ -1109,7 +1109,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default FontStyle featurePeek_FontStyle() {
-        return FontStyle.RUNE_REG;
+        return FontStyle.RUNE;
     }
 
     @ConfigItem(

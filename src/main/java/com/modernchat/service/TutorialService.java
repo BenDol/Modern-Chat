@@ -94,7 +94,8 @@ public class TutorialService implements ChatService
     public void onTabChangeEvent(TabChangeEvent e) {
         if (state == TutorialState.AWAITING_TAB_SWITCH) {
             log.debug("Chat tab switched, proceeding with tutorial");
-            new Timer().schedule(new TimerTask() {
+            new Timer().schedule(new TimerTask()
+            {
                 @Override
                 public void run() {
                     messageService.pushChatMessage(new ChatMessageBuilder()
@@ -106,6 +107,25 @@ public class TutorialService implements ChatService
                     state = TutorialState.AWAITING_CHAT_SEND;
                 }
             }, 400);
+        } else if (state == TutorialState.AWAITING_PRIVATE_CHAT && e.getNewTab().isPrivate()) {
+            log.debug("Private chat sent, completing tutorial");
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    messageService.pushChatMessage(new ChatMessageBuilder()
+                        .append("Congratulations! You have completed the Modern Chat tutorial. " +
+                            "Check out the settings to customize your chat experience even more! Some features to note are: ")
+                        .append(Color.ORANGE, "resizeable chat").append(", ")
+                        .append(Color.ORANGE, "moveable tabs").append(", ")
+                        .append(Color.ORANGE, "input selection").append(", ")
+                        .append(Color.ORANGE, "input navigation").append(", ")
+                        .append(Color.ORANGE, "chat history (shift up/down)")
+                        .append(" and much more!"));
+
+                    state = TutorialState.COMPLETED;
+                    shutDown();
+                }
+            }, 600);
         } else {
             log.warn("Unexpected tutorial state: {}", state);
         }
@@ -120,8 +140,8 @@ public class TutorialService implements ChatService
                 public void run() {
                     messageService.pushChatMessage(new ChatMessageBuilder()
                         .append("Great! Now try ")
-                        .append(Color.ORANGE, "sending a private message")
-                        .append(" to another player by ")
+                        .append(Color.ORANGE, "opening a private channel")
+                        .append(" to message another player, by ")
                         .append(Color.ORANGE, "right-clicking")
                         .append(" on their name in chat, name in friends list or character in the world, you will see the ")
                         .append(Color.ORANGE, "Chat with")
@@ -139,22 +159,7 @@ public class TutorialService implements ChatService
 
     @Subscribe
     public void onChatPrivateMessageSentEvent(ChatPrivateMessageSentEvent e) {
-        if (state == TutorialState.AWAITING_PRIVATE_CHAT) {
-            log.debug("Private chat sent, completing tutorial");
-            new Timer().schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    messageService.pushChatMessage(new ChatMessageBuilder()
-                        .append("Congratulations! You have completed the Modern Chat tutorial. " +
-                            "Check out the settings to customize your chat experience even more!"));
 
-                    state = TutorialState.COMPLETED;
-                    shutDown();
-                }
-            }, 600);
-        } else {
-            log.warn("Unexpected tutorial state: {}", state);
-        }
     }
 
     @Subscribe

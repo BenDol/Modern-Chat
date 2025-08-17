@@ -258,7 +258,7 @@ public class MessageContainer extends Overlay
             lineFont = null;
         }
         if (lineFont == null)
-            lineFont = fontService.getFont(lineFontStyle != null ? lineFontStyle : FontStyle.RUNE_REG);
+            lineFont = fontService.getFont(lineFontStyle != null ? lineFontStyle : FontStyle.RUNE);
         return lineFont;
     }
 

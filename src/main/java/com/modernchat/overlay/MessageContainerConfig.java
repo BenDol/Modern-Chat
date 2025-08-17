@@ -114,7 +114,7 @@ public interface MessageContainerConfig extends ChatColors
 
         @Override
         public FontStyle getLineFontStyle() {
-            return FontStyle.RUNE_REG;
+            return FontStyle.RUNE;
         }
 
         @Override

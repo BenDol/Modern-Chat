@@ -190,7 +190,7 @@ public class ChatPeekOverlay extends Overlay
             font = null;
         }
         if (font == null) {
-            font = fontService.getFont(fontStyle != null ? fontStyle : FontStyle.RUNE_REG);
+            font = fontService.getFont(fontStyle != null ? fontStyle : FontStyle.RUNE);
         }
         return font;
     }

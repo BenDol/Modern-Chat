@@ -131,7 +131,7 @@ public interface ChatOverlayConfig
 
         @Override
         public FontStyle getFontStyle() {
-            return FontStyle.RUNE_REG;
+            return FontStyle.RUNE;
         }
 
         @Override
