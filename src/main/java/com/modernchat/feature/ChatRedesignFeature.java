@@ -42,6 +42,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.ui.overlay.OverlayManager;
+import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -413,32 +414,13 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
         long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() : System.currentTimeMillis();
 
+        Pair<String, String> senderReceiver = ChatUtil.getSenderAndReceiver(e, localPlayerName);
+
         ChatMessageType type = e.getType();
         String msg = e.getMessage();
-        String name = e.getName();
-        String receiverName = null;
-        String senderName = e.getSender();
-        String prefix = "";
-
-        if (type == ChatMessageType.PRIVATECHATOUT) {
-            receiverName = name;
-            senderName = "You";
-        }
-        else if (type == ChatMessageType.PRIVATECHAT) {
-            receiverName = localPlayerName;
-            senderName = name;
-        }
-        else if (ChatUtil.isClanMessage(type) || ChatUtil.isFriendsChatMessage(type)) {
-            senderName = name;
-            prefix = e.getSender() != null ? "(" + e.getSender() + ") " : "";
-        }
-        else if (senderName == null) {
-            senderName = name;
-        }
-
-        if (receiverName == null) {
-            receiverName = localPlayerName;
-        }
+        String receiverName = senderReceiver.getRight();
+        String senderName = senderReceiver.getLeft();
+        String prefix = ChatUtil.getCustomPrefix(e);
 
         if (type == ChatMessageType.DIALOG) {
             msg = msg.replaceFirst("\\|", ": ");

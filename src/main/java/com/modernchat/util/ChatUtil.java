@@ -3,6 +3,8 @@ package com.modernchat.util;
 import com.modernchat.common.ChatMode;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.MenuAction;
+import net.runelite.api.events.ChatMessage;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
@@ -118,5 +120,47 @@ public class ChatUtil {
     public static boolean isFriendsChatMessage(ChatMessageType type) {
         return type == ChatMessageType.FRIENDSCHAT
             || type == ChatMessageType.FRIENDSCHATNOTIFICATION;
+    }
+
+    public static Pair<String, String> getSenderAndReceiver(ChatMessage msg, String localPlayerName) {
+        String receiverName = null;
+        String senderName = msg.getSender();
+        String name = msg.getName();
+        ChatMessageType type = msg.getType();
+
+        if (type == ChatMessageType.PRIVATECHATOUT) {
+            receiverName = name;
+            senderName = "You";
+        }
+        else if (type == ChatMessageType.PRIVATECHAT) {
+            receiverName = localPlayerName;
+            senderName = name;
+        }
+        else if (ChatUtil.isClanMessage(type) || ChatUtil.isFriendsChatMessage(type)) {
+            senderName = name;
+        }
+        else if (senderName == null) {
+            senderName = name;
+        }
+
+        if (receiverName == null) {
+            receiverName = localPlayerName;
+        }
+
+        return Pair.of(senderName, receiverName);
+    }
+
+    public static String getCustomPrefix(ChatMessage msg) {
+        ChatMessageType type = msg.getType();
+        if (type == ChatMessageType.PRIVATECHATOUT) {
+            return "";
+        }
+        else if (type == ChatMessageType.PRIVATECHAT) {
+            return "";
+        }
+        else if (ChatUtil.isClanMessage(type) || ChatUtil.isFriendsChatMessage(type)) {
+            return msg.getSender() != null ? "(" + msg.getSender() + ") " : "";
+        }
+        return "";
     }
 }

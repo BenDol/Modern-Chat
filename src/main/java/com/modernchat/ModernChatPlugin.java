@@ -5,6 +5,7 @@ import com.modernchat.common.Anchor;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.common.MessageService;
+import com.modernchat.common.NotifyType;
 import com.modernchat.common.PrivateChatAnchor;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.DialogOptionsClosedEvent;
@@ -14,17 +15,20 @@ import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
 import com.modernchat.event.LeftDialogClosedEvent;
 import com.modernchat.event.LeftDialogOpenedEvent;
+import com.modernchat.event.NotificationEvent;
 import com.modernchat.event.RightDialogClosedEvent;
 import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.feature.ChatFeature;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
+import com.modernchat.feature.NotificationChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.service.FontService;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.service.ProfileService;
+import com.modernchat.service.SoundService;
 import com.modernchat.service.TutorialService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
@@ -74,6 +78,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import static com.modernchat.common.NotifyType.MESSAGE_RECEIVED;
+
 @Slf4j
 @PluginDescriptor(
 	name = "Modern Chat",
@@ -89,6 +95,7 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private ConfigManager configManager;
 	@Inject private ChatMessageManager chatMessageManager;
 	@Inject private FontService fontService;
+	@Inject private SoundService soundService;
 	@Inject private MessageService messageService;
 	@Inject private ProfileService profileService;
 	@Inject private TutorialService tutorialService;
@@ -101,6 +108,7 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private ToggleChatFeature toggleChatFeature;
 	@Inject private PeekChatFeature peekChatFeature;
 	@Inject private CommandsChatFeature commandsChatFeature;
+	@Inject private NotificationChatFeature notificationChatFeature;
 	@Inject private MessageHistoryChatFeature messageHistoryChatFeature;
 	@Inject private ChatRedesignFeature chatRedesignFeature;
 
@@ -123,6 +131,7 @@ public class ModernChatPlugin extends Plugin {
 		panel = new ModernChatPanel(profileService, configManager);
 
 		fontService.startUp();
+		soundService.startUp();
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/modernchat/images/icon.png");
 		if (icon == null) {
@@ -145,6 +154,7 @@ public class ModernChatPlugin extends Plugin {
 		addFeature(toggleChatFeature);
 		addFeature(peekChatFeature);
 		addFeature(commandsChatFeature);
+		addFeature(notificationChatFeature);
 		addFeature(messageHistoryChatFeature);
 
 		features.forEach((f) -> {
@@ -162,14 +172,14 @@ public class ModernChatPlugin extends Plugin {
 		// Force an initial re-anchor if enabled once widgets are available
 		lastChatBounds = null;
 
-		if (!config.featureExample_Enabled()) {
+		//if (!config.featureExample_Enabled()) {
 			toggleChatFeature.scheduleDeferredHide();
 
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
 				startInstallIntro();
 			}
-		}
+		//}
 	}
 
 	@Override
@@ -184,6 +194,8 @@ public class ModernChatPlugin extends Plugin {
 		}
 		profileService.shutDown();
 
+		fontService.shutDown();
+		soundService.shutDown();
 		tutorialService.shutDown();
 
 		if (features != null) {
@@ -417,8 +429,14 @@ public class ModernChatPlugin extends Plugin {
 
 	@Subscribe
 	public void onChatMessage(ChatMessage e) {
-		if (ChatUtil.isPrivateMessage(e.getType())) {
+		boolean isPrivate = ChatUtil.isPrivateMessage(e.getType());
+		if (isPrivate) {
 			clientThread.invoke(() -> maybeReanchor(true));
+		}
+
+		if (chatProxy.isHidden() || !chatProxy.isTabOpen(e)) {
+			eventBus.post(new NotificationEvent(MESSAGE_RECEIVED,
+				e.getType(), e.getMessage(), true, isPrivate, chatProxy));
 		}
 	}
 

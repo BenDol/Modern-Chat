@@ -2,6 +2,7 @@ package com.modernchat;
 
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.Sfx;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -68,9 +69,17 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     String commandsSection = "commandsSection";
 
     @ConfigSection(
+        name = "Notifications",
+        description = "Notification settings for chat events",
+        position = 6,
+        closedByDefault = true
+    )
+    String notificationsSection = "notificationsSection";
+
+    @ConfigSection(
         name = "Message History",
         description = "Cycle through your message history",
-        position = 6,
+        position = 7,
         closedByDefault = true
     )
     String messageHistorySection = "messageHistorySection";
@@ -1395,5 +1404,116 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default Keybind featureMessageHistory_NextKey() {
         return new Keybind(KeyEvent.VK_PAGE_DOWN, 0);
+    }
+
+    /* ------------ Notification Settings ------------ */
+
+    @ConfigItem(
+        keyName = "featureNotify_Enabled",
+        name = "Enable",
+        description = "Enable chat notifications for new messages",
+        position = 0,
+        section = notificationsSection
+    )
+    @Override
+    default boolean featureNotify_Enabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featureNotify_SoundEnabled",
+        name = "Enable Sounds",
+        description = "Play a sound when a new message arrives",
+        position = 1,
+        section = notificationsSection
+    )
+    @Override
+    default boolean featureNotify_SoundEnabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featureNotify_UseRuneLiteSound",
+        name = "Use RuneLite Sound",
+        description = "Use the default RuneLite notification sound for new messages",
+        position = 2,
+        section = notificationsSection
+    )
+    @Override
+    default boolean featureNotify_UseRuneLiteSound() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "featureNotify_VolumePercent",
+        name = "Volume Percent",
+        description = "Volume percentage for notification sounds (0-100)",
+        position = 3,
+        section = notificationsSection
+    )
+    @Range(min = 0, max = 100)
+    @Override
+    default int featureNotify_VolumePercent() {
+        return 50;
+    }
+
+    @ConfigItem(
+        keyName = "featureNotify_MessageReceivedSfx",
+        name = "Message Received Sound",
+        description = "Sound to play when a new message is received",
+        position = 4,
+        section = notificationsSection
+    )
+    @Override
+    default Sfx featureNotify_MessageReceivedSfx() {
+        return Sfx.MSG_RECEIVED_1;
+    }
+
+    @ConfigItem(
+        keyName = "featureNotify_OnPublicMessage",
+        name = "Public Messages",
+        description = "Notify when a new public message arrives",
+        position = 5,
+        section = notificationsSection
+    )
+    @Override
+    default boolean featureNotify_OnPublicMessage() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "featureNotify_OnPrivateMessage",
+        name = "Private Messages",
+        description = "Notify when a new private message arrives",
+        position = 6,
+        section = notificationsSection
+    )
+    @Override
+    default boolean featureNotify_OnPrivateMessage() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featureNotify_OnFriendsChat",
+        name = "Friends Messages",
+        description = "Notify when a new friends message arrives",
+        position = 7,
+        section = notificationsSection
+    )
+    @Override
+    default boolean featureNotify_OnFriendsChat() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featureNotify_OnClan",
+        name = "Clan Chat",
+        description = "Notify when a new clan chat message arrives",
+        position = 8,
+        section = notificationsSection
+    )
+    @Override
+    default boolean featureNotify_OnClan() {
+        return true;
     }
 }

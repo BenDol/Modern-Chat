@@ -6,14 +6,17 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.Sfx;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.ExampleChatFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
+import com.modernchat.feature.NotificationChatFeature;
 import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Keybind;
+import net.runelite.client.config.Range;
 
 import java.awt.Color;
 import java.awt.event.KeyEvent;
@@ -34,7 +37,8 @@ public interface ModernChatConfigBase extends
     ToggleChatFeature.ToggleChatFeatureConfig,
     PeekChatFeature.PeekChatFeatureConfig,
     CommandsChatFeature.CommandsChatConfig,
-    MessageHistoryChatFeature.MessageHistoryChatFeatureConfig
+    MessageHistoryChatFeature.MessageHistoryChatFeatureConfig,
+    NotificationChatFeature.NotificationChatFeatureConfig
 {
     String GROUP = "modernchat";
     String HISTORY_KEY = "messageHistory";
@@ -168,6 +172,17 @@ public interface ModernChatConfigBase extends
         String featureMessageHistory_SkipDuplicates = "featureMessageHistory_SkipDuplicates";
         String featureMessageHistory_PrevKey = "featureMessageHistory_PrevKey";
         String featureMessageHistory_NextKey = "featureMessageHistory_NextKey";
+
+        // Notify
+        String featureNotify_Enabled = "featureNotify_Enabled";
+        String featureNotify_SoundEnabled = "featureNotify_SoundEnabled";
+        String featureNotify_UseRuneLiteSound = "featureNotify_UseRuneLiteSound";
+        String featureNotify_VolumePercent = "featureNotify_VolumePercent";
+        String featureNotify_MessageReceivedSfx = "featureNotify_MessageReceivedSfx";
+        String featureNotify_OnPublicMessage = "featureNotify_OnPublicMessage";
+        String featureNotify_OnPrivateMessage = "featureNotify_OnPrivateMessage";
+        String featureNotify_OnFriendsChat = "featureNotify_OnFriendsChat";
+        String featureNotify_OnClan = "featureNotify_OnClan";
     }
 
     /** Value kinds we need for generic JSON/Config writes. */
@@ -299,7 +314,18 @@ public interface ModernChatConfigBase extends
         HIST_INCLUDE_CMDS(Keys.featureMessageHistory_IncludeCommands, Kind.BOOL, ModernChatConfigBase::featureMessageHistory_IncludeCommands),
         HIST_SKIP_DUPES(Keys.featureMessageHistory_SkipDuplicates, Kind.BOOL, ModernChatConfigBase::featureMessageHistory_SkipDuplicates),
         HIST_PREV_KEY(Keys.featureMessageHistory_PrevKey, Kind.KEYBIND, ModernChatConfigBase::featureMessageHistory_PrevKey),
-        HIST_NEXT_KEY(Keys.featureMessageHistory_NextKey, Kind.KEYBIND, ModernChatConfigBase::featureMessageHistory_NextKey);
+        HIST_NEXT_KEY(Keys.featureMessageHistory_NextKey, Kind.KEYBIND, ModernChatConfigBase::featureMessageHistory_NextKey),
+
+        // ---- Notify ----
+        NOTIFY_ENABLED(Keys.featureNotify_Enabled, Kind.BOOL, ModernChatConfigBase::featureNotify_Enabled),
+        NOTIFY_SOUND_ENABLED(Keys.featureNotify_SoundEnabled, Kind.BOOL, ModernChatConfigBase::featureNotify_SoundEnabled),
+        NOTIFY_USE_RUNELITE_SOUND(Keys.featureNotify_UseRuneLiteSound, Kind.BOOL, ModernChatConfigBase::featureNotify_UseRuneLiteSound),
+        NOTIFY_VOLUME_PERCENT(Keys.featureNotify_VolumePercent, Kind.INT, ModernChatConfigBase::featureNotify_VolumePercent),
+        NOTIFY_MESSAGE_RECEIVED_SFX(Keys.featureNotify_MessageReceivedSfx, Sfx.class, ModernChatConfigBase::featureNotify_MessageReceivedSfx),
+        NOTIFY_ON_PUBLIC_MESSAGE(Keys.featureNotify_OnPublicMessage, Kind.BOOL, ModernChatConfigBase::featureNotify_OnPublicMessage),
+        NOTIFY_ON_PRIVATE_MESSAGE(Keys.featureNotify_OnPrivateMessage, Kind.BOOL, ModernChatConfigBase::featureNotify_OnPrivateMessage),
+        NOTIFY_ON_FRIENDS_CHAT(Keys.featureNotify_OnFriendsChat, Kind.BOOL, ModernChatConfigBase::featureNotify_OnFriendsChat),
+        NOTIFY_ON_CLAN(Keys.featureNotify_OnClan, Kind.BOOL, ModernChatConfigBase::featureNotify_OnClan);
 
         public final String key;
         public final Kind kind;
@@ -531,6 +557,17 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureMessageHistory_SkipDuplicates() { return getBool(Keys.featureMessageHistory_SkipDuplicates, DEFAULTS.featureMessageHistory_SkipDuplicates()); }
         @Override public Keybind featureMessageHistory_PrevKey() { return getKeybind(Keys.featureMessageHistory_PrevKey, DEFAULTS.featureMessageHistory_PrevKey()); }
         @Override public Keybind featureMessageHistory_NextKey() { return getKeybind(Keys.featureMessageHistory_NextKey, DEFAULTS.featureMessageHistory_NextKey()); }
+
+        // Notify
+        @Override public boolean featureNotify_Enabled() { return getBool(Keys.featureNotify_Enabled, DEFAULTS.featureNotify_Enabled()); }
+        @Override public boolean featureNotify_SoundEnabled() { return getBool(Keys.featureNotify_SoundEnabled, DEFAULTS.featureNotify_SoundEnabled()); }
+        @Override public boolean featureNotify_UseRuneLiteSound() { return getBool(Keys.featureNotify_UseRuneLiteSound, DEFAULTS.featureNotify_UseRuneLiteSound()); }
+        @Override public int featureNotify_VolumePercent() { return getInt(Keys.featureNotify_VolumePercent, DEFAULTS.featureNotify_VolumePercent()); }
+        @Override public Sfx featureNotify_MessageReceivedSfx() { return getEnum(Keys.featureNotify_MessageReceivedSfx, DEFAULTS.featureNotify_MessageReceivedSfx(), Sfx.class); }
+        @Override public boolean featureNotify_OnPublicMessage() { return getBool(Keys.featureNotify_OnPublicMessage, DEFAULTS.featureNotify_OnPublicMessage()); }
+        @Override public boolean featureNotify_OnPrivateMessage() { return getBool(Keys.featureNotify_OnPrivateMessage, DEFAULTS.featureNotify_OnPrivateMessage()); }
+        @Override public boolean featureNotify_OnFriendsChat() { return getBool(Keys.featureNotify_OnFriendsChat, DEFAULTS.featureNotify_OnFriendsChat()); }
+        @Override public boolean featureNotify_OnClan() { return getBool(Keys.featureNotify_OnClan, DEFAULTS.featureNotify_OnClan()); }
 
         public JsonElement get(String key) {
             String kl = key.toLowerCase(Locale.ROOT);
