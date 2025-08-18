@@ -85,8 +85,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
-import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -760,6 +760,19 @@ public class ChatOverlay extends OverlayPanel
     public void refreshTabs() {
         tabsScrollPx = 0;
 
+        int index = -1;
+        Map<ChatMode, Integer> orderMap = new HashMap<>();
+        for (Tab tab : tabOrder) {
+            index++;
+            if (tab.isPrivate())
+                continue;
+            try {
+                orderMap.put(ChatMode.valueOf(tab.getKey()), index);
+            } catch (Exception ignore) {
+                log.debug("Ignoring tab {} because it is unknown", tab);
+            }
+        }
+
         availableChatModes.forEach((mode) -> {
             if (mode == ChatMode.PRIVATE) return;
             removeTab(mode);
@@ -767,78 +780,78 @@ public class ChatOverlay extends OverlayPanel
 
         recomputeAvailableModes();
 
-        int index = 0;
         for (ChatMode mode : availableChatModes) {
             if (mode == ChatMode.PRIVATE) return;
 
             String tabKey = tabKey(mode);
             if (!tabsByKey.containsKey(tabKey)) {
                 String tabName = defaultTabNames.getOrDefault(mode, mode.name());
-                addTab(new Tab(tabKey, tabName, false), index++);
+                addTab(new Tab(tabKey, tabName, false), orderMap.getOrDefault(mode, -1));
             }
         }
     }
 
-    private void removeTab(Tab t) {
-        removeTab(t, true);
+    private int removeTab(Tab t) {
+        return removeTab(t, true);
     }
 
-    private void removeTab(Tab t, boolean keepContainer) {
+    private int removeTab(Tab t, boolean keepContainer) {
         if (t == null) {
             log.warn("Attempted to remove null tab");
-            return;
+            return -1;
         }
 
         if (t.isPrivate()) {
-            removePrivateTab(t.getKey(), keepContainer);
+            return removePrivateTab(t.getKey(), keepContainer);
         } else {
-            removeTab(t.getKey(), keepContainer);
+            return removeTab(t.getKey(), keepContainer);
         }
     }
 
-    public void removePrivateTab(String targetName) {
-        removePrivateTab(targetName, true);
+    public int removePrivateTab(String targetName) {
+        return removePrivateTab(targetName, true);
     }
 
-    public void removePrivateTab(String targetName, boolean keepContainer) {
+    public int removePrivateTab(String targetName, boolean keepContainer) {
         if (StringUtil.isNullOrEmpty(targetName)) {
             log.warn("Attempted to remove private tab with null or empty target name");
-            return;
+            return -1;
         }
 
         String key = targetName.startsWith("private_") ? targetName : "private_" + targetName;
-        removeTab(key, keepContainer);
+        return removeTab(key, keepContainer);
     }
 
-    public void removeTab(ChatMode chatMode) {
+    public int removeTab(ChatMode chatMode) {
         if (chatMode == ChatMode.PRIVATE) {
             log.warn("Attempted to remove tab for private chat mode, use removePrivateTab instead");
-            return;
+            return -1;
         }
 
         String key = tabKey(chatMode);
         if (StringUtil.isNullOrEmpty(key)) {
             log.warn("Attempted to remove tab with null or empty key for chat mode: {}", chatMode);
-            return;
+            return -1;
         }
 
-        removeTab(key, true);
+        return removeTab(key, true);
     }
 
-    public void removeTab(String key) {
-        removeTab(key, true);
+    public int removeTab(String key) {
+        return removeTab(key, true);
     }
 
-    public void removeTab(String key, boolean keepContainer) {
+    public int removeTab(String key, boolean keepContainer) {
         if (StringUtil.isNullOrEmpty(key)) {
             log.warn("Attempted to remove tab with null or empty key");
-            return;
+            return -1;
         }
 
+        int tabIndex = -1;
         Tab nextTab = null;
         Tab tab = tabsByKey.remove(key);
         if (tab != null) {
-            int tabIndex = tabOrder.indexOf(tab);
+            tabIndex = tabOrder.indexOf(tab);
             if (tabIndex >= 0 && tabIndex < tabOrder.size() - 1) {
                 nextTab = tabOrder.get(tabIndex + 1);
             } else if (tabIndex > 0) {
@@ -873,6 +886,8 @@ public class ChatOverlay extends OverlayPanel
         if (nextTab != null) {
             selectTab(nextTab);
         }
+
+        return tabIndex;
     }
 
     public void recomputeAvailableModes() {
