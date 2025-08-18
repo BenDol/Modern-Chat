@@ -172,14 +172,14 @@ public class ModernChatPlugin extends Plugin {
 		// Force an initial re-anchor if enabled once widgets are available
 		lastChatBounds = null;
 
-		//if (!config.featureExample_Enabled()) {
+		if (!config.featureExample_Enabled()) {
 			toggleChatFeature.scheduleDeferredHide();
 
 			Player localPlayer = client.getLocalPlayer();
 			if (localPlayer != null) {
 				startInstallIntro();
 			}
-		//}
+		}
 	}
 
 	@Override
