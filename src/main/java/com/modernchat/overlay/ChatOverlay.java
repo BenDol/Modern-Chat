@@ -87,6 +87,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -112,7 +113,7 @@ public class ChatOverlay extends OverlayPanel
     private final ChatMouse mouse = new ChatMouse();
     private final InputKeys keys = new InputKeys();
 
-    @Getter private final List<Tab> tabOrder = new ArrayList<>();
+    @Getter private final List<Tab> tabOrder = new LinkedList<>();
     @Getter private Tab activeTab = null;
     @Getter private final Map<String, Tab> tabsByKey = new ConcurrentHashMap<>();
     @Getter private final Map<ChatMode, String> defaultTabNames = new ConcurrentHashMap<>();
@@ -409,7 +410,8 @@ public class ChatOverlay extends OverlayPanel
             final int closeH = fm.getHeight() - 2;
             final int closeW = t.isCloseable() ? closeH : 0;
 
-            final int wNoBadge = padX + textW + (t.isCloseable() ? (6 + closeW) : 0) + padX;
+            int i = t.isCloseable() ? (6 + closeW) : 0;
+            final int wNoBadge = padX + textW + i + padX;
 
             int badgeW = 0;
             final boolean showBadge = t.getUnread() > 0 && config.isShowNotificationBadge();
@@ -419,8 +421,7 @@ public class ChatOverlay extends OverlayPanel
                 badgeW = computeBadgeWidth(nfm, unreadStr, thinTab);
             }
 
-            final int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0)
-                + (t.isCloseable() ? (6 + closeW) : 0) + padX;
+            final int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0) + i + padX;
 
             total += w + 4; // + gap between tabs
         }
@@ -445,7 +446,8 @@ public class ChatOverlay extends OverlayPanel
             final int closeH = fm.getHeight() - 2;
             final int closeW = t.isCloseable() ? closeH : 0;
 
-            final int wNoBadge = padX + textW + (t.isCloseable() ? (6 + closeW) : 0) + padX;
+            int i = t.isCloseable() ? (6 + closeW) : 0;
+            final int wNoBadge = padX + textW + i + padX;
 
             int badgeW = 0;
             final boolean showBadge = t.getUnread() > 0 && config.isShowNotificationBadge();
@@ -456,7 +458,7 @@ public class ChatOverlay extends OverlayPanel
             }
 
             final int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0)
-                + (t.isCloseable() ? (6 + closeW) : 0) + padX;
+                + i + padX;
 
             if (draggingTab && dragTab != null && t != dragTab && filteredIdx == dragTargetIndex) {
                 cx += (dragTabWidth > 0 ? dragTabWidth : w) + 4;
@@ -765,15 +767,16 @@ public class ChatOverlay extends OverlayPanel
 
         recomputeAvailableModes();
 
-        availableChatModes.forEach((mode) -> {
+        int index = 0;
+        for (ChatMode mode : availableChatModes) {
             if (mode == ChatMode.PRIVATE) return;
 
             String tabKey = tabKey(mode);
             if (!tabsByKey.containsKey(tabKey)) {
                 String tabName = defaultTabNames.getOrDefault(mode, mode.name());
-                addTab(new Tab(tabKey, tabName, false), mode.ordinal());
+                addTab(new Tab(tabKey, tabName, false), index++);
             }
-        });
+        }
     }
 
     private void removeTab(Tab t) {
