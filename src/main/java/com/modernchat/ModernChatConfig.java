@@ -1502,7 +1502,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default boolean featureNotify_OnFriendsChat() {
-        return true;
+        return false;
     }
 
     @ConfigItem(
@@ -1514,6 +1514,6 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default boolean featureNotify_OnClan() {
-        return true;
+        return false;
     }
 }
