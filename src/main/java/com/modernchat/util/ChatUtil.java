@@ -198,13 +198,13 @@ public class ChatUtil
 
         ChatMessageType type = e.getType();
         String msg = e.getMessage();
+        String[] params = msg.split("\\|", 3);
         String receiverName = senderReceiver.getRight();
         String senderName = senderReceiver.getLeft();
         String prefix = ChatUtil.getCustomPrefix(e);
 
         if (type == ChatMessageType.DIALOG) {
-            msg = msg.replaceFirst("\\|", " ");
-            senderName = ColorUtil.wrapWithColorTag(senderName, Color.CYAN);
+            senderName = ColorUtil.wrapWithColorTag(params.length > 1 ? params[params.length - 2] : senderName, Color.CYAN);
         }
 
         ChatMessageBuilder builder = new ChatMessageBuilder();
@@ -212,7 +212,7 @@ public class ChatUtil
         if (!StringUtil.isNullOrEmpty(senderName))
             builder.append(senderName, false).append(": ");
 
-        String[] params = msg.split("\\|", 2);
+
         if (params.length > 1) {
             int icon = ChatUtil.getModImageId(params[0]);
             if (icon != -1) {

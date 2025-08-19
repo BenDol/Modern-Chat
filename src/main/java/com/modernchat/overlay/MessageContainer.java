@@ -11,8 +11,6 @@ import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ImageService;
-import com.modernchat.util.ChatUtil;
-import com.modernchat.util.ClientUtil;
 import com.modernchat.util.ColorUtil;
 import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
@@ -51,7 +49,6 @@ import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MessageContainer extends Overlay
 {
