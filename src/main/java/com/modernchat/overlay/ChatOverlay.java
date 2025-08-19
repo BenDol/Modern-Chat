@@ -198,7 +198,7 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public boolean isEnabled() {
-        return config.isEnabled();
+        return config != null && config.isEnabled();
     }
 
     public void startUp(ChatOverlayConfig config) {
@@ -1900,6 +1900,7 @@ public class ChatOverlay extends OverlayPanel
         private boolean shouldBlockClickThrough(MouseEvent e) {
             boolean shouldBlock = !config.isAllowClickThrough()
                 && e.getButton() == MouseEvent.BUTTON1
+                && !isHidden()
                 && !e.isAltDown()
                 && !client.isMenuOpen()
                 && lastViewport != null
