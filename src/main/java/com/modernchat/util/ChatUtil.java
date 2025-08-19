@@ -1,11 +1,18 @@
 package com.modernchat.util;
 
+import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
+import com.modernchat.common.MessageLine;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
+import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.client.util.ColorUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
+import javax.annotation.Nullable;
+import java.awt.Color;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
@@ -16,8 +23,8 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ChatUtil {
-
+public class ChatUtil
+{
     public static boolean isPrivateMessage(ChatMessageType t) {
         return t == ChatMessageType.PRIVATECHAT
             || t == ChatMessageType.PRIVATECHATOUT
@@ -162,5 +169,62 @@ public class ChatUtil {
             return msg.getSender() != null ? "(" + msg.getSender() + ") " : "";
         }
         return "";
+    }
+
+    public static int getModImageId(String msg) {
+        if (msg == null || msg.isEmpty())
+            return -1;
+        String idStr = msg.replace("IMG:", "");
+        try {
+            return Integer.parseInt(idStr);
+        } catch (NumberFormatException e) {
+            // Ignore and return default
+        }
+        return -1; // Default icon ID if not found
+    }
+
+    public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client) {
+        Player localPlayer = client.getLocalPlayer();
+        if (localPlayer == null)
+            return null;
+
+        String localPlayerName = localPlayer.getName();
+        if (StringUtil.isNullOrEmpty(localPlayerName))
+            return null;
+
+        long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() : System.currentTimeMillis();
+
+        Pair<String, String> senderReceiver = ChatUtil.getSenderAndReceiver(e, localPlayerName);
+
+        ChatMessageType type = e.getType();
+        String msg = e.getMessage();
+        String receiverName = senderReceiver.getRight();
+        String senderName = senderReceiver.getLeft();
+        String prefix = ChatUtil.getCustomPrefix(e);
+
+        if (type == ChatMessageType.DIALOG) {
+            msg = msg.replaceFirst("\\|", " ");
+            senderName = ColorUtil.wrapWithColorTag(senderName, Color.CYAN);
+        }
+
+        ChatMessageBuilder builder = new ChatMessageBuilder();
+
+        if (!StringUtil.isNullOrEmpty(senderName))
+            builder.append(senderName, false).append(": ");
+
+        String[] params = msg.split("\\|", 2);
+        if (params.length > 1) {
+            int icon = ChatUtil.getModImageId(params[0]);
+            if (icon != -1) {
+                builder.img(icon);
+            }
+
+            // message should always be last
+            builder.append(params[params.length - 1], false);
+        } else {
+            builder.append(msg, false);
+        }
+
+        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix);
     }
 }

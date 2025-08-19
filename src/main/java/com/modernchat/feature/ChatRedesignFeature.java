@@ -5,6 +5,7 @@ import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.MessageLine;
 import com.modernchat.common.NotificationService;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Margin;
@@ -21,13 +22,10 @@ import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
 import com.modernchat.service.MessageService;
 import com.modernchat.util.ChatUtil;
-import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.Player;
 import net.runelite.api.Point;
 import net.runelite.api.ScriptID;
 import net.runelite.api.events.ChatMessage;
@@ -46,14 +44,11 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.ProfileChanged;
 import net.runelite.client.ui.overlay.OverlayManager;
-import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.awt.Color;
 import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import static com.modernchat.ModernChatConfig.CHAT_HEIGHT;
 import static com.modernchat.ModernChatConfig.CHAT_WIDTH;
@@ -413,34 +408,14 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe
     public void onChatMessage(ChatMessage e) {
-        Player localPlayer = client.getLocalPlayer();
-        if (localPlayer == null)
-            return;
-
-        String localPlayerName = localPlayer.getName();
-        if (StringUtil.isNullOrEmpty(localPlayerName))
-            return;
-
-        long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() : System.currentTimeMillis();
-
-        Pair<String, String> senderReceiver = ChatUtil.getSenderAndReceiver(e, localPlayerName);
-
-        ChatMessageType type = e.getType();
-        String msg = e.getMessage();
-        String receiverName = senderReceiver.getRight();
-        String senderName = senderReceiver.getLeft();
-        String prefix = ChatUtil.getCustomPrefix(e);
-
-        if (type == ChatMessageType.DIALOG) {
-            msg = msg.replaceFirst("\\|", ": ");
+        MessageLine line = ChatUtil.createMessageLine(e, client);
+        if (line == null) {
+            log.error("Failed to parse chat message event: {}", e);
+            return; // Ignore empty messages
         }
 
-        String line = (senderName != null && !senderName.isEmpty()) ? senderName + ": " + msg : msg;
-
-        log.debug("Chat message received: type={}, sender={}, receiver={}, message={}",
-                type, senderName, receiverName, line);
-
-        overlay.addMessage(line, type, timestamp, senderName, receiverName, prefix);
+        log.debug("Chat message received: {}", line);
+        overlay.addMessage(line);
     }
 
     @Subscribe

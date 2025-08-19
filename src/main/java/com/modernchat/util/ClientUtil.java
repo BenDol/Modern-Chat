@@ -3,6 +3,7 @@ package com.modernchat.util;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatLineBuffer;
 import net.runelite.api.Client;
+import net.runelite.api.IndexedSprite;
 import net.runelite.api.MessageNode;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
@@ -13,10 +14,18 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.util.Text;
 
-@Slf4j
-public class ClientUtil {
+import javax.annotation.Nullable;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import java.util.HashMap;
+import java.util.Map;
 
-    /** MUST be on client thread. */
+@Slf4j
+public class ClientUtil
+{
+    /**
+     * MUST be on client thread.
+     */
     public static boolean isSystemTextEntryActive(Client client) {
         // Reliable for "Add Friend", "Enter amount", etc.
         int type = client.getVarbitValue(VarClientInt.INPUT_TYPE);
@@ -49,7 +58,8 @@ public class ClientUtil {
     public static String getSystemInputText(Client client) {
         try {
             return client.getVarcStrValue(VarClientStr.INPUT_TEXT);
-        } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {
+        }
 
         return null;
     }
@@ -58,7 +68,7 @@ public class ClientUtil {
         return client.getWidget(InterfaceID.CHATBOX, 0);
     }
 
-    public static Widget getChatInputWidget(Client  client) {
+    public static Widget getChatInputWidget(Client client) {
         return client.getWidget(InterfaceID.Chatbox.INPUT);
     }
 
@@ -82,14 +92,11 @@ public class ClientUtil {
         }
     }
 
-    public static MessageNode findMessageNode(Client client, int id)
-    {
+    public static MessageNode findMessageNode(Client client, int id) {
         // The identifier on chat menu entries is the MessageNode id
-        for (ChatLineBuffer buf : client.getChatLineMap().values())
-        {
+        for (ChatLineBuffer buf : client.getChatLineMap().values()) {
             if (buf == null) continue;
-            for (MessageNode n : buf.getLines())
-            {
+            for (MessageNode n : buf.getLines()) {
                 if (n != null && n.getId() == id)
                     return n;
             }
@@ -143,8 +150,7 @@ public class ClientUtil {
                 }
 
                 callback.run();
-            }
-            catch (Throwable ex) {
+            } catch (Throwable ex) {
                 log.warn("Failed to open PM to {} via chat command", currentTarget, ex);
             }
         });
@@ -157,8 +163,7 @@ public class ClientUtil {
             player.getWorldLocation().getRegionID() != 0;
     }
 
-    public static void hideWidget(Client client, int componentId)
-    {
+    public static void hideWidget(Client client, int componentId) {
         Widget w = client.getWidget(componentId);
         if (w != null) w.setHidden(true);
     }
@@ -168,8 +173,7 @@ public class ClientUtil {
         try {
             client.setVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT, v);
             client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, "");
-        }
-        catch (Throwable ex) {
+        } catch (Throwable ex) {
             log.debug("setChatInputText failed", ex);
         }
     }

@@ -10,6 +10,7 @@ public final class TextSegment
     private final String text;
     private final Color color;
     private String textCache = null;
+    private boolean allowRetryImage = true;
 
     public TextSegment(String t, Color c) {
         text = t;
@@ -18,5 +19,6 @@ public final class TextSegment
 
     public void resetCache() {
         textCache = null;
+        allowRetryImage = true;
     }
 }

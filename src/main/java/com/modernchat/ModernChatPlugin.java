@@ -26,6 +26,7 @@ import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
+import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageService;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.service.ProfileService;
@@ -104,6 +105,7 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private PrivateChatService privateChatService;
     @Inject private FilterService filterService;
     @Inject private MessageService messageService;
+    @Inject private ImageService imageService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
 
@@ -138,6 +140,7 @@ public class ModernChatPlugin extends Plugin {
         privateChatService.startUp();
 		fontService.startUp();
 		soundService.startUp();
+		imageService.startUp();
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/modernchat/images/icon.png");
 		if (icon == null) {
@@ -206,6 +209,7 @@ public class ModernChatPlugin extends Plugin {
 		fontService.shutDown();
 		soundService.shutDown();
 		tutorialService.shutDown();
+		imageService.shutDown();
 
 		if (features != null) {
 			features.forEach((feature) -> {

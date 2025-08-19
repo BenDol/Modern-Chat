@@ -3,6 +3,7 @@ package com.modernchat.overlay;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.MessageLine;
 import com.modernchat.common.NotificationService;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Padding;
@@ -47,6 +48,7 @@ import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
@@ -332,8 +334,8 @@ public class ChatOverlay extends OverlayPanel
 
         // Inject the msg area into the MessageContainer
         messageContainer.setBoundsProvider(() -> msgArea);
-        messageContainer.setHidden(false);
-        messageContainer.setAlpha(1f);
+        //messageContainer.setHidden(false);
+        //messageContainer.setAlpha(1f);
 
         // Let MessageContainer paint inside the message area
         Shape oldClip = g.getClip();
@@ -731,6 +733,10 @@ public class ChatOverlay extends OverlayPanel
             privateContainer.setPrivate(true);
             privateContainer.startUp(config.getMessageContainerConfig(), ChatMode.PRIVATE);
             privateContainers.put(targetName, privateContainer);
+        }
+
+        if (messageContainer != null) {
+            messageContainer.setHidden(true);
         }
 
         messageContainer = privateContainer;
@@ -1349,6 +1355,16 @@ public class ChatOverlay extends OverlayPanel
 
     public ChatMode getCurrentMode() {
         return messageContainer != null ? messageContainer.getChatMode() : config.getDefaultChatMode();
+    }
+
+    public void addMessage(MessageLine line) {
+        addMessage(
+            line.getText(),
+            line.getType(),
+            line.getTimestamp(),
+            line.getSenderName(),
+            line.getReceiverName(),
+            line.getPrefix());
     }
 
     public void addMessage(

@@ -2,19 +2,17 @@ package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.MessageLine;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.ChatColors;
 import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.overlay.ChatPeekOverlay;
 import com.modernchat.util.ChatUtil;
-import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
-import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
@@ -187,53 +185,14 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Subscribe
 	public void onChatMessage(ChatMessage e) {
-		Player localPlayer = client.getLocalPlayer();
-		if (localPlayer == null)
-			return;
+        MessageLine line = ChatUtil.createMessageLine(e, client);
+        if (line == null) {
+            log.error("Failed to parse chat message event: {}", e);
+            return; // Ignore empty messages
+        }
 
-		String localPlayerName = localPlayer.getName();
-		if (StringUtil.isNullOrEmpty(localPlayerName))
-			return;
-
-		long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() : System.currentTimeMillis();
-
-		ChatMessageType type = e.getType();
-		String msg = e.getMessage();
-		String name = e.getName();
-		String receiverName = null;
-		String senderName = e.getSender();
-		String prefix = "";
-
-		if (type == ChatMessageType.PRIVATECHATOUT) {
-			receiverName = name;
-			senderName = "You";
-		}
-		else if (type == ChatMessageType.PRIVATECHAT) {
-			receiverName = localPlayerName;
-			senderName = name;
-		}
-		else if (ChatUtil.isClanMessage(type) || ChatUtil.isFriendsChatMessage(type)) {
-			senderName = name;
-			prefix = e.getSender() != null ? "(" + e.getSender() + ") " : "";
-		}
-		else if (senderName == null) {
-			senderName = name;
-		}
-
-		if (receiverName == null) {
-			receiverName = localPlayerName;
-		}
-
-		if (type == ChatMessageType.DIALOG) {
-			msg = msg.replaceFirst("\\|", ": ");
-		}
-
-		String line = (senderName != null && !senderName.isEmpty()) ? senderName + ": " + msg : msg;
-
-		log.debug("Chat message received: type={}, sender={}, receiver={}, message={}",
-			type, senderName, receiverName, line);
-
-		chatPeekOverlay.pushLine(line, type, timestamp/*, senderName, receiverName, prefix*/);
+        log.debug("Chat message received: {}", line);
+		chatPeekOverlay.pushLine(line.getText(), line.getType(), line.getTimestamp()/*, senderName, receiverName, prefix*/);
 	}
 
 	@Subscribe
