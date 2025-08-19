@@ -212,7 +212,7 @@ public class ChatUtil
         if (!StringUtil.isNullOrEmpty(senderName))
             builder.append(senderName, false).append(": ");
 
-
+        String message = msg;
         if (params.length > 1) {
             int icon = ChatUtil.getModImageId(params[0]);
             if (icon != -1) {
@@ -220,10 +220,10 @@ public class ChatUtil
             }
 
             // message should always be last
-            builder.append(params[params.length - 1], false);
-        } else {
-            builder.append(msg, false);
+            message = params[params.length - 1];
         }
+
+        builder.append(message, false);
 
         return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix);
     }

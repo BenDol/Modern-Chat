@@ -449,9 +449,9 @@ public class MessageContainer extends Overlay
                     buf.setLength(0);
                 }
 
-                if (tagLower.startsWith("col=")) {
+                if (tagLower.startsWith("col")) {
                     stack.push(cur);
-                    cur = ColorUtil.parseHexColor(tagRaw.substring(4), cur);
+                    cur = ColorUtil.parseHexColor(tagRaw.substring(tagRaw.contains("=") ? 4 : 3), cur);
                     i = j + 1;
                 } else if (tagLower.equals("/col")) {
                     cur = stack.isEmpty() ? base : stack.pop();
