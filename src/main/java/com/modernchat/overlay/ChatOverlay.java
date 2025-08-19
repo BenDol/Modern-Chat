@@ -1014,6 +1014,14 @@ public class ChatOverlay extends OverlayPanel
     }
 
     @Subscribe
+    public void onVarClientStrChanged(VarClientStrChanged e) {
+        if (e.getIndex() == VarClientStr.CHATBOX_TYPED_TEXT) {
+            // keep the legacy chat input in sync, if the text matches it will be ignored
+            setInputText(ClientUtil.getChatInputText(client), false);
+        }
+    }
+
+    @Subscribe
     public void onClientTick(ClientTick tick) {
         resizeChatbox(desiredChatWidth, desiredChatHeight);
     }
@@ -1685,11 +1693,11 @@ public class ChatOverlay extends OverlayPanel
         });
     }
 
-    public void clearInputText() {
-        setInputText("");
+    public void clearInputText(boolean sync) {
+        setInputText("", sync);
     }
 
-    public boolean setInputText(String value) {
+    public boolean setInputText(String value, boolean sync) {
         if (value == null) {
             log.warn("Attempted to set input text to null");
             return false;
@@ -1716,8 +1724,8 @@ public class ChatOverlay extends OverlayPanel
         selStart = selEnd = caret; // clear selection on set
         selAnchor = -1;
         lastBlinkMs = System.currentTimeMillis();
-        eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
-        clientThread.invokeLater(() -> ClientUtil.setChatInputText(client, text));
+        if (sync)
+            syncChatInputLater();
         return true;
     }
 

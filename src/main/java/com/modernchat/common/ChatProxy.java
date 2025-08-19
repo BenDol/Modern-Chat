@@ -43,7 +43,7 @@ public class ChatProxy
 
     public void clearInput(Runnable callback) {
         if (modernChat.isEnabled()) {
-            modernChat.clearInputText();
+            modernChat.clearInputText(true);
             callback.run();
         } else {
             ClientUtil.clearChatInput(client, clientThread, callback);
@@ -65,7 +65,7 @@ public class ChatProxy
 
     public void setInputText(String value) {
         if (modernChat.isEnabled()) {
-            if (modernChat.setInputText(value))
+            if (modernChat.setInputText(value, true))
                 modernChat.focusInput();
         } else {
             ClientUtil.setChatInputText(client, value);
