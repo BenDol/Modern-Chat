@@ -8,6 +8,7 @@ import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.service.FontService;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.StringUtil;
@@ -379,7 +380,7 @@ public class ChatPeekOverlay extends Overlay
         boolean hasPrefix = false;
 
         if (StringUtil.isNullOrEmpty(rl.getPrefixCache()))
-            rl.setPrefixCache(getPrefix(rl.getType()));
+            rl.setPrefixCache(ChatUtil.getPrefix(rl.getType()));
 
         if (rl.getTimestampCache() == null && rl.getTimestamp() > 0)
             rl.setTimestampCache("[" + FormatUtil.toHmTime(rl.getTimestamp()) + "] ");
@@ -473,38 +474,6 @@ public class ChatPeekOverlay extends Overlay
         if (!cur.getSegs().isEmpty())
             out.add(cur);
         return out;
-    }
-
-    private String getPrefix(ChatMessageType type) {
-        String prefix = "";
-        switch (type) {
-            case PUBLICCHAT:
-            case PRIVATECHAT:
-            case PRIVATECHATOUT:
-            case FRIENDSCHAT:
-            case FRIENDSCHATNOTIFICATION:
-            case FRIENDNOTIFICATION:
-                break;
-            case CLAN_CHAT:
-            case CLAN_GIM_FORM_GROUP:
-            case CLAN_GUEST_CHAT:
-            case CLAN_GUEST_MESSAGE:
-                prefix = "[Clan] ";
-                break;
-            case NPC_SAY:
-                prefix = "[NPC] ";
-                break;
-            case TRADE_SENT:
-            case TRADEREQ:
-                prefix = "[Trade] ";
-                break;
-            case SPAM:
-                prefix = "[Spam] ";
-                break;
-            default:
-                prefix = "[System] ";
-        }
-        return prefix;
     }
 
     private int fitCharsForWidth(FontMetrics fm, String s, int start, int remainingWidth) {

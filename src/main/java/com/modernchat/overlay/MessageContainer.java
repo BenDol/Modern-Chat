@@ -11,9 +11,11 @@ import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ImageService;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ColorUtil;
 import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
+import com.modernchat.util.MathUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import lombok.Setter;
@@ -181,7 +183,7 @@ public class MessageContainer extends Overlay
                 scrollOffsetPx = Math.max(0, contentHeightPx - msgViewport.height);
             }
             // Clamp scroll
-            scrollOffsetPx = clamp(scrollOffsetPx, 0, Math.max(0, contentHeightPx - msgViewport.height));
+            scrollOffsetPx = MathUtil.clamp(scrollOffsetPx, 0, Math.max(0, contentHeightPx - msgViewport.height));
 
             // Clip to message viewport and draw from top honoring scroll
             Shape oldClip = g.getClip();
@@ -494,7 +496,7 @@ public class MessageContainer extends Overlay
         boolean hasPrefix = false;
 
         if (StringUtil.isNullOrEmpty(rl.getPrefixCache()))
-            rl.setPrefixCache(getPrefix(rl.getType()));
+            rl.setPrefixCache(ChatUtil.getPrefix(rl.getType()));
 
         if (rl.getTimestampCache() == null && rl.getTimestamp() > 0)
             rl.setTimestampCache("[" + FormatUtil.toHmTime(rl.getTimestamp()) + "] ");
@@ -634,38 +636,6 @@ public class MessageContainer extends Overlay
         return -1; // not an image token
     }
 
-    private String getPrefix(ChatMessageType type) {
-        String prefix = "";
-        switch (type) {
-            case PUBLICCHAT:
-            case PRIVATECHAT:
-            case PRIVATECHATOUT:
-            case FRIENDSCHAT:
-            case FRIENDSCHATNOTIFICATION:
-            case FRIENDNOTIFICATION:
-                break;
-            case CLAN_CHAT:
-            case CLAN_GIM_FORM_GROUP:
-            case CLAN_GUEST_CHAT:
-            case CLAN_GUEST_MESSAGE:
-                prefix = "[Clan] ";
-                break;
-            case NPC_SAY:
-                prefix = "[NPC] ";
-                break;
-            case TRADE_SENT:
-            case TRADEREQ:
-                prefix = "[Trade] ";
-                break;
-            case SPAM:
-                prefix = "[Spam] ";
-                break;
-            default:
-                prefix = "[System] ";
-        }
-        return prefix;
-    }
-
     private int fitCharsForWidth(FontMetrics fm, String s, int start, int remainingWidth) {
         if (remainingWidth <= 0)
             return 0;
@@ -686,10 +656,6 @@ public class MessageContainer extends Overlay
         for (RichLine line : lines) {
             line.resetCache();
         }
-    }
-
-    private static int clamp(int v, int lo, int hi) {
-        return Math.max(lo, Math.min(hi, v));
     }
 
     public void pushLines(List<String> lines) {

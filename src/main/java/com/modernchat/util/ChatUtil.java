@@ -227,4 +227,37 @@ public class ChatUtil
 
         return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix);
     }
+
+    public static String getPrefix(ChatMessageType type) {
+        String prefix = "";
+        switch (type) {
+            case PUBLICCHAT:
+            case PRIVATECHAT:
+            case PRIVATECHATOUT:
+            case FRIENDSCHAT:
+            case FRIENDSCHATNOTIFICATION:
+            case FRIENDNOTIFICATION:
+                break;
+            case CLAN_CHAT:
+            case CLAN_GIM_FORM_GROUP:
+            case CLAN_GUEST_CHAT:
+            case CLAN_GUEST_MESSAGE:
+                prefix = "[Clan] ";
+                break;
+            case NPC_SAY:
+            case DIALOG:
+                prefix = "[NPC] ";
+                break;
+            case TRADE_SENT:
+            case TRADEREQ:
+                prefix = "[Trade] ";
+                break;
+            case SPAM:
+                prefix = "[Spam] ";
+                break;
+            default:
+                prefix = "[System] ";
+        }
+        return prefix;
+    }
 }

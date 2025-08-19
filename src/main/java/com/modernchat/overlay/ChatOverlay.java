@@ -114,6 +114,7 @@ public class ChatOverlay extends OverlayPanel
     private final ChatMouse mouse = new ChatMouse();
     private final InputKeys keys = new InputKeys();
 
+    @Getter private final Map<String, Integer> suggestedOrder = new ConcurrentHashMap<>();
     @Getter private final List<Tab> tabOrder = new LinkedList<>();
     @Getter private Tab activeTab = null;
     @Getter private final Map<String, Tab> tabsByKey = new ConcurrentHashMap<>();
@@ -767,14 +768,15 @@ public class ChatOverlay extends OverlayPanel
     public void refreshTabs() {
         tabsScrollPx = 0;
 
-        int index = -1;
+        int i = -1;
         Map<ChatMode, Integer> orderMap = new HashMap<>();
         for (Tab tab : tabOrder) {
-            index++;
+            suggestedOrder.put(tab.getKey(), ++i);
             if (tab.isPrivate())
                 continue;
             try {
-                orderMap.put(ChatMode.valueOf(tab.getKey()), index);
+                orderMap.put(ChatMode.valueOf(tab.getKey()), i);
+                suggestedOrder.put(tab.getKey(), i);
             } catch (Exception ignore) {
                 log.debug("Ignoring tab {} because it is unknown", tab);
             }
@@ -793,7 +795,10 @@ public class ChatOverlay extends OverlayPanel
             String tabKey = tabKey(mode);
             if (!tabsByKey.containsKey(tabKey)) {
                 String tabName = defaultTabNames.getOrDefault(mode, mode.name());
-                addTab(new Tab(tabKey, tabName, false), orderMap.getOrDefault(mode, -1));
+                int index = orderMap.getOrDefault(mode, -1);
+                addTab(new Tab(tabKey, tabName, false), index != -1
+                    ? index
+                    : suggestedOrder.getOrDefault(mode.name(), -1));
             }
         }
     }
