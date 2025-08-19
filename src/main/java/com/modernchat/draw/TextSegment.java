@@ -5,20 +5,24 @@ import lombok.Data;
 import java.awt.Color;
 
 @Data
-public final class TextSegment
+public class TextSegment implements Segment
 {
     private final String text;
     private final Color color;
     private String textCache = null;
-    private boolean allowRetryImage = true;
+
+    public TextSegment() {
+        this.text = "";
+        this.color = Color.BLACK;
+    }
 
     public TextSegment(String t, Color c) {
         text = t;
         color = c;
     }
 
+    @Override
     public void resetCache() {
         textCache = null;
-        allowRetryImage = true;
     }
 }

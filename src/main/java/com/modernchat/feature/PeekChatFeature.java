@@ -1,18 +1,24 @@
 package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.MessageLine;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.ChatColors;
+import com.modernchat.draw.Margin;
+import com.modernchat.draw.Padding;
 import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
+import com.modernchat.overlay.ChatOverlayConfig;
 import com.modernchat.overlay.ChatPeekOverlay;
+import com.modernchat.overlay.MessageContainerConfig;
 import com.modernchat.util.ChatUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
+import net.runelite.api.Point;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
@@ -106,6 +112,43 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		};
 	}
 
+	protected MessageContainerConfig partitionConfig(PeekChatFeatureConfig cfg) {
+		return new MessageContainerConfig.Default() {
+			@Override
+			public boolean isEnabled() { return cfg.featurePeek_Enabled(); }
+			@Override public boolean isPrefixChatType() { return cfg.featurePeek_PrefixChatTypes(); }
+			@Override public boolean isShowTimestamp() { return cfg.featurePeek_ShowTimestamp(); }
+			@Override public boolean isScrollable() { return false; } // Peek chat does not support scrolling
+			@Override public boolean isDrawScrollbar() { return false; }
+			@Override public boolean isShowPrivateMessages() { return cfg.featurePeek_ShowPrivateMessages(); }
+			@Override public boolean isFollowChatBox() { return cfg.featurePeek_FollowChatBox(); }
+			@Override public boolean isFadeEnabled() { return cfg.featurePeek_FadeEnabled(); }
+			@Override public int getFadeDelay() { return cfg.featurePeek_FadeDelay(); }
+			@Override public int getFadeDuration() { return cfg.featurePeek_FadeDuration(); }
+			@Override public Point getOffset() { return new Point(cfg.featurePeek_OffsetX(), cfg.featurePeek_OffsetY()); }
+			@Override public Margin getMargin() { return new Margin(0, cfg.featurePeek_MarginBottom(), 0, cfg.featurePeek_MarginRight()); }
+			@Override public Padding getPadding() { return new Padding(cfg.featurePeek_Padding()); }
+			@Override public int getLineSpacing() { return super.getLineSpacing(); }
+			@Override public int getScrollStep() { return 0; }
+			@Override public int getScrollbarWidth() { return 0; }
+			@Override public FontStyle getLineFontStyle() { return cfg.featurePeek_FontStyle(); }
+			@Override public int getLineFontSize() { return cfg.featurePeek_FontSize(); }
+			@Override public int getTextShadow() { return cfg.featurePeek_TextShadow(); }
+			@Override public Color getBackdropColor() { return cfg.featurePeek_BackgroundColor(); }
+			@Override public Color getBorderColor() { return cfg.featurePeek_BorderColor(); }
+			@Override public Color getShadowColor() { return super.getShadowColor(); }
+			@Override public Color getScrollbarTrackColor() { return super.getScrollbarTrackColor(); }
+			@Override public Color getScrollbarThumbColor() { return super.getScrollbarThumbColor(); }
+			@Override public Color getWelcomeColor() { return cfg.getWelcomeColor(); }
+			@Override public Color getPublicColor() { return cfg.getPublicColor(); }
+			@Override public Color getPrivateColor() { return cfg.getPrivateColor(); }
+			@Override public Color getFriendColor() { return cfg.getFriendColor(); }
+			@Override public Color getClanColor() { return cfg.getClanColor(); }
+			@Override public Color getSystemColor() { return cfg.getSystemColor(); }
+			@Override public Color getTradeColor() { return cfg.getTradeColor(); }
+		};
+	}
+
 	@Override
 	public boolean isEnabled() {
 		return config.featurePeek_Enabled();
@@ -115,12 +158,16 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	public void startUp() {
 		super.startUp();
 
+		chatPeekOverlay.startUp(partitionConfig(config), ChatMode.PUBLIC);
+
 		overlayManager.add(chatPeekOverlay);
 	}
 
 	@Override
 	public void shutDown(boolean fullShutdown) {
 		super.shutDown(fullShutdown);
+
+		chatPeekOverlay.shutDown();
 
 		overlayManager.remove(chatPeekOverlay);
 
@@ -179,7 +226,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 		if (chatPeekOverlay != null) {
 			chatPeekOverlay.dirty();
-			chatPeekOverlay.noteMessageActivity();
+			chatPeekOverlay.resetFade();
 		}
 	}
 
@@ -192,7 +239,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
         }
 
         log.debug("Chat message received: {}", line);
-		chatPeekOverlay.pushLine(line.getText(), line.getType(), line.getTimestamp()/*, senderName, receiverName, prefix*/);
+		chatPeekOverlay.pushLine(line);
 	}
 
 	@Subscribe
@@ -216,10 +263,10 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Subscribe
 	public void onModernChatVisibilityChangeEvent(ModernChatVisibilityChangeEvent e) {
 		chatPeekOverlay.setHidden(e.isVisible());
-		chatPeekOverlay.noteMessageActivity();
+		chatPeekOverlay.resetFade();
 	}
 
 	public void unFade() {
-		chatPeekOverlay.noteMessageActivity();
+		chatPeekOverlay.resetFade();
 	}
 }

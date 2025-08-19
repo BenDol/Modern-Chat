@@ -2,11 +2,15 @@ package com.modernchat.overlay;
 
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.MessageLine;
+import com.modernchat.draw.ImageSegment;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
+import com.modernchat.draw.PrefixSegment;
 import com.modernchat.draw.RichLine;
 import com.modernchat.draw.RowHit;
 import com.modernchat.draw.TextSegment;
+import com.modernchat.draw.TimestampSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.service.FontService;
@@ -50,7 +54,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
 
 public class MessageContainer extends Overlay
 {
@@ -58,42 +61,45 @@ public class MessageContainer extends Overlay
     private static final int MIN_THUMB_H = 24;
     private static final int SCROLL_TO_BOTTOM_SENTINEL = Integer.MAX_VALUE;
 
-    @Inject private Client client;
-    @Inject private MouseManager mouseManager;
-    @Inject private FontService fontService;
-    @Inject private ImageService imageService;
+    @Inject protected Client client;
+    @Inject protected MouseManager mouseManager;
+    @Inject protected FontService fontService;
+    @Inject protected ImageService imageService;
 
     // Config
-    @Getter private MessageContainerConfig config;
-    @Getter private ChatMode chatMode;
-    @Getter @Setter private boolean chromeEnabled = true;
-    @Getter @Setter private Supplier<Rectangle> boundsProvider;
-    @Getter @Setter private Function<MessageContainer, Boolean> canDrawDecider = mc -> true;
+    @Getter protected MessageContainerConfig config;
+    @Getter protected ChatMode chatMode;
+    @Getter @Setter protected boolean chromeEnabled = true;
+    @Getter @Setter protected Supplier<Rectangle> boundsProvider;
+    @Getter @Setter protected Function<MessageContainer, Boolean> canDrawDecider = mc -> true;
 
     // State
-    @Getter @Setter private volatile boolean hidden = false;
-    @Getter @Setter private volatile boolean isPrivate = false;
-    @Getter @Setter private volatile float alpha = 1f;
+    @Getter @Setter protected volatile boolean hidden = false;
+    @Getter @Setter protected volatile boolean isPrivate = false;
+    @Getter @Setter protected volatile float alpha = 1f;
+    @Getter private volatile float fadeAlpha = 1f;
+    @Getter private volatile long fadeStartAtMs = Long.MAX_VALUE;
+    @Getter private volatile boolean fading = false;
 
-    private final Deque<RichLine> lines = new ArrayDeque<>();
-    private Font lineFont = null;
-    private FontStyle lineFontStyle = null;
+    protected final Deque<RichLine> lines = new ArrayDeque<>();
+    protected Font lineFont = null;
+    protected FontStyle lineFontStyle = null;
 
     // Viewport and scrolling
-    @Getter private Rectangle lastViewport = null;         // full container viewport
-    private final Rectangle msgViewport = new Rectangle(); // message area (excludes any input, if you add later)
-    @Getter @Setter private int scrollOffsetPx = 0;        // top-anchored pixel offset
-    private int contentHeightPx = 0;                       // total content height (in pixels)
-    @Getter @Setter private boolean userScrolled = false;  // when false, we auto-stick to bottom on new lines
-    @Getter private int lastLineHeight = 16;               // cached from render for wheel step
+    @Getter protected Rectangle lastViewport = null;
+    protected final Rectangle msgViewport = new Rectangle();
+    @Getter @Setter protected int scrollOffsetPx = 0;
+    protected int contentHeightPx = 0;
+    @Getter @Setter protected boolean userScrolled = false;
+    @Getter protected int lastLineHeight = 16;
 
     // Scrollbar geometry for hit-tests
-    private final Rectangle thumb = new Rectangle(0, 0, 0, 0);
-    @Getter private int trackTop = 0;
-    @Getter private int trackHeight = 1;
-    @Getter private int maxScroll = 0;
+    protected final Rectangle thumb = new Rectangle(0, 0, 0, 0);
+    @Getter protected int trackTop = 0;
+    @Getter protected int trackHeight = 1;
+    @Getter protected int maxScroll = 0;
 
-    @Getter private final MouseHandler mouse = new MouseHandler();
+    @Getter protected final MouseHandler mouse = new MouseHandler();
 
     public MessageContainer() {
         setPosition(OverlayPosition.DYNAMIC);
@@ -121,8 +127,14 @@ public class MessageContainer extends Overlay
         if (!isEnabled() || hidden)
             return null;
 
-        if (!canShow())
+        if (!canShow()) {
+            resetFade();
             return null;
+        }
+
+        updateFadeAlpha();
+        if (fadeAlpha <= 0.01f)
+            return null; // fully faded; nothing to render
 
         Rectangle vp = boundsProvider.get();
         if (vp == null || vp.width <= 0 || vp.height <= 0)
@@ -143,9 +155,11 @@ public class MessageContainer extends Overlay
         // Our message viewport
         msgViewport.setBounds(left, top, innerW, bottom - top);
 
+        float actualFade = isFading() ? fadeAlpha : alpha;
+
         // Respect external alpha
         final Composite oldComp = g.getComposite();
-        g.setComposite(AlphaComposite.SrcOver.derive(Math.max(0f, Math.min(1f, alpha))));
+        g.setComposite(AlphaComposite.SrcOver.derive(Math.max(0f, Math.min(1f, actualFade))));
         try {
             if (chromeEnabled) {
                 // Backdrop and border
@@ -168,6 +182,10 @@ public class MessageContainer extends Overlay
             // Flatten wrapped lines (oldest to newest)
             final List<VisualLine> all = new ArrayList<>(64);
             for (RichLine rl : lines) {
+                if (!config.isShowPrivateMessages() && ChatUtil.isPrivateMessage(rl.getType())) {
+                    continue;
+                }
+
                 if (rl.getLineCache() == null) {
                     rl.setLineCache(wrapRichLine(rl, fm, innerW));
                 }
@@ -196,34 +214,40 @@ public class MessageContainer extends Overlay
                 if (y + fm.getDescent() >= msgViewport.y) {
                     int dx = left;
                     for (TextSegment seg : vl.getSegs()) {
-                        String segText = seg.getText();
-                        if (dx == left && (segText == null || segText.isBlank()))
-                            continue;
+                        if (seg instanceof ImageSegment) {
+                            ImageSegment imageSeg = (ImageSegment) seg;
+                            Image icon = imageSeg.getImageCache();
 
-                        Matcher ca = ImageService.IMG_TAG.matcher(segText);
-                        if (ca.matches()) {
-                            int spriteId = Integer.parseInt(ca.group(1));
-                            Image icon = imageService.getModIcon(spriteId);
-                            if (icon == null) {
-                                if (seg.isAllowRetryImage()) {
-                                    seg.setAllowRetryImage(false);
-                                    // Request again next frame; prevent layout jump
-                                    // by reserving line-height width
-                                    int iw = fm.getHeight();
-                                    dx += iw;
-                                    dirty(); // invalidate caches so wrap/redraw next frame
+                            if (icon == null && imageSeg.isAllowRetryImage()) {
+                                icon = imageService.getModIcon(imageSeg.getId());
+                                if (icon != null) {
+                                    imageSeg.setImageCache(icon);
+                                } else {
+                                    imageSeg.setAllowRetryImage(false);
+                                    dx += fm.getHeight();
+                                    dirty();
+                                    if (dx > right) break;
+                                    continue;
                                 }
-                            } else {
-                                int iw = icon.getWidth(null);
-                                int ih = icon.getHeight(null);
-                                int lineTop = y - fm.getAscent();
-                                int iconY = lineTop + ((fm.getAscent() + fm.getDescent()) - ih) / 2;
-                                g.drawImage(icon, dx, iconY, null);
-                                dx += iw;
                             }
+
+                            // Draw or reserve fallback width if still missing
+                            int iw = icon != null ? icon.getWidth(null) : fm.getHeight();
+                            int ih = icon != null ? icon.getHeight(null) : fm.getHeight();
+                            int lineTop = y - fm.getAscent();
+                            int iconY = lineTop + ((fm.getAscent() + fm.getDescent()) - ih) / 2;
+
+                            if (icon != null) {
+                                g.drawImage(icon, dx, iconY, null);
+                            }
+                            dx += iw;
                             if (dx > right) break;
                             continue;
                         }
+
+                        String segText = seg.getText();
+                        if (dx == left && (segText == null || segText.isBlank()))
+                            continue;
 
                         // Normal text
                         int shadowOffset = config.getTextShadow();
@@ -300,7 +324,7 @@ public class MessageContainer extends Overlay
         return lineFont;
     }
 
-    private Rectangle calculateViewPort(Rectangle r) {
+    protected Rectangle calculateViewPort(Rectangle r) {
         if (GeometryUtil.isInvalidChatBounds(r)) {
             if (lastViewport == null) {
                 if (GeometryUtil.isInvalidChatBounds(ToggleChatFeature.LAST_CHAT_BOUNDS))
@@ -383,6 +407,23 @@ public class MessageContainer extends Overlay
         return c == null ? Color.WHITE : c;
     }
 
+    public void pushLine(MessageLine line) {
+        ChatMessageType type = line.getType();
+        String senderName = line.getSenderName();
+        String receiverName = line.getReceiverName();
+        String targetName = type == ChatMessageType.PRIVATECHATOUT || type == ChatMessageType.FRIENDNOTIFICATION
+            ? receiverName
+            : senderName;
+
+        pushLine(line.getText(),
+            type,
+            line.getTimestamp(),
+            senderName,
+            receiverName,
+            targetName,
+            line.getPrefix());
+    }
+
     public void pushLine(
         String s,
         ChatMessageType type,
@@ -394,13 +435,11 @@ public class MessageContainer extends Overlay
     ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
         Color c = getColor(type);
-        RichLine rl = parseRich(s == null ? "" : s, c == null ? Color.WHITE : c);
+        RichLine rl = parseRich(s == null ? "" : s, c == null ? Color.WHITE : c, type, timestamp, prefix);
         rl.setType(type);
-        rl.setTimestamp(timestamp);
         rl.setSender(sender);
         rl.setReceiver(receiver);
         rl.setTargetName(targetName);
-        rl.setPrefixCache(prefix);
         pushRich(rl);
     }
 
@@ -415,13 +454,19 @@ public class MessageContainer extends Overlay
         }
     }
 
-    private RichLine parseRich(String s, Color base) {
+    private RichLine parseRich(String s, Color base, ChatMessageType type, long timestamp, String prefix) {
         RichLine out = new RichLine();
+        out.setTimestamp(timestamp);
         if (s == null) return out;
 
         Deque<Color> stack = new ArrayDeque<>();
         Color cur = base;
         StringBuilder buf = new StringBuilder();
+
+        out.getSegs().add(new TimestampSegment("[" + FormatUtil.toHmTime(timestamp) + "] ", cur));
+        out.getSegs().add(new PrefixSegment(StringUtil.isNullOrEmpty(prefix)
+            ? ChatUtil.getPrefix(type)
+            : prefix, cur));
 
         for (int i = 0; i < s.length(); ) {
             char ch = s.charAt(i);
@@ -455,27 +500,32 @@ public class MessageContainer extends Overlay
                     stack.push(cur);
                     cur = ColorUtil.parseHexColor(tagRaw.substring(tagRaw.contains("=") ? 4 : 3), cur);
                     i = j + 1;
+                    continue;
                 } else if (tagLower.equals("/col")) {
                     cur = stack.isEmpty() ? base : stack.pop();
                     i = j + 1;
+                    continue;
                 } else if (tagLower.equals("br")) {
                     if (out.getSegs().isEmpty())
                         out.getSegs().add(new TextSegment("", cur));
                     pushRich(out);
                     out = new RichLine();
                     i = j + 1;
-                } else {
-                    Matcher m = ImageService.IMG_TAG.matcher(tagRaw);
-                    if (m.matches()) {
-                        String id = m.group(1);
-                        out.getSegs().add(new TextSegment("<img=" + id + ">", cur));
+                    continue;
+                } else if (tagLower.startsWith("img")) {
+                    try {
+                        int id = Integer.parseInt(tagRaw.substring(tagRaw.contains("=") ? 4 : 3));
+                        out.getSegs().add(new ImageSegment(id, cur));
                         i = j + 1;
                         continue;
+                    } catch (Exception ignored) {
+                        // ignore parse errors, treat as unknown tag
                     }
-                    // Unknown tag: pass it through literally instead of dropping it
-                    buf.append('<').append(tagRaw).append('>');
-                    i = j + 1;
                 }
+
+                // Unknown tag: pass it through literally instead of dropping it
+                buf.append('<').append(tagRaw).append('>');
+                i = j + 1;
             } else {
                 buf.append(ch);
                 i++;
@@ -488,152 +538,122 @@ public class MessageContainer extends Overlay
         return out;
     }
 
-    private List<VisualLine> wrapRichLine(RichLine rl, FontMetrics fm, int maxWidth) {
+    private List<VisualLine> wrapRichLine(RichLine rl, FontMetrics fm, int maxWidth)
+    {
         List<VisualLine> out = new ArrayList<>();
         VisualLine cur = new VisualLine();
         int curW = 0;
-        int segIndex = 0;
-        boolean hasPrefix = false;
-
-        if (StringUtil.isNullOrEmpty(rl.getPrefixCache()))
-            rl.setPrefixCache(ChatUtil.getPrefix(rl.getType()));
-
-        if (rl.getTimestampCache() == null && rl.getTimestamp() > 0)
-            rl.setTimestampCache("[" + FormatUtil.toHmTime(rl.getTimestamp()) + "] ");
 
         for (TextSegment s : rl.getSegs()) {
-            // decorate first segment with prefix/timestamp
-            if (s.getTextCache() == null) {
-                if (segIndex == 0) hasPrefix = s.getText().startsWith("[");
-                if (segIndex == 0) {
-                    if (!hasPrefix && config.isPrefixChatType())
-                        s.setTextCache(rl.getPrefixCache() + s.getText());
-                    else
-                        s.setTextCache(s.getText());
-                    if (!StringUtil.isNullOrEmpty(rl.getTimestampCache()) && config.isShowTimestamp())
-                        s.setTextCache(rl.getTimestampCache() + s.getTextCache());
-                }
+            if (s instanceof TimestampSegment) {
+                if (!config.isShowTimestamp())
+                    continue; // skip timestamp segments if disabled
             }
-            segIndex++;
 
+            if (s instanceof PrefixSegment) {
+                if (!config.isPrefixChatType() && s.getText().startsWith("["))
+                    continue; // skip prefix segments if disabled
+            }
+
+            // Image segments unbreakable tokens with cached width
+            if (s instanceof ImageSegment) {
+                ImageSegment img = (ImageSegment) s;
+
+                Image icon = img.getImageCache();
+                if (icon == null && img.isAllowRetryImage()) {
+                    icon = imageService.getModIcon(img.getId());
+                    if (icon != null) {
+                        img.setImageCache(icon);
+                    } else {
+                        img.setAllowRetryImage(false);
+                    }
+                }
+
+                int iw = (icon != null) ? icon.getWidth(null) : fm.getHeight();
+
+                if (curW + iw > maxWidth && !cur.getSegs().isEmpty()) {
+                    out.add(cur);
+                    cur = new VisualLine();
+                    curW = 0;
+                }
+                cur.getSegs().add(img); // keep as ImageSegment for renderer
+                curW += iw;
+                continue;
+            }
+
+            // Plain text wrapping
             final String txt = s.getTextCache() != null ? s.getTextCache() : s.getText();
-            if (txt == null || txt.isEmpty()) continue;
+            if (txt == null || txt.isEmpty())
+                continue;
 
-            // Tokenize into either pure text or <img>/<caimg> tokens
             int i = 0;
             while (i < txt.length()) {
-                Matcher mImg = ImageService.IMG_TAG.matcher(txt).region(i, txt.length());
-
-                boolean imgFound = mImg.lookingAt();
-
-                int nextTokenStart = -1, nextTokenEnd = -1;  // bounds of the img token if present
-                String token = null;
-
-                if (imgFound) {
-                    nextTokenStart = mImg.start(); nextTokenEnd = mImg.end();
-                    token = mImg.group(0);
+                // find next space
+                int nextSpace = -1;
+                for (int k = i; k < txt.length(); k++) {
+                    char c = txt.charAt(k);
+                    if (c == ' ' || c == '\u00A0') { nextSpace = k; break; }
                 }
 
-                if (token != null && nextTokenStart == i) {
-                    int iw = tokenWidth(token, fm);
-                    if (curW + iw > maxWidth) {
-                        // wrap before placing the icon
-                        if (!cur.getSegs().isEmpty()) {
-                            out.add(cur);
-                            cur = new VisualLine();
-                            curW = 0;
-                        }
-                    }
-                    cur.getSegs().add(new TextSegment(token, s.getColor())); // keep literal; renderer draws icon
-                    curW += iw;
+                int endWord = (nextSpace == -1 ? txt.length() : nextSpace);
+                String word  = txt.substring(i, endWord);
+                String space = (nextSpace == -1 ? "" : txt.substring(endWord, endWord + 1));
 
-                    i = nextTokenEnd;
-                    continue;
-                }
-
-                // Otherwise, consume plain text until next token or end
-                int plainEnd = (token != null) ? nextTokenStart : txt.length();
-                String plain = txt.substring(i, plainEnd);
-
-                // normal word wrap for plain text
-                int p = 0;
-                while (p < plain.length()) {
-                    int nextSpace = -1;
-                    for (int k = p; k < plain.length(); k++) {
-                        char c = plain.charAt(k);
-                        if (c == ' ' || c == '\u00A0') { nextSpace = k; break; }
-                    }
-                    int endWord = (nextSpace == -1 ? plain.length() : nextSpace);
-                    String word = plain.substring(p, endWord);
-                    String space = (nextSpace == -1 ? "" : plain.substring(endWord, endWord + 1));
-
-                    int wordW = fm.stringWidth(word);
-                    if (wordW > maxWidth) {
-                        // hard-break long word
-                        int start = 0;
-                        while (start < word.length()) {
-                            int fit = fitCharsForWidth(fm, word, start, maxWidth - curW);
-                            if (fit == 0) {
-                                if (!cur.getSegs().isEmpty()) {
-                                    out.add(cur);
-                                    cur = new VisualLine();
-                                    curW = 0;
-                                    continue;
-                                }
-                                fit = Math.max(1, fitCharsForWidth(fm, word, start, maxWidth));
-                            }
-                            String part = word.substring(start, start + fit);
-                            cur.getSegs().add(new TextSegment(part, s.getColor()));
-                            curW += fm.stringWidth(part);
-                            start += fit;
-                            if (start < word.length()) {
+                int wordW = fm.stringWidth(word);
+                if (wordW > maxWidth) {
+                    int start = 0;
+                    while (start < word.length()) {
+                        int fit = fitCharsForWidth(fm, word, start, maxWidth - curW);
+                        if (fit == 0) {
+                            if (!cur.getSegs().isEmpty()) {
                                 out.add(cur);
                                 cur = new VisualLine();
                                 curW = 0;
+                                continue;
                             }
+                            fit = Math.max(1, fitCharsForWidth(fm, word, start, maxWidth));
                         }
-                    } else {
-                        if (curW + wordW > maxWidth) {
-                            out.add(cur);
-                            cur = new VisualLine();
-                            curW = 0;
-                        }
-                        if (!word.isEmpty()) {
-                            cur.getSegs().add(new TextSegment(word, s.getColor()));
-                            curW += wordW;
-                        }
-                    }
+                        String part = word.substring(start, start + fit);
+                        cur.getSegs().add(new TextSegment(part, s.getColor()));
+                        curW += fm.stringWidth(part);
+                        start += fit;
 
-                    if (!space.isEmpty()) {
-                        int spW = fm.stringWidth(space);
-                        if (curW + spW > maxWidth) {
+                        if (start < word.length()) {
                             out.add(cur);
                             cur = new VisualLine();
                             curW = 0;
                         }
-                        cur.getSegs().add(new TextSegment(space, s.getColor()));
-                        curW += spW;
                     }
-                    p = (nextSpace == -1) ? plain.length() : nextSpace + 1;
+                } else {
+                    if (curW + wordW > maxWidth) {
+                        out.add(cur);
+                        cur = new VisualLine();
+                        curW = 0;
+                    }
+                    if (!word.isEmpty()) {
+                        cur.getSegs().add(new TextSegment(word, s.getColor()));
+                        curW += wordW;
+                    }
                 }
 
-                i = plainEnd; // continue; loop will catch token on next iteration
+                if (!space.isEmpty()) {
+                    int spW = fm.stringWidth(space);
+                    if (curW + spW > maxWidth) {
+                        out.add(cur);
+                        cur = new VisualLine();
+                        curW = 0;
+                    }
+                    cur.getSegs().add(new TextSegment(space, s.getColor()));
+                    curW += spW;
+                }
+
+                i = (nextSpace == -1) ? txt.length() : nextSpace + 1;
             }
         }
 
         if (!cur.getSegs().isEmpty())
             out.add(cur);
         return out;
-    }
-
-    private int tokenWidth(String token, FontMetrics fm) {
-        Matcher m1 = ImageService.IMG_TAG.matcher(token);
-        if (m1.matches()) {
-            int id = 0; try { id = Integer.parseInt(m1.group(1)); } catch (Exception ignored) {}
-            Image icon = imageService.getModIcon(id);
-            return icon != null ? icon.getWidth(null) : fm.getHeight();
-        }
-        return -1; // not an image token
     }
 
     private int fitCharsForWidth(FontMetrics fm, String s, int start, int remainingWidth) {
@@ -736,7 +756,50 @@ public class MessageContainer extends Overlay
         return getColor(chatMode);
     }
 
-    private final class MouseHandler implements MouseListener, MouseWheelListener
+    public int fadeDelaySeconds() {
+        return config.getFadeDelay();
+    }
+
+    public int fadeDurationMs() {
+        return config.getFadeDuration();
+    }
+
+    public void resetFade() {
+        fadeAlpha = 1f;
+        fading = false;
+        fadeStartAtMs = System.currentTimeMillis() + Math.max(0, fadeDelaySeconds() * 1000);
+    }
+
+    private void updateFadeAlpha() {
+        final long now = System.currentTimeMillis();
+
+        if (!config.isFadeEnabled()) {
+            fadeAlpha = 1f;
+            fading = false;
+            return;
+        }
+
+        if (now < fadeStartAtMs) {
+            fadeAlpha = 1f;
+            fading = false;
+            return;
+        }
+
+        final int dur = Math.max(1, fadeDurationMs());
+        final long t = now - fadeStartAtMs;
+        if (t <= 0) {
+            fadeAlpha = 1f;
+            fading = false;
+            return;
+        }
+
+        fading = true;
+        float p = Math.min(1f, t / (float) dur);
+        p = 1f - (float)Math.pow(1f - p, 3); // easeOutCubic
+        fadeAlpha = 1f - p;
+    }
+
+    protected final class MouseHandler implements MouseListener, MouseWheelListener
     {
         private final Rectangle thumb = new Rectangle(0,0,0,0);
         private int trackTop = 0, trackHeight = 1, maxScroll = 0;

@@ -1416,7 +1416,7 @@ public class ChatOverlay extends OverlayPanel
                     publicContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);
 
                     Tab publicTab = tabsByKey.get(tabKey(ChatMode.PUBLIC));
-                    if (activeTab.equals(publicTab) && publicTab.getUnread() < 99)
+                    if (!activeTab.equals(publicTab) && publicTab.getUnread() < 99)
                         publicTab.incrementUnread();
                 }
             }

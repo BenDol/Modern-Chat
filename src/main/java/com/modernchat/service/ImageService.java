@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 @Singleton
 public class ImageService implements ChatService
 {
-    public static final Pattern IMG_TAG = Pattern.compile("(?i)<img=(\\d+)>");
+    public static final Pattern IMG_TAG = Pattern.compile(".*?<img=(\\d+)>\\s*(?:<[^>]+>\\s*)*([^:<>]+?)\\s*:", Pattern.CASE_INSENSITIVE);
 
     private final Map<Integer, Image> modIconCache = new ConcurrentHashMap<>();
 

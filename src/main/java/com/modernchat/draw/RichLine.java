@@ -18,8 +18,6 @@ public final class RichLine
 
     // Cached values for performance
     private List<VisualLine> lineCache = null;
-    private String prefixCache = null;
-    private String timestampCache = null;
 
     public void resetCache() {
         if (lineCache != null) {

@@ -20,6 +20,12 @@ public interface MessageContainerConfig extends ChatColors
 
     boolean isDrawScrollbar();
 
+    boolean isShowPrivateMessages();
+
+    boolean isFollowChatBox();
+
+    boolean isFadeEnabled();
+
     Point getOffset();
 
     Margin getMargin();
@@ -50,6 +56,10 @@ public interface MessageContainerConfig extends ChatColors
 
     Color getScrollbarThumbColor();
 
+    int getFadeDelay();
+
+    int getFadeDuration();
+
     class Default implements MessageContainerConfig
     {
         @Override
@@ -75,6 +85,21 @@ public interface MessageContainerConfig extends ChatColors
         @Override
         public boolean isDrawScrollbar() {
             return true;
+        }
+
+        @Override
+        public boolean isShowPrivateMessages() {
+            return true;
+        }
+
+        @Override
+        public boolean isFollowChatBox() {
+            return true;
+        }
+
+        @Override
+        public boolean isFadeEnabled() {
+            return false;
         }
 
         @Override
@@ -150,6 +175,16 @@ public interface MessageContainerConfig extends ChatColors
         @Override
         public Color getScrollbarThumbColor() {
             return new Color(255, 255, 255, 144);
+        }
+
+        @Override
+        public int getFadeDelay() {
+            return 0;
+        }
+
+        @Override
+        public int getFadeDuration() {
+            return 0;
         }
     }
 }

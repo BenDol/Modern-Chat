@@ -209,8 +209,9 @@ public class ChatUtil
 
         ChatMessageBuilder builder = new ChatMessageBuilder();
 
-        if (!StringUtil.isNullOrEmpty(senderName))
+        if (!StringUtil.isNullOrEmpty(senderName)) {
             builder.append(senderName, false).append(": ");
+        }
 
         String message = msg;
         if (params.length > 1) {
