@@ -65,7 +65,8 @@ public class ChatProxy
 
     public void setInputText(String value) {
         if (modernChat.isEnabled()) {
-            modernChat.setInputText(value);
+            if (modernChat.setInputText(value))
+                modernChat.focusInput();
         } else {
             ClientUtil.setChatInputText(client, value);
         }

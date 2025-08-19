@@ -4,8 +4,7 @@ import com.google.inject.Provides;
 import com.modernchat.common.Anchor;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatProxy;
-import com.modernchat.common.MessageService;
-import com.modernchat.common.NotifyType;
+import com.modernchat.common.NotificationService;
 import com.modernchat.common.PrivateChatAnchor;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.DialogOptionsClosedEvent;
@@ -25,7 +24,9 @@ import com.modernchat.feature.NotificationChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.PeekChatFeature;
+import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
+import com.modernchat.service.MessageService;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.service.ProfileService;
 import com.modernchat.service.SoundService;
@@ -96,11 +97,13 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private ChatMessageManager chatMessageManager;
 	@Inject private FontService fontService;
 	@Inject private SoundService soundService;
-	@Inject private MessageService messageService;
+	@Inject private NotificationService notificationService;
 	@Inject private ProfileService profileService;
 	@Inject private TutorialService tutorialService;
 	@Inject private ModernChatConfig config;
 	@Inject private PrivateChatService privateChatService;
+    @Inject private FilterService filterService;
+    @Inject private MessageService messageService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
 
@@ -130,6 +133,9 @@ public class ModernChatPlugin extends Plugin {
 		profileService.startUp();
 		panel = new ModernChatPanel(profileService, configManager);
 
+        filterService.startUp();
+        messageService.startUp();
+        privateChatService.startUp();
 		fontService.startUp();
 		soundService.startUp();
 
@@ -194,6 +200,9 @@ public class ModernChatPlugin extends Plugin {
 		}
 		profileService.shutDown();
 
+        filterService.shutDown();
+        messageService.shutDown();
+        privateChatService.shutDown();
 		fontService.shutDown();
 		soundService.shutDown();
 		tutorialService.shutDown();
@@ -310,7 +319,7 @@ public class ModernChatPlugin extends Plugin {
 				return;
 
 			if (e.getValue() == 0 && config.general_AnchorPrivateChat()) {
-				messageService.pushHelperNotification("Split PM chat was disabled, resetting anchor.");
+				notificationService.pushHelperNotification("Split PM chat was disabled, resetting anchor.");
 				resetSplitPmAnchor();
 			}
 		}
@@ -327,7 +336,7 @@ public class ModernChatPlugin extends Plugin {
 
 		if (key.endsWith("AnchorPrivateChat")) {
 			if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
-				messageService.pushHelperNotification(new ChatMessageBuilder()
+				notificationService.pushHelperNotification(new ChatMessageBuilder()
 					.append("Please enable ")
 					.append(Color.ORANGE, "Split friends private chat")
 					.append(" in the OSRS settings for the 'Anchor Private Chat' feature."));
@@ -518,7 +527,7 @@ public class ModernChatPlugin extends Plugin {
 	private void startInstallIntro() {
 		showInstallMessage();
 
-		messageService.showQuestionConfirmDialog(
+		notificationService.showQuestionConfirmDialog(
 			"Plugin Installed",
 			"This plugin is designed to enhance your chat experience with additional features. " +
 				"Would you like to see a brief introduction to the main features?",
@@ -553,7 +562,7 @@ public class ModernChatPlugin extends Plugin {
 					.build();
 			}
 
-			messageService.pushChatMessage(builder
+			notificationService.pushChatMessage(builder
 				.append("To learn more about the features and create custom configurations, check the plugin settings."),
 				ChatMessageType.WELCOME);
 

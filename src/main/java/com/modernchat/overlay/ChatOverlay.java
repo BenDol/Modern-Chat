@@ -2,9 +2,8 @@ package com.modernchat.overlay;
 
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
-import com.modernchat.common.ClanType;
 import com.modernchat.common.FontStyle;
-import com.modernchat.common.MessageService;
+import com.modernchat.common.NotificationService;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Padding;
 import com.modernchat.draw.RowHit;
@@ -12,8 +11,6 @@ import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.event.ChatMenuOpenedEvent;
-import com.modernchat.event.ChatMessageSentEvent;
-import com.modernchat.event.ChatPrivateMessageSentEvent;
 import com.modernchat.event.ChatResizedEvent;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
@@ -24,9 +21,10 @@ import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.event.NavigateHistoryEvent;
 import com.modernchat.event.RightDialogClosedEvent;
 import com.modernchat.event.RightDialogOpenedEvent;
-import com.modernchat.event.SubmitHistoryEvent;
 import com.modernchat.event.TabChangeEvent;
+import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
+import com.modernchat.service.MessageService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.MathUtil;
@@ -90,7 +88,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -105,6 +102,8 @@ public class ChatOverlay extends OverlayPanel
     @Inject private KeyManager keyManager;
     @Inject private WidgetBucket widgetBucket;
     @Inject private FontService fontService;
+    @Inject private NotificationService notificationService;
+    @Inject private FilterService filterService;
     @Inject private MessageService messageService;
     @Inject @Getter private ResizePanel resizePanel;
     @Inject private Provider<MessageContainer> messageContainerProvider;
@@ -118,7 +117,7 @@ public class ChatOverlay extends OverlayPanel
     @Getter private final Map<String, Tab> tabsByKey = new ConcurrentHashMap<>();
     @Getter private final Map<ChatMode, String> defaultTabNames = new ConcurrentHashMap<>();
     private final Rectangle tabsBarBounds = new Rectangle();
-    private int lastTabBarHeight = 0;
+    @Getter private int lastTabBarHeight = 0;
 
     @Getter private final Map<String, MessageContainer> messageContainers = new ConcurrentHashMap<>();
     @Getter private final Map<String, MessageContainer> privateContainers = new ConcurrentHashMap<>();
@@ -189,6 +188,8 @@ public class ChatOverlay extends OverlayPanel
     // Font caching
     private FontStyle fontStyle;
     private Font font;
+
+    private static boolean PASTE_WARNING_SHOWN = false;
 
     public ChatOverlay() {
     }
@@ -660,7 +661,7 @@ public class ChatOverlay extends OverlayPanel
             inputInnerLeft + prefixW + 1, baseline + 1);
 
         // Text
-        g.setColor(config.getInputPrefixColor());
+        g.setColor(getInputPrefixColor());
         g.drawString(prefix, inputInnerLeft, baseline);
         g.setColor(config.getInputTextColor());
         g.drawString(visibleInputText(fm, inputInnerRight - (inputInnerLeft + prefixW), inputScrollPx),
@@ -936,6 +937,9 @@ public class ChatOverlay extends OverlayPanel
             return;
         }
 
+        if (activeTab != null && activeTab.equals(t)) // already selected
+            return;
+
         Tab lastActive = activeTab;
         activeTab = t;
         eventBus.post(new TabChangeEvent(activeTab, lastActive));
@@ -957,6 +961,11 @@ public class ChatOverlay extends OverlayPanel
 
         if (!inputFocused)
             focusInput(); // auto-focus input when switching tabs
+    }
+
+    public Color getInputPrefixColor() {
+        Color prefixColor = messageContainer != null ? messageContainer.getTextColor() : null;
+        return prefixColor != null ? prefixColor : config.getInputPrefixColor();
     }
 
     public boolean isTabSelected(Tab t) {
@@ -1303,64 +1312,11 @@ public class ChatOverlay extends OverlayPanel
             return;
         }
 
-        sendPrivateChat(text, targetName);
-    }
-
-    public void sendPrivateChat(String text, String targetName) {
-        if (StringUtil.isNullOrEmpty(text)) {
-            log.warn("Attempted to send empty private chat message");
-            return;
-        }
-
-        if (StringUtil.isNullOrEmpty(targetName)) {
-            log.warn("Attempted to send private chat without a target name");
-            return;
-        }
-
-        clientThread.invoke(() -> {
-            client.runScript(ScriptID.PRIVMSG, targetName, text);
-
-            eventBus.post(new SubmitHistoryEvent(text));
-            eventBus.post(new ChatPrivateMessageSentEvent(text, targetName));
-        });
+        messageService.sendPrivateChat(text, targetName);
     }
 
     public void sendMessage(String text) {
-        sendMessage(text, getCurrentMode());
-    }
-
-    public void sendMessage(String text, ChatMode mode) {
-        ClanType clanType = ClanType.NORMAL; // default clan type
-        ChatMode selectedMode = mode;
-
-        switch (mode) {
-            case PUBLIC:
-                break;
-            case FRIENDS_CHAT:
-                break;
-            case CLAN_MAIN:
-                break;
-            case CLAN_GUEST:
-                break;
-
-            // Custom
-            case CLAN_GIM:
-                clanType = ClanType.IRONMAN;
-                selectedMode = ChatMode.CLAN_MAIN;
-                break;
-            case PRIVATE:
-                sendPrivateChat(text, getCurrentTarget());
-                return; // skip the rest of the logic
-        }
-
-        final int modeValue = selectedMode.getValue();
-        final int clanTypeValue = clanType.getValue();
-
-        clientThread.invoke(() -> {
-            client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
-
-            eventBus.post(new ChatMessageSentEvent(text, modeValue, clanTypeValue));
-        });
+        messageService.sendMessage(text, getCurrentMode(), getCurrentTarget());
     }
 
     private int getCharacterLimit() {
@@ -1733,14 +1689,14 @@ public class ChatOverlay extends OverlayPanel
         setInputText("");
     }
 
-    public void setInputText(String value) {
+    public boolean setInputText(String value) {
         if (value == null) {
             log.warn("Attempted to set input text to null");
-            return;
+            return false;
         }
 
         if (inputBuf.toString().equals(value))
-            return; // no change
+            return false; // no change
 
         int charLimit = getCharacterLimit();
         if (value.length() > charLimit) {
@@ -1749,19 +1705,20 @@ public class ChatOverlay extends OverlayPanel
         }
 
         final String text = value.trim();
+        if (filterService.isFiltered(text))
+            return false; // don't insert filtered text
+
         inputBuf.setLength(0);
         inputBuf.append(text);
         caret = inputBuf.length();
         inputScrollPx = 0;
-        inputFocused = true;
         caretOn = true;
         selStart = selEnd = caret; // clear selection on set
         selAnchor = -1;
         lastBlinkMs = System.currentTimeMillis();
         eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
-        clientThread.invokeLater(() -> {
-            ClientUtil.setChatInputText(client, text);
-        });
+        clientThread.invokeLater(() -> ClientUtil.setChatInputText(client, text));
+        return true;
     }
 
     private static float flashPhase(long nowMs, int periodMs, int offsetMs) {
@@ -1789,7 +1746,7 @@ public class ChatOverlay extends OverlayPanel
     private void clearSelection() { selStart = selEnd = caret; selAnchor = -1; }
     private void setSelectionRange(int a, int b) {
         selStart = Math.max(0, Math.min(a, inputBuf.length()));
-        selEnd   = Math.max(0, Math.min(b, inputBuf.length()));
+        selEnd = Math.max(0, Math.min(b, inputBuf.length()));
     }
     private int clampIndex(int i) { return Math.max(0, Math.min(i, inputBuf.length())); }
 
@@ -1815,12 +1772,22 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private void insertTextAtCaret(String s) {
-        if (s == null || s.isEmpty()) return;
+        if (s == null || s.isEmpty())
+            return;
+
         int charLimit = getCharacterLimit();
         int canTake = Math.max(0, charLimit - inputBuf.length() + (hasSelection() ? Math.abs(selEnd - selStart) : 0));
-        if (canTake == 0) return;
-        if (s.length() > canTake) s = s.substring(0, canTake);
-        if (hasSelection()) deleteSelection();
+        if (canTake == 0)
+            return;
+        if (s.length() > canTake)
+            s = s.substring(0, canTake);
+
+        if (filterService.isFiltered(s))
+            return; // don't insert filtered text
+
+        if (hasSelection())
+            deleteSelection();
+
         inputBuf.insert(caret, s);
         caret += s.length();
     }
@@ -1909,7 +1876,7 @@ public class ChatOverlay extends OverlayPanel
                 && lastViewport != null
                 && lastViewport.contains(e.getPoint());
             if (shouldBlock && !clickThroughNotificationSent) {
-                messageService.pushHelperNotification(new ChatMessageBuilder()
+                notificationService.pushHelperNotification(new ChatMessageBuilder()
                     .append("Left-click did not pass through the chat because ")
                     .append(Color.ORANGE, "Allow click-through")
                     .append(" is disabled. This can be changed in the settings."));
@@ -1925,13 +1892,18 @@ public class ChatOverlay extends OverlayPanel
 
         @Override
         public MouseEvent mouseClicked(MouseEvent e) {
-            if (!isEnabled() || isHidden())
-                return e;
-
-            if (lastViewport != null && lastViewport.contains(e.getPoint()) && shouldBlockClickThrough(e)) {
+            boolean hit = handleMouseClicked(e);
+            if (!e.isConsumed() && !hit && shouldBlockClickThrough(e)) {
                 e.consume(); // block underlying handlers
             }
             return e;
+        }
+
+        public boolean handleMouseClicked(MouseEvent e) {
+            if (!isEnabled() || isHidden())
+                return false;
+
+            return true;
         }
 
         @Override
@@ -1949,33 +1921,33 @@ public class ChatOverlay extends OverlayPanel
                 return e;
             }
 
-            // If the wheel is over the overlay at all, don't let it fall through to the game UI
-            if (lastViewport != null && lastViewport.contains(e.getPoint())) {
-                e.consume();
-            }
             return e;
         }
 
         @Override
         public MouseEvent mousePressed(MouseEvent e) {
+            boolean hit = handleMousePressed(e);
+            if (!e.isConsumed() && !hit && shouldBlockClickThrough(e)) {
+                e.consume(); // block underlying handlers
+            }
+            return e;
+        }
+
+        public boolean handleMousePressed(MouseEvent e) {
             if (!isEnabled() || isHidden())
-                return e;
+                return false;
             if (lastViewport == null)
-                return e;
+                return false;
 
             if (!lastViewport.contains(e.getPoint())) {
                 if (config.isClickOutsideToClose()) {
                     setHidden(true);
                 }
-                return e;
-            }
-
-            if (shouldBlockClickThrough(e)) {
-                e.consume();
+                return false;
             }
 
             if (client.isMenuOpen()) {
-                return e;
+                return false;
             }
 
             if (tabsBarBounds.contains(e.getPoint())) {
@@ -1984,12 +1956,13 @@ public class ChatOverlay extends OverlayPanel
 
                     // Close button (LMB only)
                     if (t.isCloseable() && t.getCloseBounds().contains(e.getPoint())) {
-                        if (e.getButton() == MouseEvent.BUTTON1) {
-                            if (t.getUnread() > 0) t.setUnread(0);
-                            removeTab(t);
-                            e.consume();
-                        }
-                        return e;
+                        if (e.getButton() != MouseEvent.BUTTON1)
+                            return false;
+
+                        if (t.getUnread() > 0) t.setUnread(0);
+                        removeTab(t);
+                        e.consume();
+                        return true;
                     }
 
                     // Prepare drag/click (LEFT only); don't select yet
@@ -2009,8 +1982,9 @@ public class ChatOverlay extends OverlayPanel
                         dragTabHeight = b.height;
 
                         e.consume();
+                        return true;
                     }
-                    return e; // RMB falls through for RuneLite menu
+                    return false; // RMB falls through for RuneLite menu
                 }
             }
 
@@ -2036,26 +2010,31 @@ public class ChatOverlay extends OverlayPanel
 
                     selectingText = true;
                     e.consume();
+                    return true;
                 }
-                return e;
+                return false;
             } else {
                 if (e.getButton() == MouseEvent.BUTTON1)
                     inputFocused = false;
             }
-            return e;
+            return false;
         }
 
         @Override
         public MouseEvent mouseDragged(MouseEvent e)  {
-            if (!isEnabled() || isHidden()) return e;
-
-            if (shouldBlockClickThrough(e)) {
-                e.consume();
+            boolean hit = handleMouseDragged(e);
+            if (!e.isConsumed() && !hit && shouldBlockClickThrough(e)) {
+                e.consume(); // block underlying handlers
             }
+            return e;
+        }
 
-            if (client.isMenuOpen()) {
-                return e;
-            }
+        public boolean handleMouseDragged(MouseEvent e)  {
+            if (!isEnabled() || isHidden())
+                return false;
+
+            if (client.isMenuOpen())
+                return false;
 
             // Selection drag
             if (selectingText && inputFocused) {
@@ -2068,11 +2047,11 @@ public class ChatOverlay extends OverlayPanel
                 caret = idx;
                 setSelectionRange(selAnchor, caret);
                 e.consume();
-                return e;
+                return true;
             }
 
             if (dragTab == null)
-                return e;
+                return false;
 
             if (!draggingTab && Math.abs(e.getX() - pressX) >= DRAG_THRESHOLD_PX) {
                 draggingTab = true;
@@ -2087,25 +2066,30 @@ public class ChatOverlay extends OverlayPanel
                 dragTargetIndex = targetIndexForDrag(dragTab, dragVisualX);
 
                 e.consume();
+                return true;
             }
-            return e;
+            return false;
         }
 
         @Override
         public MouseEvent mouseReleased(MouseEvent e) {
-            if (shouldBlockClickThrough(e)) {
-                e.consume();
+            boolean hit = handleMouseReleased(e);
+            if (!e.isConsumed() && !hit && shouldBlockClickThrough(e)) {
+                e.consume(); // block underlying handlers
             }
+            return e;
+        }
 
+        public boolean handleMouseReleased(MouseEvent e) {
             if (client.isMenuOpen()) {
-                return e;
+                return false;
             }
 
             // End selection drag
             if (selectingText && e.getButton() == MouseEvent.BUTTON1) {
                 selectingText = false;
                 e.consume();
-                return e;
+                return false;
             }
 
             if (dragTab != null && e.getButton() == MouseEvent.BUTTON1) {
@@ -2128,9 +2112,9 @@ public class ChatOverlay extends OverlayPanel
                 dragStartIndex = -1;
                 dragTargetIndex = -1;
                 e.consume();
-                return e;
+                return true;
             }
-            return e;
+            return false;
         }
     }
 
@@ -2297,14 +2281,20 @@ public class ChatOverlay extends OverlayPanel
                     break;
                 }
                 case KeyEvent.VK_V: {
-                    if (inputFocused && ctrl) {
+                    if (!PASTE_WARNING_SHOWN) {
+                        notificationService.pushChatMessage(new ChatMessageBuilder()
+                            .append("Jagex does not allow pasting into the chat input."));
+                        PASTE_WARNING_SHOWN = true;
+                    }
+                    /*if (inputFocused && ctrl) {
                         Optional<String> clipboardText = ChatUtil.getClipboardText();
                         if (clipboardText.isPresent()) {
-                            insertTextAtCaret(clipboardText.get());
+                            String text = clipboardText.get();
+                            insertTextAtCaret(text);
                             e.consume();
                             syncChatInputLater();
                         }
-                    }
+                    }*/
                     break;
                 }
             }

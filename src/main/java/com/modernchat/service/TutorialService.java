@@ -1,7 +1,7 @@
 package com.modernchat.service;
 
 import com.modernchat.common.ChatMessageBuilder;
-import com.modernchat.common.MessageService;
+import com.modernchat.common.NotificationService;
 import com.modernchat.common.TutorialState;
 import com.modernchat.event.ChatMessageSentEvent;
 import com.modernchat.event.ChatPrivateMessageSentEvent;
@@ -27,7 +27,7 @@ import java.util.TimerTask;
 public class TutorialService implements ChatService
 {
     @Inject private EventBus eventBus;
-    @Inject private MessageService messageService;
+    @Inject private NotificationService notificationService;
     @Inject private ChatOverlay chatOverlay;
 
     @Getter private TutorialState state = TutorialState.NOT_STARTED;
@@ -38,7 +38,7 @@ public class TutorialService implements ChatService
 
         if (state == TutorialState.NOT_STARTED) {
             log.debug("Tutorial awaiting toggle event received, starting tutorial");
-            messageService.pushChatMessage(new ChatMessageBuilder()
+            notificationService.pushChatMessage(new ChatMessageBuilder()
                 .append(
                     "This will guide you through some new chat features. " +
                     "To start, please make sure your chat is visible, press ")
@@ -72,14 +72,14 @@ public class TutorialService implements ChatService
         if (state == TutorialState.AWAITING_TOGGLE) {
             log.debug("Chat toggle event received, proceeding with tutorial");
             if (chatOverlay.getTabOrder().size() > 1) {
-                messageService.pushChatMessage(new ChatMessageBuilder()
+                notificationService.pushChatMessage(new ChatMessageBuilder()
                     .append("Try selecting a ")
                     .append(Color.ORANGE, "chat tab at the top")
                     .append(" to switch to chat mode channels."));
 
                 state = TutorialState.AWAITING_TAB_SWITCH;
             } else {
-                messageService.pushChatMessage(new ChatMessageBuilder()
+                notificationService.pushChatMessage(new ChatMessageBuilder()
                     .append("At the ")
                     .append(Color.ORANGE, "top of the chat")
                     .append(" you will see chat mode tabs open when you join them. Now lets try ")
@@ -98,7 +98,7 @@ public class TutorialService implements ChatService
             {
                 @Override
                 public void run() {
-                    messageService.pushChatMessage(new ChatMessageBuilder()
+                    notificationService.pushChatMessage(new ChatMessageBuilder()
                         .append("Nice! Now try ")
                         .append(Color.ORANGE, "sending a message")
                         .append(" in a chat mode channel by typing into the input box and pressing ")
@@ -112,7 +112,7 @@ public class TutorialService implements ChatService
             new Timer().schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    messageService.pushChatMessage(new ChatMessageBuilder()
+                    notificationService.pushChatMessage(new ChatMessageBuilder()
                         .append("Congratulations! You have completed the Modern Chat tutorial. " +
                             "Check out the settings to customize your chat experience even more! Some features to note are: ")
                         .append(Color.ORANGE, "resizeable chat").append(", ")
@@ -138,7 +138,7 @@ public class TutorialService implements ChatService
             new Timer().schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    messageService.pushChatMessage(new ChatMessageBuilder()
+                    notificationService.pushChatMessage(new ChatMessageBuilder()
                         .append("Great! Now try ")
                         .append(Color.ORANGE, "opening a private channel")
                         .append(" to message another player, by ")
@@ -170,7 +170,7 @@ public class TutorialService implements ChatService
         log.debug("Feature stopped, resetting tutorial state");
         state = TutorialState.NOT_STARTED;
         shutDown();
-        messageService.pushChatMessage(new ChatMessageBuilder()
+        notificationService.pushChatMessage(new ChatMessageBuilder()
             .append("Tutorial has ended."));
     }
 }

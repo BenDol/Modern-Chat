@@ -92,7 +92,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
     @Override
     public void startUp() {
         super.startUp();
-        privateChatService.startUp();
+
         registerCommandHandlers();
         commandHandlers.forEach((cmd, handler) -> {
             handler.startUp(this);
@@ -103,7 +103,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
     @Override
     public void shutDown(boolean fullShutdown) {
         super.shutDown(fullShutdown);
-        privateChatService.shutDown();
+
         shutDownCommandHandlers();
         commandHandlers.clear();
     }

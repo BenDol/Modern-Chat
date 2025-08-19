@@ -296,6 +296,27 @@ public class MessageContainer extends Overlay
         return canDrawDecider.apply(this);
     }
 
+    private @Nullable Color getColor(ChatMode mode) {
+        Color c = null;
+        switch (mode) {
+            case PUBLIC:
+                c = config.getPublicColor();
+                break;
+            case FRIENDS_CHAT:
+                c = config.getFriendColor();
+                break;
+            case CLAN_MAIN:
+            case CLAN_GUEST:
+            case CLAN_GIM:
+                c = config.getClanColor();
+                break;
+            case PRIVATE:
+                c = config.getPrivateColor();
+                break;
+        }
+        return c;
+    }
+
     private Color getColor(ChatMessageType type) {
         Color c;
         switch (type) {
@@ -629,6 +650,13 @@ public class MessageContainer extends Overlay
 
     public boolean hitAt(Point mouse) {
         return lastViewport != null && lastViewport.contains(new java.awt.Point(mouse.getX(), mouse.getY()));
+    }
+
+    public Color getTextColor() {
+        if (isPrivate())
+            return config.getPrivateColor();
+
+        return getColor(chatMode);
     }
 
     private final class MouseHandler implements MouseListener, MouseWheelListener

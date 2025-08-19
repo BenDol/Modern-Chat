@@ -7,7 +7,6 @@ import net.runelite.api.Client;
 import net.runelite.client.Notifier;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Notification;
 
 import javax.inject.Inject;
@@ -22,7 +21,7 @@ import java.util.function.Consumer;
 
 @Slf4j
 @Singleton
-public class MessageService
+public class NotificationService
 {
     public static final String MODERN_CHAT_TAG = "[ModernChat]";
 

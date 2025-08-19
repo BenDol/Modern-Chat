@@ -1,7 +1,7 @@
 package com.modernchat.feature.command;
 
 import com.modernchat.ModernChatConfig;
-import com.modernchat.common.MessageService;
+import com.modernchat.common.NotificationService;
 import com.modernchat.feature.command.CommandsChatFeature.CommandsChatConfig;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.util.StringUtil;
@@ -16,7 +16,7 @@ import javax.inject.Inject;
 @Slf4j
 public class PrivateMessageChatCommand extends AbstractChatCommand {
 
-    @Inject private MessageService messageService;
+    @Inject private NotificationService notificationService;
 
     @Override
     public void startUp(CommandsChatFeature feature) {
@@ -66,7 +66,7 @@ public class PrivateMessageChatCommand extends AbstractChatCommand {
 
         if (key.endsWith("PrivateMessageEnabled")) {
             if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
-                messageService.showWarningMessageBox("Private Message Command",
+                notificationService.showWarningMessageBox("Private Message Command",
                     "We recommend using \"Split friends private chat\" setting in the OSRS settings\n" +
                     "to see responses above the chat window when using the /pm command.");
             }

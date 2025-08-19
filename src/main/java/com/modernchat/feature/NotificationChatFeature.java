@@ -9,21 +9,19 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.client.Notifier;
+import net.runelite.client.audio.AudioPlayer;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl;
 
 import static com.modernchat.ModernChatConfigBase.Field.*;
-import static com.modernchat.feature.NotificationChatFeature.*;
 
 @Slf4j
 @Singleton
-public class NotificationChatFeature extends AbstractChatFeature<NotificationChatFeatureConfig>
+public class NotificationChatFeature extends AbstractChatFeature<NotificationChatFeature.NotificationChatFeatureConfig>
 {
     @Override
     public String getConfigGroup() {
@@ -45,9 +43,8 @@ public class NotificationChatFeature extends AbstractChatFeature<NotificationCha
     @Inject private Client client;
     @Inject private Notifier notifier;
     @Inject private SoundService soundService;
+    @Inject private AudioPlayer audioPlayer;
 
-    // Audio state
-    private Clip notifyClip;
     private long lastPlayMs = 0L;
 
     @Inject
@@ -83,14 +80,6 @@ public class NotificationChatFeature extends AbstractChatFeature<NotificationCha
     @Override
     public void shutDown(boolean fullShutdown) {
         super.shutDown(fullShutdown);
-
-        if (notifyClip != null) {
-            try {
-                notifyClip.stop();
-                notifyClip.close();
-            } catch (Exception ignored) {}
-            notifyClip = null;
-        }
     }
 
     @Subscribe
@@ -100,102 +89,71 @@ public class NotificationChatFeature extends AbstractChatFeature<NotificationCha
         }
 
         if (e.getKey().equalsIgnoreCase(NOTIFY_MESSAGE_RECEIVED_SFX.key)) {
-            playSfx(Sfx.valueOf(e.getNewValue()));
+            try {
+                Sfx sfx = Sfx.valueOf(e.getNewValue());
+                playSfxPreview(sfx);
+            } catch (Exception ex) {
+                log.debug("Preview SFX parse failed for '{}': {}", e.getNewValue(), ex.getMessage());
+            }
         }
     }
 
     @Subscribe
     public void onNotificationEvent(NotificationEvent e) {
-        NotificationChatFeatureConfig c = config;
+        if (!isEnabled())
+            return;
 
-        switch ((ChatMessageType) e.getKey()) {
+        // Filter by chat types
+        ChatMessageType type = (ChatMessageType) e.getKey();
+        switch (type) {
             case PUBLICCHAT:
-                if (!c.featureNotify_OnPublicMessage())
+                if (!config.featureNotify_OnPublicMessage())
                     return;
                 break;
             case PRIVATECHAT:
-                if (!c.featureNotify_OnPrivateMessage())
+                if (!config.featureNotify_OnPrivateMessage())
                     return;
                 break;
             case FRIENDSCHAT:
             case FRIENDSCHATNOTIFICATION:
-                if (!c.featureNotify_OnFriendsChat())
+                if (!config.featureNotify_OnFriendsChat())
                     return;
                 break;
             case CLAN_CHAT:
             case CLAN_GUEST_CHAT:
-                if (!c.featureNotify_OnClan())
+                if (!config.featureNotify_OnClan())
                     return;
                 break;
             default:
-                log.debug("Received unsupported notification event: {}", e.getKey());
+                log.debug("Notification ignored for unsupported type: {}", type);
                 return;
         }
 
-        if (e.isAllowSound() && c.featureNotify_SoundEnabled()) {
-            // throttle to avoid spam
-            long now = System.currentTimeMillis();
-            if (now - lastPlayMs < Math.max(0, 300))
-                return;
-            lastPlayMs = now;
+        if (!e.isAllowSound() || !config.featureNotify_SoundEnabled())
+            return;
 
-            if (c.featureNotify_UseRuneLiteSound()) {
-                // respects users RL notification settings
-                notifier.notify("New message");
-            } else {
-                playSfx(config.featureNotify_MessageReceivedSfx(), percentToDb(c.featureNotify_VolumePercent()));
-            }
+        // throttle to avoid spam
+        long now = System.currentTimeMillis();
+        if (now - lastPlayMs < 300)
+            return;
+        lastPlayMs = now;
+
+        if (config.featureNotify_UseRuneLiteSound()) {
+            notifier.notify("New message");
+        } else {
+            playSfx(config.featureNotify_MessageReceivedSfx(), config.featureNotify_VolumePercent());
         }
     }
 
-    private void playSfx(Sfx sfx) {
-        playSfx(sfx, percentToDb(config.featureNotify_VolumePercent()));
+    private void playSfxPreview(Sfx sfx) {
+        playSfx(sfx, config.featureNotify_VolumePercent());
     }
 
-    private void playSfx(Sfx sfx, float gainDb) {
-        if (notifyClip != null)
-            stopClip(notifyClip);
-
-        notifyClip = soundService.getSound(sfx);
-        playClip(notifyClip, gainDb);
-    }
-
-    private static void stopClip(Clip clip) {
-        if (clip == null)
-            return;
+    private void playSfx(Sfx sfx, int volumePercent) {
         try {
-            if (clip.isRunning())
-                clip.stop();
-            clip.setFramePosition(0);
-        } catch (Exception ignored) { }
-    }
-
-    private static void playClip(Clip clip, float gainDb) {
-        if (clip == null)
-            return;
-        try {
-            setClipVolume(clip, gainDb);
-            stopClip(clip);
-            clip.start();
-        } catch (Exception ignored) { }
-    }
-
-    private static float percentToDb(int percent) {
-        int p = Math.max(0, Math.min(100, percent));
-        if (p == 0)
-            return -80.0f; // effectively silent
-        return (float)(20.0 * Math.log10(p / 100.0));
-    }
-
-    private static void setClipVolume(Clip clip, float gainDb) {
-        if (clip == null)
-            return;
-        try {
-            if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                FloatControl ctrl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-                float clamped = Math.max(ctrl.getMinimum(), Math.min(ctrl.getMaximum(), gainDb));
-                ctrl.setValue(clamped);
-            }
-        } catch (Exception ignored) { }
+            soundService.play(audioPlayer, sfx, volumePercent);
+        } catch (Exception ex) {
+            log.debug("Failed to play SFX {}: {}", sfx, ex.toString());
+        }
     }
 }
