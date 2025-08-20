@@ -1,6 +1,7 @@
 package com.modernchat.common;
 
 import com.modernchat.overlay.ChatOverlay;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -25,8 +26,21 @@ public class ChatProxy
         if (modernChat.isEnabled())
             return modernChat.isHidden();
 
+        if (client.isClientThread()) {
+            Widget legacyChat = widgetBucket.getChatWidget();
+            return legacyChat != null && legacyChat.isHidden();
+        } else {
+            return ChatUtil.LEGACY_CHAT_HIDDEN.get();
+        }
+    }
+
+    public boolean isLegacyHidden() {
         Widget legacyChat = widgetBucket.getChatWidget();
         return legacyChat != null && legacyChat.isHidden();
+    }
+
+    public boolean isModernHidden() {
+        return modernChat.isHidden();
     }
 
     public @Nullable Rectangle getBounds() {
@@ -82,7 +96,8 @@ public class ChatProxy
         } else {
             Widget legacyChat = widgetBucket.getChatWidget();
             if (legacyChat != null) {
-                legacyChat.setHidden(hidden);
+                ChatUtil.setChatHidden(legacyChat, hidden);
+                client.refreshChat();
             }
         }
     }
@@ -92,5 +107,31 @@ public class ChatProxy
             return true;
 
         return modernChat.isTabSelected(msg);
+    }
+
+    public void ensureLegacyChatVisible() {
+        if (modernChat.isEnabled()) {
+            modernChat.showLegacyChat(true);
+        } else {
+            Widget legacyChat = widgetBucket.getChatWidget();
+            if (legacyChat != null) {
+                legacyChat.setHidden(false);
+            }
+        }
+    }
+
+    public void ensureLegacyChatHidden() {
+        if (modernChat.isEnabled()) {
+            modernChat.hideLegacyChat(true);
+        } else {
+            Widget legacyChat = widgetBucket.getChatWidget();
+            if (legacyChat != null) {
+                legacyChat.setHidden(true);
+            }
+        }
+    }
+
+    public boolean isLegacy() {
+        return modernChat == null || !modernChat.isEnabled() || modernChat.isLegacyShowing();
     }
 }

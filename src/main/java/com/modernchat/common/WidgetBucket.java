@@ -25,6 +25,9 @@ public class WidgetBucket {
     private Widget chatBoxArea = null;
     private Widget messageLayerWidget = null;
     private Widget pmWidget = null;
+    private Widget dialogLeft = null;
+    private Widget dialogRight = null;
+    private Widget dialogOptions = null;
 
     @Subscribe(priority = -1)
     public void onWidgetLoaded(WidgetLoaded e) {
@@ -47,6 +50,15 @@ public class WidgetBucket {
                  e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT) {
             chatViewportWidget = null;
         }
+        else if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
+            dialogLeft = null;
+        }
+        else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
+            dialogRight = null;
+        }
+        else if (e.getGroupId() == InterfaceID.CHATMENU) {
+            dialogOptions = null;
+        }
     }
 
     @Subscribe(priority = -1)
@@ -62,12 +74,50 @@ public class WidgetBucket {
         }
         else if (e.getGroupId() == InterfaceID.Chatbox.MES_TEXT2) {
             messageLayerWidget = null;
-        } else if (e.getGroupId() == InterfaceID.Chatbox.CHATAREA) {
+        }
+        else if (e.getGroupId() == InterfaceID.Chatbox.CHATAREA) {
             chatBoxArea = null;
-        } else if (e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT ||
+        }
+        else if (e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT ||
                    e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT) {
             chatViewportWidget = null;
         }
+        else if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
+            dialogLeft = null;
+        }
+        else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
+            dialogRight = null;
+        }
+        else if (e.getGroupId() == InterfaceID.CHATMENU) {
+            dialogOptions = null;
+        }
+    }
+
+    public Widget getDialogLeft() {
+        if (dialogLeft == null)
+            dialogLeft = client.getWidget(InterfaceID.CHAT_LEFT);
+        return dialogLeft;
+    }
+    public void clearDialogLeft() {
+        dialogLeft = null;
+    }
+
+    public Widget getDialogRight() {
+        if (dialogRight == null)
+            dialogRight = client.getWidget(InterfaceID.CHAT_RIGHT);
+        return dialogRight;
+    }
+    public void clearDialogRight() {
+        dialogRight = null;
+    }
+
+    public Widget getDialogOptions() {
+        if (dialogOptions == null)
+            dialogOptions = client.getWidget(InterfaceID.CHATMENU);
+        return dialogOptions;
+    }
+    public void clearDialogOptions() {
+        dialogOptions = null;
     }
 
     public Widget getPmWidget() {
@@ -75,7 +125,6 @@ public class WidgetBucket {
             pmWidget = client.getWidget(InterfaceID.PM_CHAT, 0);
         return pmWidget;
     }
-
     public void clearPmWidget() {
         pmWidget = null;
     }
@@ -85,7 +134,6 @@ public class WidgetBucket {
             chatParentWidget = client.getWidget(ComponentID.CHATBOX_PARENT);
         return chatParentWidget;
     }
-
     public void clearChatParentWidget() {
         chatParentWidget = null;
     }
@@ -103,7 +151,6 @@ public class WidgetBucket {
         chatViewportWidget = viewportWidget;
         return chatViewportWidget;
     }
-
     public void clearChatboxViewportWidget() {
         chatViewportWidget = null;
     }
@@ -113,7 +160,6 @@ public class WidgetBucket {
             chatWidget = ClientUtil.getChatWidget(client);
         return chatWidget;
     }
-
     public void clearChatWidget() {
         chatWidget = null;
     }
@@ -123,7 +169,6 @@ public class WidgetBucket {
             chatBoxArea = client.getWidget(InterfaceID.Chatbox.CHATAREA);
         return chatBoxArea;
     }
-
     public void clearChatBoxArea() {
         chatBoxArea = null;
     }
@@ -133,7 +178,6 @@ public class WidgetBucket {
             messageLayerWidget = client.getWidget(InterfaceID.Chatbox.MES_TEXT2);
         return messageLayerWidget;
     }
-
     public void clearMessageLayerWidget() {
         messageLayerWidget = null;
     }

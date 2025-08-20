@@ -138,7 +138,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         if (chatProxy.isHidden())
             return;
 
-        if (ClientUtil.isSystemTextEntryActive(client)) {
+        if (ClientUtil.isSystemWidgetActive(client)) {
             return; // Don't do anything if a system prompt is active
         }
 

@@ -79,6 +79,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.modernchat.common.NotifyType.MESSAGE_RECEIVED;
 
@@ -121,7 +122,7 @@ public class ModernChatPlugin extends Plugin {
 	private NavigationButton navButton;
 
 	private Set<ChatFeature<?>> features;
-	private volatile boolean chatVisible = false;
+	private final AtomicBoolean chatVisible = new AtomicBoolean(false);
 	private volatile Anchor pmAnchor = null;
 	private volatile Rectangle lastChatBounds;
 
@@ -366,9 +367,9 @@ public class ModernChatPlugin extends Plugin {
 	public void onClientTick(ClientTick e) {
 		Widget chatWidget = widgetBucket.getChatWidget();
 		boolean visible = chatWidget != null && !chatWidget.isHidden() && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());
-		if (chatVisible != visible) {
-			chatVisible = visible;
-			eventBus.post(new LegacyChatVisibilityChangeEvent(chatWidget, chatVisible));
+		if (chatVisible.get() != visible) {
+			chatVisible.set(visible);
+			eventBus.post(new LegacyChatVisibilityChangeEvent(chatWidget, chatVisible.get()));
 		}
 	}
 

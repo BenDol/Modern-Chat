@@ -10,7 +10,6 @@ import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
 import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
-import com.modernchat.overlay.ChatOverlayConfig;
 import com.modernchat.overlay.ChatPeekOverlay;
 import com.modernchat.overlay.MessageContainerConfig;
 import com.modernchat.util.ChatUtil;
@@ -191,30 +190,6 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		tryAddClearPeekMessagesMenuOption(entries);
 	}
 
-	private boolean tryAddClearPeekMessagesMenuOption(MenuEntry[] entries) {
-		int order = 0;
-		int id = -1;
-		for (MenuEntry entry : entries) {
-			order++;
-			String option = entry.getOption();
-			if (option == null || (!option.equalsIgnoreCase("Clear history") &&
-								   !option.equalsIgnoreCase("Clear messages")))
-				continue;
-			id = entry.getIdentifier();
-			break;
-		}
-
-		if (id == -1)
-			return false;
-
-		client.getMenu().createMenuEntry(order - 1)
-			.setOption("Clear peek messages")
-			.setType(MenuAction.RUNELITE_HIGH_PRIORITY)
-			.setIdentifier(0)
-			.onClick(me -> chatPeekOverlay.clearMessages());
-		return true;
-	}
-
 	@Subscribe
 	public void onConfigChanged(ConfigChanged e) {
 		if (!e.getGroup().equals(ModernChatConfig.GROUP))
@@ -264,6 +239,30 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	public void onModernChatVisibilityChangeEvent(ModernChatVisibilityChangeEvent e) {
 		chatPeekOverlay.setHidden(e.isVisible());
 		chatPeekOverlay.resetFade();
+	}
+
+	private boolean tryAddClearPeekMessagesMenuOption(MenuEntry[] entries) {
+		int order = 0;
+		int id = -1;
+		for (MenuEntry entry : entries) {
+			order++;
+			String option = entry.getOption();
+			if (option == null || (!option.equalsIgnoreCase("Clear history") &&
+								   !option.equalsIgnoreCase("Clear messages")))
+				continue;
+			id = entry.getIdentifier();
+			break;
+		}
+
+		if (id == -1)
+			return false;
+
+		client.getMenu().createMenuEntry(order - 1)
+			.setOption("Clear peek messages")
+			.setType(MenuAction.RUNELITE_HIGH_PRIORITY)
+			.setIdentifier(0)
+			.onClick(me -> chatPeekOverlay.clearMessages());
+		return true;
 	}
 
 	public void unFade() {

@@ -14,7 +14,9 @@ public class ChatPeekOverlay extends MessageContainer
 
 
     public ChatPeekOverlay() {
-        setCanDrawDecider((c) -> !isHidden() && (chatProxy == null || chatProxy.isHidden()));
+        setCanShowDecider((c) -> {
+            return !isHidden() && (chatProxy == null || (chatProxy.isHidden() && chatProxy.isLegacyHidden()));
+        });
         setBoundsProvider(() -> chatProxy != null ? chatProxy.getBounds() : null);
     }
 

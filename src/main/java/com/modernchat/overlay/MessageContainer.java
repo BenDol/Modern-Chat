@@ -71,7 +71,7 @@ public class MessageContainer extends Overlay
     @Getter protected ChatMode chatMode;
     @Getter @Setter protected boolean chromeEnabled = true;
     @Getter @Setter protected Supplier<Rectangle> boundsProvider;
-    @Getter @Setter protected Function<MessageContainer, Boolean> canDrawDecider = mc -> true;
+    @Getter @Setter protected Function<MessageContainer, Boolean> canShowDecider = mc -> true;
 
     // State
     @Getter @Setter protected volatile boolean hidden = false;
@@ -355,7 +355,7 @@ public class MessageContainer extends Overlay
     }
 
     public boolean canShow() {
-        return canDrawDecider.apply(this);
+        return canShowDecider.apply(this);
     }
 
     private @Nullable Color getColor(ChatMode mode) {

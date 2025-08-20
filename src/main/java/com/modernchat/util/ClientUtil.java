@@ -19,6 +19,7 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class ClientUtil
@@ -42,6 +43,29 @@ public class ClientUtil
         // Fallback: typed text buffer for system inputs
         String s = client.getVarcStrValue(VarClientStr.INPUT_TEXT);
         return s != null && !s.isEmpty();
+    }
+
+    public static boolean isSystemWidgetActive(Client client) {
+        if (isSystemTextEntryActive(client)) {
+            return true;
+        }
+
+        Widget dialogLeft = client.getWidget(InterfaceID.CHAT_LEFT, 0);
+        if (dialogLeft != null && !dialogLeft.isHidden()) {
+            return true;
+        }
+
+        Widget dialogRight = client.getWidget(InterfaceID.CHAT_RIGHT, 0);
+        if (dialogRight != null && !dialogRight.isHidden()) {
+            return true;
+        }
+
+        Widget dialogOptions = client.getWidget(InterfaceID.CHATMENU, 0);
+        if (dialogOptions != null && !dialogOptions.isHidden()) {
+            return true;
+        }
+
+        return false;
     }
 
     public static boolean isPmComposeOpen(Client client) {
@@ -80,16 +104,14 @@ public class ClientUtil
         return false;
     }
 
-    public static void setChatHidden(Client client, boolean hidden) {
-        /*Widget chatboxParent = client.getWidget(ComponentID.CHATBOX_PARENT);
-        if (chatboxParent != null) {
-            chatboxParent.setHidden(hidden);
-        }*/
-
+    public static boolean setChatHidden(Client client, boolean hidden) {
         Widget chatWidget = getChatWidget(client);
         if (chatWidget != null) {
-            chatWidget.setHidden(hidden);
+            ChatUtil.setChatHidden(chatWidget, hidden);
+            client.refreshChat();
+            return true;
         }
+        return false;
     }
 
     public static MessageNode findMessageNode(Client client, int id) {
@@ -161,11 +183,6 @@ public class ClientUtil
         return player != null &&
             player.getWorldLocation() != null &&
             player.getWorldLocation().getRegionID() != 0;
-    }
-
-    public static void hideWidget(Client client, int componentId) {
-        Widget w = client.getWidget(componentId);
-        if (w != null) w.setHidden(true);
     }
 
     public static void setChatInputText(Client client, String value) {

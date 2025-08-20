@@ -208,6 +208,10 @@ public class ChatOverlay extends OverlayPanel
     public void startUp(ChatOverlayConfig config, MessageContainerConfig containerConfig) {
         this.config = config;
 
+        clientThread.invoke(() -> {
+            hideLegacyChat(false);
+        });
+
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
         setClearChildren(false);
@@ -252,7 +256,7 @@ public class ChatOverlay extends OverlayPanel
 
     public void shutDown() {
         clientThread.invoke(() -> {
-            setHidden(true);
+            showLegacyChat(true);
             resetChatbox();
         });
 
@@ -262,6 +266,7 @@ public class ChatOverlay extends OverlayPanel
 
         eventBus.unregister(this);
 
+        activeTab = null;
         messageContainer = null;
         messageContainers.values().forEach(MessageContainer::shutDown);
         messageContainers.clear();
@@ -751,16 +756,22 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private void selectMessageContainer(ChatMode chatMode) {
-        if (messageContainer != null) {
-            messageContainer.setHidden(true);
-        }
-
-        messageContainer = messageContainers.get(chatMode.name());
-        if (messageContainer == null) {
+        MessageContainer container = messageContainers.get(chatMode.name());
+        if (container == null) {
             log.debug("No message container found for chat mode: {}", chatMode);
             return;
         }
 
+        if (messageContainer == container) {
+            log.debug("Already selected message container for chat mode: {}", chatMode);
+            return;
+        }
+
+        if (messageContainer != null) {
+            messageContainer.setHidden(true);
+        }
+
+        messageContainer = container;
         messageContainer.setHidden(false);
         messageContainer.setAlpha(1f);
     }
@@ -948,21 +959,19 @@ public class ChatOverlay extends OverlayPanel
             return;
         }
 
+        t.setUnread(0);
+        if (t.isPrivate()) {
+            selectPrivateContainer(t.getTargetName());
+        } else {
+            selectMessageContainer(ChatMode.valueOf(key));
+        }
+
         if (activeTab != null && activeTab.equals(t)) // already selected
             return;
 
         Tab lastActive = activeTab;
         activeTab = t;
         eventBus.post(new TabChangeEvent(activeTab, lastActive));
-
-        t.setUnread(0);
-        if (t.isPrivate()) {
-            selectPrivateContainer(t.getTargetName());
-        } else {
-            // Switch containers
-            ChatMode mode = ChatMode.valueOf(key);
-            selectMessageContainer(mode);
-        }
 
         if (messageContainer != null) {
             messageContainer.setUserScrolled(false);
@@ -971,7 +980,7 @@ public class ChatOverlay extends OverlayPanel
         }
 
         if (!inputFocused)
-            focusInput(); // auto-focus input when switching tabs
+            focusInput(); // autofocus input when switching tabs
     }
 
     public Color getInputPrefixColor() {
@@ -994,7 +1003,7 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onLeftDialogClosedEvent(LeftDialogClosedEvent e) {
-        clientThread.invoke(() -> hideLegacyChat());
+        clientThread.invokeLater(() -> hideLegacyChat());
     }
 
     @Subscribe
@@ -1004,7 +1013,7 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onRightDialogClosedEvent(RightDialogClosedEvent e) {
-        clientThread.invoke(() -> hideLegacyChat());
+        clientThread.invokeLater(() -> hideLegacyChat());
     }
 
     @Subscribe
@@ -1014,7 +1023,7 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onDialogOptionsClosedEvent(DialogOptionsClosedEvent e) {
-        clientThread.invoke(() -> hideLegacyChat());
+        clientThread.invokeLater(() -> hideLegacyChat());
     }
 
     @Subscribe
@@ -1035,6 +1044,11 @@ public class ChatOverlay extends OverlayPanel
     @Subscribe
     public void onClientTick(ClientTick tick) {
         resizeChatbox(desiredChatWidth, desiredChatHeight);
+
+        /*clientThread.invokeAtTickEnd(() -> {
+            if (!isHidden() && !legacyShowing)
+                hideLegacyChat();
+        });*/
     }
 
     @Subscribe
@@ -1252,6 +1266,9 @@ public class ChatOverlay extends OverlayPanel
             log.warn("Attempted to show ModernChat while legacy chat is showing, hiding legacy chat first");
             return;
         }
+
+        if (!hidden && ClientUtil.isSystemWidgetActive(client))
+            return;
 
         this.hidden = hidden;
 
@@ -1652,10 +1669,10 @@ public class ChatOverlay extends OverlayPanel
         legacyShowing = true;
         wasHidden = hidden; // remember if we were hidden before
         resetChatbox();
-        ClientUtil.setChatHidden(client, false);
 
-        if (hideOverlay)
+        if (ClientUtil.setChatHidden(client, false) && hideOverlay) {
             setHidden(true);
+        }
     }
 
     public void hideLegacyChat() {
@@ -1663,15 +1680,15 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void hideLegacyChat(boolean showOverlay) {
-        if (ClientUtil.isSystemTextEntryActive(client))
+        if (ClientUtil.isSystemWidgetActive(client))
             return;
 
         legacyShowing = false;
         resizeChatbox(desiredChatWidth, desiredChatHeight);
-        ClientUtil.setChatHidden(client, true);
 
-        if (showOverlay)
+        if (ClientUtil.setChatHidden(client, true) && showOverlay) {
             setHidden(wasHidden);
+        }
     }
 
     public void reset() {
@@ -1705,6 +1722,7 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void clear() {
+        activeTab = null;
         messageContainer = null;
         messageContainers.forEach((chatMode, container) -> {
             container.clear();

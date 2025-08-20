@@ -8,6 +8,7 @@ import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.util.ColorUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -20,11 +21,14 @@ import java.awt.datatransfer.Transferable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ChatUtil
 {
+    public static final AtomicBoolean LEGACY_CHAT_HIDDEN = new AtomicBoolean(false);
+
     public static boolean isPrivateMessage(ChatMessageType t) {
         return t == ChatMessageType.PRIVATECHAT
             || t == ChatMessageType.PRIVATECHATOUT
@@ -260,5 +264,10 @@ public class ChatUtil
                 prefix = "[System] ";
         }
         return prefix;
+    }
+
+    public static void setChatHidden(Widget chat, boolean hidden) {
+        chat.setHidden(hidden);
+        LEGACY_CHAT_HIDDEN.set(hidden);
     }
 }
