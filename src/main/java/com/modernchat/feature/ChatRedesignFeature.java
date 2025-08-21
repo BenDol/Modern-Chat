@@ -404,13 +404,14 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     public void onGameStateChanged(GameStateChanged e) {
         if (e.getGameState() == GameState.LOGGED_IN) {
             clientThread.invoke(() -> overlay.hideLegacyChat(false));
-        }
 
-        if (e.getGameState() == GameState.LOGGED_IN || e.getGameState() == GameState.LOGIN_SCREEN)
             overlay.refreshTabs();
 
-        if (mainConfig.featureToggle_StartHidden())
-            clientThread.invokeAtTickEnd(() -> overlay.setHidden(true));
+            clientThread.invokeAtTickEnd(() -> overlay.selectDefaultTab());
+
+            if (mainConfig.featureToggle_StartHidden())
+                clientThread.invokeAtTickEnd(() -> overlay.setHidden(true));
+        }
     }
 
     @Subscribe

@@ -248,7 +248,7 @@ public class ChatOverlay extends OverlayPanel
 
         refreshTabs();
 
-        clientThread.invoke(() -> selectTab(ChatMode.PUBLIC));
+        clientThread.invokeAtTickEnd(() -> selectTab(config.getDefaultChatMode()));
 
         if (config.isStartHidden())
             setHidden(true);
@@ -370,6 +370,10 @@ public class ChatOverlay extends OverlayPanel
             font = fontService.getFont(fontStyle != null ? fontStyle : FontStyle.RUNE);
         }
         return font;
+    }
+
+    public void selectDefaultTab() {
+        selectTab(config.getDefaultChatMode());
     }
 
     public void selectTab(ChatMode chatMode) {
@@ -952,7 +956,6 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void selectTabByKey(String key) {
-        // Clear unread on select
         Tab t = tabsByKey.get(key);
         if (t == null) {
             log.warn("Attempted to select non-existing tab with key: {}", key);
