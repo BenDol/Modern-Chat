@@ -323,10 +323,14 @@ public class ModernChatPlugin extends Plugin {
 			if (!ClientUtil.isOnline(client))
 				return;
 
-			if (e.getValue() == 0 && config.general_AnchorPrivateChat()) {
-				notificationService.pushHelperNotification("Split PM chat was disabled, resetting anchor.");
-				resetSplitPmAnchor();
-			}
+			// Check if split PM chat is enabled or disabled at the end of the tick
+			clientThread.invokeAtTickEnd(() -> {
+				boolean disabled = client.getVarpValue(VarPlayerID.OPTION_PM) == 0;
+				if (disabled && config.general_AnchorPrivateChat()) {
+					notificationService.pushHelperNotification("Split PM chat was disabled, resetting anchor.");
+					resetSplitPmAnchor();
+				}
+			});
 		}
 	}
 
@@ -392,16 +396,13 @@ public class ModernChatPlugin extends Plugin {
 		}
 
 		if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
-			Widget root = client.getWidget(InterfaceID.CHAT_LEFT, 0);
-			eventBus.post(new LeftDialogOpenedEvent(root));
+			eventBus.post(new LeftDialogOpenedEvent(widgetBucket.getDialogLeft()));
 		}
 		else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
-			Widget root = client.getWidget(InterfaceID.CHAT_RIGHT, 0);
-			eventBus.post(new RightDialogOpenedEvent(root));
+			eventBus.post(new RightDialogOpenedEvent(widgetBucket.getDialogRight()));
 		}
 		else if (e.getGroupId() == InterfaceID.CHATMENU) {
-			Widget root = client.getWidget(InterfaceID.CHATMENU, 0);
-			eventBus.post(new DialogOptionsOpenedEvent(root));
+			eventBus.post(new DialogOptionsOpenedEvent(widgetBucket.getDialogOptions()));
 		}
 	}
 
@@ -414,16 +415,13 @@ public class ModernChatPlugin extends Plugin {
 			resetSplitPmAnchor();
 		}
 		else if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
-			Widget root = client.getWidget(InterfaceID.CHAT_LEFT, 0);
-			eventBus.post(new LeftDialogClosedEvent(root));
+			eventBus.post(new LeftDialogClosedEvent(widgetBucket.getDialogLeft()));
 		}
 		else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
-			Widget root = client.getWidget(InterfaceID.CHAT_RIGHT, 0);
-			eventBus.post(new RightDialogClosedEvent(root));
+			eventBus.post(new RightDialogClosedEvent(widgetBucket.getDialogRight()));
 		}
 		else if (e.getGroupId() == InterfaceID.CHATMENU) {
-			Widget root = client.getWidget(InterfaceID.CHATMENU, 0);
-			eventBus.post(new DialogOptionsClosedEvent(root));
+			eventBus.post(new DialogOptionsClosedEvent(widgetBucket.getDialogOptions()));
 		}
 	}
 

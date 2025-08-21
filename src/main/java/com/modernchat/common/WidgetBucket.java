@@ -95,7 +95,7 @@ public class WidgetBucket {
 
     public Widget getDialogLeft() {
         if (dialogLeft == null)
-            dialogLeft = client.getWidget(InterfaceID.CHAT_LEFT);
+            dialogLeft = client.getWidget(InterfaceID.CHAT_LEFT, 0);
         return dialogLeft;
     }
     public void clearDialogLeft() {
@@ -104,7 +104,7 @@ public class WidgetBucket {
 
     public Widget getDialogRight() {
         if (dialogRight == null)
-            dialogRight = client.getWidget(InterfaceID.CHAT_RIGHT);
+            dialogRight = client.getWidget(InterfaceID.CHAT_RIGHT, 0);
         return dialogRight;
     }
     public void clearDialogRight() {
@@ -113,7 +113,7 @@ public class WidgetBucket {
 
     public Widget getDialogOptions() {
         if (dialogOptions == null)
-            dialogOptions = client.getWidget(InterfaceID.CHATMENU);
+            dialogOptions = client.getWidget(InterfaceID.CHATMENU, 0);
         return dialogOptions;
     }
     public void clearDialogOptions() {

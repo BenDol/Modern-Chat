@@ -101,7 +101,7 @@ public class ChatUtil
     public static List<String> chunk(String s, int limit) {
         if (limit <= 0 || s == null || s.isEmpty()) return List.of(s == null ? "" : s);
         List<String> out = new ArrayList<>((s.length() + limit - 1) / limit);
-        Matcher m = Pattern.compile("(?s).{1," + limit + "}").matcher(s);
+        Matcher m = Pattern.compile("(?s).+" + limit + "}").matcher(s);
         while (m.find()) out.add(m.group());
         return out;
     }

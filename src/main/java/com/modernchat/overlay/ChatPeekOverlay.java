@@ -2,6 +2,8 @@ package com.modernchat.overlay;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatProxy;
+import com.modernchat.util.ChatUtil;
+import com.modernchat.util.ClientUtil;
 import net.runelite.api.ChatMessageType;
 
 import javax.inject.Inject;
@@ -15,7 +17,8 @@ public class ChatPeekOverlay extends MessageContainer
 
     public ChatPeekOverlay() {
         setCanShowDecider((c) -> {
-            return !isHidden() && (chatProxy == null || (chatProxy.isHidden() && chatProxy.isLegacyHidden()));
+            return !isHidden() && (chatProxy == null ||
+                (chatProxy.isHidden() && chatProxy.isLegacyHidden() && !ClientUtil.isSystemWidgetActive(client)));
         });
         setBoundsProvider(() -> chatProxy != null ? chatProxy.getBounds() : null);
     }

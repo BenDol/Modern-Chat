@@ -9,8 +9,6 @@ import com.modernchat.event.SubmitHistoryEvent;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
-import lombok.Data;
-import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -34,9 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.modernchat.ModernChatConfig.CHAT_HEIGHT;
-import static com.modernchat.ModernChatConfig.CHAT_WIDTH;
-import static com.modernchat.ModernChatConfig.GROUP;
 import static com.modernchat.feature.MessageHistoryChatFeature.MessageHistoryChatFeatureConfig;
 
 @Slf4j
@@ -209,7 +204,8 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         // Avoid consecutive duplicates if desired
         if (config.featureMessageHistory_SkipDuplicates()
             && !history.isEmpty()
-            && history.get(history.size() - 1).equals(msg)) {
+            && history.get(history.size() - 1).equals(msg))
+        {
             resetNavState();
             return;
         }
