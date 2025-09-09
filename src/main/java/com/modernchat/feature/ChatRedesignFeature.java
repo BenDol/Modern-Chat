@@ -72,6 +72,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         boolean featureRedesign_AllowClickThrough();
         boolean featureRedesign_AutoSelectPrivateTab();
         boolean featureRedesign_Resizeable();
+        boolean featureRedesign_ShowNpc();
         ChatMode featureRedesign_DefaultChatMode();
         FontStyle featureRedesign_FontStyle();
         int featureRedesign_Padding();
@@ -158,6 +159,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean featureRedesign_AllowClickThrough() { return cfg.featureRedesign_AllowClickThrough(); }
             @Override public boolean featureRedesign_AutoSelectPrivateTab() { return cfg.featureRedesign_AutoSelectPrivateTab(); }
             @Override public boolean featureRedesign_Resizeable() { return cfg.featureRedesign_Resizeable(); }
+            @Override public boolean featureRedesign_ShowNpc() { return cfg.featureRedesign_ShowNpc(); }
             @Override public FontStyle featureRedesign_FontStyle() { return cfg.featureRedesign_FontStyle(); }
             @Override public int featureRedesign_Padding() { return cfg.featureRedesign_Padding(); }
             @Override public int featureRedesign_InputFontSize() { return cfg.featureRedesign_InputFontSize(); }
@@ -421,6 +423,9 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe
     public void onChatMessage(ChatMessage e) {
+        if (ChatUtil.isNpcMessage(e) && !config.featureRedesign_ShowNpc())
+            return;
+
         MessageLine line = ChatUtil.createMessageLine(e, client, false);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);

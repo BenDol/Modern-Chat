@@ -207,9 +207,7 @@ public class ChatOverlay extends OverlayPanel
     public void startUp(ChatOverlayConfig config, MessageContainerConfig containerConfig) {
         this.config = config;
 
-        clientThread.invoke(() -> {
-            hideLegacyChat(false);
-        });
+        clientThread.invoke(() -> hideLegacyChat(false));
 
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.ABOVE_WIDGETS);

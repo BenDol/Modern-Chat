@@ -234,6 +234,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return true;
     }
 
+    @ConfigItem(
+        keyName = "featureRedesign_ShowNpc",
+        name = "Show NPC Messages",
+        description = "Show NPC messages in the chat",
+        position = 11,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ShowNpc() {
+        return false;
+    }
+
     /* ------------ Modern Chat Style ------------ */
 
     @ConfigItem(

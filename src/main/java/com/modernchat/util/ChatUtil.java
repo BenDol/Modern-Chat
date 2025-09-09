@@ -277,4 +277,8 @@ public class ChatUtil
         chat.setHidden(hidden);
         LEGACY_CHAT_HIDDEN.set(hidden);
     }
+
+    public static boolean isNpcMessage(ChatMessage e) {
+        return e.getType() == ChatMessageType.NPC_SAY || e.getType() == ChatMessageType.DIALOG;
+    }
 }

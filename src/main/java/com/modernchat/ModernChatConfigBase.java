@@ -64,6 +64,7 @@ public interface ModernChatConfigBase extends
         String featureRedesign_ShowNotificationBadge = "featureRedesign_ShowNotificationBadge";
         String featureRedesign_AllowClickThrough = "featureRedesign_AllowClickThrough";
         String featureRedesign_AutoSelectPrivateTab = "featureRedesign_AutoSelectPrivateTab";
+        String featureRedesign_ShowNpc = "featureRedesign_ShowNpc";
 
         // Style: fonts & sizes
         String featureRedesign_FontStyle = "featureRedesign_FontStyle";
@@ -205,6 +206,7 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_SHOW_BADGE(Keys.featureRedesign_ShowNotificationBadge, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowNotificationBadge),
         FEATURE_REDESIGN_ALLOW_CLICK_THROUGH(Keys.featureRedesign_AllowClickThrough, Kind.BOOL, ModernChatConfigBase::featureRedesign_AllowClickThrough),
         FEATURE_REDESIGN_AUTO_SELECT_PRIVATE_TAB(Keys.featureRedesign_AutoSelectPrivateTab, Kind.BOOL, ModernChatConfigBase::featureRedesign_AutoSelectPrivateTab),
+        FEATURE_REDESIGN_SHOW_NPC(Keys.featureRedesign_ShowNpc, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowNpc),
 
         // ---- Style: fonts & sizes ----
         FEATURE_REDESIGN_FONT_STYLE(Keys.featureRedesign_FontStyle, FontStyle.class, ModernChatConfigBase::featureRedesign_FontStyle),
@@ -447,6 +449,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureRedesign_ShowNotificationBadge() { return getBool(Keys.featureRedesign_ShowNotificationBadge, DEFAULTS.featureRedesign_ShowNotificationBadge()); }
         @Override public boolean featureRedesign_AllowClickThrough() { return getBool(Keys.featureRedesign_AllowClickThrough, DEFAULTS.featureRedesign_AllowClickThrough()); }
         @Override public boolean featureRedesign_AutoSelectPrivateTab() { return getBool(Keys.featureRedesign_AutoSelectPrivateTab, DEFAULTS.featureRedesign_AutoSelectPrivateTab()); }
+        @Override public boolean featureRedesign_ShowNpc() { return getBool(Keys.featureRedesign_ShowNpc, DEFAULTS.featureRedesign_ShowNpc()); }
 
         // Style: fonts & sizes
         @Override public FontStyle featureRedesign_FontStyle() { return getEnum(Keys.featureRedesign_FontStyle, DEFAULTS.featureRedesign_FontStyle(), FontStyle.class); }
