@@ -45,7 +45,7 @@ public class ChatProxy
 
     public @Nullable Rectangle getBounds() {
         if (modernChat.isEnabled())
-            return modernChat.getLastViewport();
+            return modernChat.getViewPort();
 
         Widget legacyChatViewport = widgetBucket.getChatboxViewportWidget();
         if (legacyChatViewport != null) {

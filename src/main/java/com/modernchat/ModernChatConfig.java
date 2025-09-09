@@ -346,6 +346,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         section = modernChatStyleSection
     )
     @Range(max = 100)
+    @Units(Units.PIXELS)
     @Override
     default int featureRedesign_MessageContainer_ScrollbarWidth() {
         return 8;

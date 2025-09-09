@@ -80,40 +80,40 @@ public interface ModernChatConfigBase extends
 
         // Colors (outer)
         String featureRedesign_BackdropColor = "featureRedesign_BackdropColor";
-        String featureRedesign_BorderColor   = "featureRedesign_BorderColor";
-        String featureRedesign_InputPrefixColor     = "featureRedesign_InputPrefixColor";
+        String featureRedesign_BorderColor = "featureRedesign_BorderColor";
+        String featureRedesign_InputPrefixColor = "featureRedesign_InputPrefixColor";
         String featureRedesign_InputBackgroundColor = "featureRedesign_InputBackgroundColor";
-        String featureRedesign_InputBorderColor     = "featureRedesign_InputBorderColor";
-        String featureRedesign_InputShadowColor     = "featureRedesign_InputShadowColor";
-        String featureRedesign_InputTextColor       = "featureRedesign_InputTextColor";
-        String featureRedesign_InputCaretColor      = "featureRedesign_InputCaretColor";
+        String featureRedesign_InputBorderColor = "featureRedesign_InputBorderColor";
+        String featureRedesign_InputShadowColor = "featureRedesign_InputShadowColor";
+        String featureRedesign_InputTextColor = "featureRedesign_InputTextColor";
+        String featureRedesign_InputCaretColor = "featureRedesign_InputCaretColor";
         String featureRedesign_TabBarBackgroundColor = "featureRedesign_TabBarBackgroundColor";
-        String featureRedesign_TabColor              = "featureRedesign_TabColor";
-        String featureRedesign_TabSelectedColor      = "featureRedesign_TabSelectedColor";
-        String featureRedesign_TabBorderColor        = "featureRedesign_TabBorderColor";
+        String featureRedesign_TabColor = "featureRedesign_TabColor";
+        String featureRedesign_TabSelectedColor = "featureRedesign_TabSelectedColor";
+        String featureRedesign_TabBorderColor = "featureRedesign_TabBorderColor";
         String featureRedesign_TabBorderSelectedColor = "featureRedesign_TabBorderSelectedColor";
-        String featureRedesign_TabTextColor          = "featureRedesign_TabTextColor";
-        String featureRedesign_TabUnreadPulseToColor   = "featureRedesign_TabUnreadPulseToColor";
+        String featureRedesign_TabTextColor = "featureRedesign_TabTextColor";
+        String featureRedesign_TabUnreadPulseToColor = "featureRedesign_TabUnreadPulseToColor";
         String featureRedesign_TabUnreadPulseFromColor = "featureRedesign_TabUnreadPulseFromColor";
-        String featureRedesign_TabNotificationColor    = "featureRedesign_TabNotificationColor";
+        String featureRedesign_TabNotificationColor = "featureRedesign_TabNotificationColor";
         String featureRedesign_TabNotificationTextColor = "featureRedesign_TabNotificationTextColor";
-        String featureRedesign_TabCloseButtonColor     = "featureRedesign_TabCloseButtonColor";
+        String featureRedesign_TabCloseButtonColor = "featureRedesign_TabCloseButtonColor";
         String featureRedesign_TabCloseButtonTextColor = "featureRedesign_TabCloseButtonTextColor";
 
         // Message container geometry/colors
         String featureRedesign_MessageContainer_OffsetX = "featureRedesign_MessageContainer_OffsetX";
         String featureRedesign_MessageContainer_OffsetY = "featureRedesign_MessageContainer_OffsetY";
-        String featureRedesign_MessageContainer_Margin  = "featureRedesign_MessageContainer_Margin";
+        String featureRedesign_MessageContainer_Margin = "featureRedesign_MessageContainer_Margin";
         String featureRedesign_MessageContainer_PaddingTop = "featureRedesign_MessageContainer_PaddingTop";
         String featureRedesign_MessageContainer_PaddingLeft = "featureRedesign_MessageContainer_PaddingLeft";
         String featureRedesign_MessageContainer_PaddingBottom = "featureRedesign_MessageContainer_PaddingBottom";
         String featureRedesign_MessageContainer_PaddingRight = "featureRedesign_MessageContainer_PaddingRight";
         String featureRedesign_MessageContainer_LineSpacing = "featureRedesign_MessageContainer_LineSpacing";
-        String featureRedesign_MessageContainer_ScrollStep  = "featureRedesign_MessageContainer_ScrollStep";
-        String featureRedesign_MessageContainer_TextShadow  = "featureRedesign_MessageContainer_TextShadow";
+        String featureRedesign_MessageContainer_ScrollStep = "featureRedesign_MessageContainer_ScrollStep";
+        String featureRedesign_MessageContainer_TextShadow = "featureRedesign_MessageContainer_TextShadow";
         String featureRedesign_MessageContainer_BackdropColor = "featureRedesign_MessageContainer_BackdropColor";
-        String featureRedesign_MessageContainer_BorderColor   = "featureRedesign_MessageContainer_BorderColor";
-        String featureRedesign_MessageContainer_ShadowColor   = "featureRedesign_MessageContainer_ShadowColor";
+        String featureRedesign_MessageContainer_BorderColor = "featureRedesign_MessageContainer_BorderColor";
+        String featureRedesign_MessageContainer_ShadowColor = "featureRedesign_MessageContainer_ShadowColor";
         String featureRedesign_MessageContainer_ScrollbarTrackColor = "featureRedesign_MessageContainer_ScrollbarTrackColor";
         String featureRedesign_MessageContainer_ScrollbarThumbColor = "featureRedesign_MessageContainer_ScrollbarThumbColor";
 
@@ -122,13 +122,13 @@ public interface ModernChatConfigBase extends
         String general_AnchorPrivateChatOffsetX = "general_AnchorPrivateChatOffsetX";
         String general_AnchorPrivateChatOffsetY = "general_AnchorPrivateChatOffsetY";
         String general_HelperNotifications = "general_HelperNotifications";
-        String general_PublicChatColor   = "general_PublicChatColor";
-        String general_FriendsChatColor  = "general_FriendsChatColor";
-        String general_ClanChatColor     = "general_ClanChatColor";
-        String general_PrivateChatColor  = "general_PrivateChatColor";
-        String general_SystemChatColor   = "general_SystemChatColor";
-        String general_WelcomeChatColor  = "general_WelcomeChatColor";
-        String general_TradeChatColor    = "general_TradeChatColor";
+        String general_PublicChatColor = "general_PublicChatColor";
+        String general_FriendsChatColor = "general_FriendsChatColor";
+        String general_ClanChatColor = "general_ClanChatColor";
+        String general_PrivateChatColor = "general_PrivateChatColor";
+        String general_SystemChatColor = "general_SystemChatColor";
+        String general_WelcomeChatColor = "general_WelcomeChatColor";
+        String general_TradeChatColor = "general_TradeChatColor";
 
         // Toggle
         String featureToggle_Enabled = "featureToggle_Enabled";

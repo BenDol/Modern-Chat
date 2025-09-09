@@ -88,7 +88,7 @@ public class FontService implements ChatService
 
     @Override
     public void shutDown() {
-        defaultFontsMap.clear();
+        defaultFontsMap = null;
     }
 
     public Font getFont(FontStyle style) {

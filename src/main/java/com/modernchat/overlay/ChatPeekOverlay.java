@@ -2,7 +2,6 @@ package com.modernchat.overlay;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatProxy;
-import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import net.runelite.api.ChatMessageType;
 

@@ -188,13 +188,20 @@ public class ChatUtil
     }
 
     public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client) {
+        return createMessageLine(e, client, true);
+    }
+
+    public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer) {
         Player localPlayer = client.getLocalPlayer();
-        if (localPlayer == null)
+        if (localPlayer == null && requireLocalPlayer)
             return null;
 
-        String localPlayerName = localPlayer.getName();
-        if (StringUtil.isNullOrEmpty(localPlayerName))
-            return null;
+        String localPlayerName = "";
+        if (localPlayer != null) {
+            localPlayerName = localPlayer.getName();
+            if (StringUtil.isNullOrEmpty(localPlayerName) && requireLocalPlayer)
+                return null;
+        }
 
         long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() : System.currentTimeMillis();
 

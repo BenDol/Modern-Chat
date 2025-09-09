@@ -161,8 +161,7 @@ public class ModernChatPanel extends PluginPanel
         }
     }
 
-    private void saveCurrentSettingsToProfile()
-    {
+    private void saveCurrentSettingsToProfile() {
         // Choose default name: selection -> active -> prompt
         String name = list.getSelectedValue();
         if (name == null) {
@@ -198,8 +197,7 @@ public class ModernChatPanel extends PluginPanel
         }
     }
 
-    private void saveCurrentSettingsAsNewProfile()
-    {
+    private void saveCurrentSettingsAsNewProfile() {
         // suggest a name: active or “profile-copy”
         String suggested = profileService.getActiveProfileName()
             .map(n -> n + "-copy")
@@ -262,10 +260,9 @@ public class ModernChatPanel extends PluginPanel
     }
 
     /** keep filenames friendly: letters, numbers, dash/underscore; collapse spaces to dash */
-    private static String sanitizeProfileName(String in)
-    {
+    private static String sanitizeProfileName(String in) {
         String s = in.trim().replaceAll("\\s+", "-");
-        s = s.replaceAll("[^A-Za-z0-9_\\-\\.]", "");
+        s = s.replaceAll("[^A-Za-z0-9_\\-.]", "");
         // avoid hidden dotfiles or just ".json"
         if (s.equalsIgnoreCase(".json"))
             s = "profile";

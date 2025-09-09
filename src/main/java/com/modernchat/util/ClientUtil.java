@@ -28,9 +28,8 @@ public class ClientUtil
      * MUST be on client thread.
      */
     public static boolean isSystemTextEntryActive(Client client) {
-        // Reliable for "Add Friend", "Enter amount", etc.
         int type = client.getVarbitValue(VarClientInt.INPUT_TYPE);
-        if (type != 0) {
+        if (type != 0 && type != 1) {
             return true;
         }
 

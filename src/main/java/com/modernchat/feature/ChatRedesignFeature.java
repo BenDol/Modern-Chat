@@ -421,7 +421,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe
     public void onChatMessage(ChatMessage e) {
-        MessageLine line = ChatUtil.createMessageLine(e, client);
+        MessageLine line = ChatUtil.createMessageLine(e, client, false);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages

@@ -157,7 +157,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	public void startUp() {
 		super.startUp();
 
-		chatPeekOverlay.startUp(partitionConfig(config), ChatMode.PUBLIC);
+		chatPeekOverlay.startUp(partitionConfig(config), ChatMode.PUBLIC, false);
 
 		overlayManager.add(chatPeekOverlay);
 	}
@@ -207,7 +207,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Subscribe
 	public void onChatMessage(ChatMessage e) {
-        MessageLine line = ChatUtil.createMessageLine(e, client);
+        MessageLine line = ChatUtil.createMessageLine(e, client, false);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages

@@ -34,10 +34,7 @@ public class SoundService implements ChatService
 
     @Override
     public void shutDown() {
-        if (defaultSounds != null) {
-            defaultSounds.clear();
-            defaultSounds = null;
-        }
+        defaultSounds = null;
     }
 
     public void play(AudioPlayer player, Sfx sfx, int volumePercent) {

@@ -99,7 +99,7 @@ public class MessageContainer extends Overlay
     @Getter protected int trackHeight = 1;
     @Getter protected int maxScroll = 0;
 
-    @Getter protected final MouseHandler mouse = new MouseHandler();
+    @Getter protected MouseHandler mouse;
 
     public MessageContainer() {
         setPosition(OverlayPosition.DYNAMIC);
@@ -112,14 +112,24 @@ public class MessageContainer extends Overlay
     }
 
     public void startUp(MessageContainerConfig config, ChatMode chatMode) {
+        startUp(config, chatMode, true);
+    }
+
+    public void startUp(MessageContainerConfig config, ChatMode chatMode, boolean registerMouse) {
         this.config = config;
         this.chatMode = chatMode;
 
-        registerMouseListener();
+        if (registerMouse) {
+            this.mouse = new MouseHandler();
+            registerMouseListener();
+        }
     }
 
     public void shutDown() {
-        unregisterMouseListener();
+        if (this.mouse == null) {
+            unregisterMouseListener();
+            this.mouse = null;
+        }
     }
 
     @Override

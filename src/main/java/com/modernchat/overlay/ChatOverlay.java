@@ -48,7 +48,6 @@ import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
-import net.runelite.api.gameval.SpriteID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
@@ -285,15 +284,9 @@ public class ChatOverlay extends OverlayPanel
         if (!isEnabled() || hidden)
             return null;
 
-        Widget chatRoot = widgetBucket.getChatboxViewportWidget();
-        if (chatRoot == null || chatRoot.isHidden())
+        Rectangle vp = updateAndGetLastViewPort();
+        if (vp == null)
             return null;
-
-        Rectangle vp = chatRoot.getBounds();
-        if (vp == null || vp.width <= 0 || vp.height <= 0)
-            return null;
-
-        lastViewport = new Rectangle(vp);
 
         if (messageContainer == null) {
             selectTab(config.getDefaultChatMode());
@@ -359,6 +352,27 @@ public class ChatOverlay extends OverlayPanel
 
         g.setComposite(oc);
         return super.render(g);
+    }
+
+    private Rectangle updateAndGetLastViewPort() {
+        Rectangle vp = getViewPort();
+        if (vp == null)
+            return null;
+
+        lastViewport = new Rectangle(vp);
+        return lastViewport;
+    }
+
+    public Rectangle getViewPort() {
+        Widget chatRoot = widgetBucket.getChatboxViewportWidget();
+        if (chatRoot == null || chatRoot.isHidden())
+            return null;
+
+        Rectangle vp = chatRoot.getBounds();
+        if (vp == null || vp.width <= 0 || vp.height <= 0)
+            return null;
+
+        return new Rectangle(vp);
     }
 
     private Font getFont() {
@@ -1266,7 +1280,7 @@ public class ChatOverlay extends OverlayPanel
             return; // no change
 
         if (!hidden && legacyShowing) {
-            log.warn("Attempted to show ModernChat while legacy chat is showing, hiding legacy chat first");
+            log.debug("Attempted to show ModernChat while legacy chat is showing, hiding legacy chat first");
             return;
         }
 
@@ -1605,13 +1619,14 @@ public class ChatOverlay extends OverlayPanel
 
         desiredChatWidth = newW;
         desiredChatHeight = newH;
+        resizeChatbox(desiredChatWidth, desiredChatHeight);
     }
 
     private void resizeChatbox(int width, int height) {
         if (width <= 0 || height <= 0)
             return;
 
-        if (lastViewport == null || (width == lastViewport.width && height == lastViewport.height))
+        if (lastViewport != null && (width == lastViewport.width && height == lastViewport.height))
             return;
 
         Widget chatViewport = widgetBucket.getChatboxViewportWidget();
