@@ -2,6 +2,7 @@ package com.modernchat.feature;
 
 import com.google.inject.Provides;
 import com.modernchat.ModernChatConfig;
+import com.modernchat.ModernChatConfigBase;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
@@ -409,9 +410,12 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         overlay.dirty();
 
         // Refresh tabs when tab settings change
-        if (key.equals("featureRedesign_ClassicMode") || key.equals("featureRedesign_ClassicMode_AllowPmTabs")
-                || key.equals("featureRedesign_ClassicMode_ShowUnread")
-                || key.equals("featureRedesign_GameTabEnabled") || key.equals("featureRedesign_TradeTabEnabled")) {
+        if (key.equals(ModernChatConfigBase.Keys.featureRedesign_ClassicMode)
+         || key.equals(ModernChatConfigBase.Keys.featureRedesign_ClassicMode_AllowPmTabs)
+         || key.equals(ModernChatConfigBase.Keys.featureRedesign_ClassicMode_ShowUnread)
+         || key.equals(ModernChatConfigBase.Keys.featureRedesign_GameTabEnabled)
+         || key.equals(ModernChatConfigBase.Keys.featureRedesign_TradeTabEnabled))
+        {
             clientThread.invokeAtTickEnd(() -> overlay.refreshTabs());
         }
     }

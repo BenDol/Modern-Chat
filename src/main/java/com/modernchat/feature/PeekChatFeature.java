@@ -1,6 +1,7 @@
 package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.ModernChatConfigBase;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.MessageLine;
@@ -353,7 +354,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	}
 
 	private void setPeekSource(String tabKey) {
-		configManager.setConfiguration(ModernChatConfig.GROUP, "featurePeek_SourceTabKey",
+		configManager.setConfiguration(ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featurePeek_SourceTabKey,
 			tabKey == null ? "" : tabKey);
 		chatPeekOverlay.clearMessages();
 		populateFromTabContainer(tabKey);
