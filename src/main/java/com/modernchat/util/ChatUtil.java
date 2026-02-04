@@ -279,92 +279,10 @@ public class ChatUtil
 
         // Check if the filtered message has a collapse suffix like " (2)"
         // Only detect collapse for COLLAPSIBLE_MESSAGETYPES (game message types)
-        boolean collapsed = filteredMessage != null
+        boolean collapsed = filteredMessage != null && originalMsg != null
             && COLLAPSIBLE_MESSAGETYPES.contains(type)
-            && COLLAPSE_PATTERN.matcher(filteredMessage).find();
-
-        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed);
-    }
-
-    /**
-     * Create a MessageLine from a MessageNode (used with ScriptCallbackEvent).
-     * This reads the message AFTER other plugins (like ChatFilterPlugin) have modified it,
-     * allowing us to respect collapse settings and other modifications.
-     */
-    public static @Nullable MessageLine createMessageLineFromNode(MessageNode node, ChatMessageType type, Client client) {
-        if (node == null) {
-            return null;
-        }
-
-        Player localPlayer = client.getLocalPlayer();
-        String localPlayerName = "";
-        if (localPlayer != null) {
-            localPlayerName = localPlayer.getName();
-        }
-
-        long timestamp = node.getTimestamp() > 0 ? node.getTimestamp() * 1000L : System.currentTimeMillis();
-
-        // Get sender and receiver based on message type
-        String senderName = node.getName();
-        String receiverName = localPlayerName;
-        String channelSender = node.getSender(); // Clan/FC channel name
-
-        if (type == ChatMessageType.PRIVATECHATOUT) {
-            receiverName = senderName;
-            senderName = "You";
-        } else if (type == ChatMessageType.PRIVATECHAT || type == ChatMessageType.MODPRIVATECHAT) {
-            receiverName = localPlayerName;
-        } else if (isClanMessage(type) || isFriendsChatMessage(type)) {
-            // senderName is the player name, channelSender is the channel name
-        }
-
-        // Build prefix for clan/FC messages
-        String prefix = "";
-        if ((isClanMessage(type) || isFriendsChatMessage(type)) && channelSender != null && !channelSender.isEmpty()) {
-            prefix = "(" + channelSender + ") ";
-        }
-
-        // Use getRuneLiteFormatMessage() to get the modified message (after ChatFilterPlugin processing)
-        String msg = node.getRuneLiteFormatMessage();
-        if (msg == null) {
-            msg = node.getValue();
-        }
-        if (msg == null) {
-            msg = "";
-        }
-
-        ChatMessageBuilder builder = new ChatMessageBuilder();
-
-        if (!StringUtil.isNullOrEmpty(senderName)) {
-            builder.append(senderName, false).append(": ");
-        }
-
-        // Get original message for duplicate key (before filter modification)
-        String originalMsg = node.getValue();
-        if (originalMsg == null) {
-            originalMsg = "";
-        }
-
-        // Parse message for mod icons (IMG: tags)
-        String[] params = msg.split("\\|", 3);
-        String message = msg;
-        if (params.length > 1) {
-            int icon = getModImageId(params[0]);
-            if (icon != -1) {
-                builder.img(icon);
-            }
-            message = params[params.length - 1];
-        }
-
-        builder.append(message, false);
-
-        // Generate duplicate key from name + original message
-        String duplicateKey = node.getName() + ":" + originalMsg;
-
-        // Check if the message has a collapse suffix like " (2)"
-        // Only detect collapse for COLLAPSIBLE_MESSAGETYPES (game message types)
-        boolean collapsed = COLLAPSIBLE_MESSAGETYPES.contains(type)
-            && COLLAPSE_PATTERN.matcher(msg).find();
+            && COLLAPSE_PATTERN.matcher(filteredMessage).find()
+            && !originalMsg.equals(filteredMessage); // only if filtered differs from original
 
         return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed);
     }
