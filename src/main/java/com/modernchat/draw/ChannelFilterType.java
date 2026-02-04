@@ -10,7 +10,8 @@ public enum ChannelFilterType {
     CLAN("Clan Chat", 1 << 3),
     TRADE("Trade", 1 << 4),
     GAME("Game", 1 << 5),
-    SYSTEM("System", 1 << 6);
+    SYSTEM("System", 1 << 6),
+    AUTO_TYPER("Auto Typed", 1 << 7);
 
     private final String displayName;
     private final int flag;

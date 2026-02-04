@@ -49,12 +49,30 @@ public class ChannelFilterState {
         return isEnabled(filterType);
     }
 
+    /**
+     * Check if a message type should be shown for a specific chat mode's filters.
+     * This is used by PeekOverlay to respect the source tab's channel filters.
+     */
+    public boolean shouldShowMessage(ChatMessageType messageType, @Nullable ChatMode chatMode) {
+        if (config == null) {
+            return true;
+        }
+        ChannelFilterType filterType = mapMessageTypeToFilter(messageType);
+        if (filterType == null) {
+            return true;
+        }
+        int flags = config.getChannelFilterFlags(chatMode);
+        return !filterType.isDisabledIn(flags);
+    }
+
     public ChannelFilterType mapMessageTypeToFilter(ChatMessageType messageType) {
         switch (messageType) {
             case PUBLICCHAT:
             case MODCHAT:
-            case AUTOTYPER:
                 return ChannelFilterType.PUBLIC;
+
+            case AUTOTYPER:
+                return ChannelFilterType.AUTO_TYPER;
 
             case PRIVATECHAT:
             case PRIVATECHATOUT:

@@ -265,8 +265,14 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		}
 
 		ChatMessageType type = line.getType();
+		ChatMode sourceChatMode = getSourceChatMode(sourceKey);
 
-		// ALL tab - show everything
+		// First check if message passes the source tab's channel filters
+		if (!channelFilterState.shouldShowMessage(type, sourceChatMode)) {
+			return false;
+		}
+
+		// ALL tab - show everything (that passes filters)
 		if (sourceKey.equals("ALL")) {
 			return true;
 		}
@@ -311,6 +317,39 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		}
 
 		return true; // Default: show message
+	}
+
+	/**
+	 * Maps a source tab key to the corresponding ChatMode for channel filter lookups.
+	 */
+	private ChatMode getSourceChatMode(String sourceKey) {
+		if (sourceKey == null) {
+			return null;
+		}
+		// Handle private tab keys like "private_Username"
+		if (sourceKey.startsWith("private_")) {
+			return ChatMode.PRIVATE;
+		}
+		switch (sourceKey) {
+			case "PUBLIC":
+				return ChatMode.PUBLIC;
+			case "PRIVATE":
+				return ChatMode.PRIVATE;
+			case "FRIENDS_CHAT":
+				return ChatMode.FRIENDS_CHAT;
+			case "CLAN_MAIN":
+				return ChatMode.CLAN_MAIN;
+			case "CLAN_GUEST":
+				return ChatMode.CLAN_GUEST;
+			case "CLAN_GIM":
+				return ChatMode.CLAN_GIM;
+			case "GAME":
+			case "TRADE":
+			case "ALL":
+			default:
+				// ALL, GAME, TRADE tabs use PUBLIC mode's filters (or null for global)
+				return null;
+		}
 	}
 
 	private void setPeekSource(String tabKey) {
