@@ -175,7 +175,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         String raw = ev.getValue();
         if (raw == null || raw.isEmpty()) return;
 
-        if (!raw.startsWith("/") && lastChatInput.startsWith("/"))
+        if (!raw.startsWith("/") && lastChatInput != null && lastChatInput.startsWith("/"))
             raw = "/" + raw; // Ensure it starts with a slash
 
         handleChatSubmit(raw, ev);

@@ -31,6 +31,7 @@ import com.modernchat.service.MessageService;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.service.ProfileService;
 import com.modernchat.service.SoundService;
+import com.modernchat.service.SpamFilterService;
 import com.modernchat.service.TutorialService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
@@ -107,6 +108,7 @@ public class ModernChatPlugin extends Plugin {
     @Inject private FilterService filterService;
     @Inject private MessageService messageService;
     @Inject private ImageService imageService;
+    @Inject private SpamFilterService spamFilterService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
 
@@ -139,6 +141,7 @@ public class ModernChatPlugin extends Plugin {
         filterService.startUp();
         messageService.startUp();
         privateChatService.startUp();
+        spamFilterService.startUp();
 		fontService.startUp();
 		soundService.startUp();
 		imageService.startUp();
@@ -207,6 +210,7 @@ public class ModernChatPlugin extends Plugin {
         filterService.shutDown();
         messageService.shutDown();
         privateChatService.shutDown();
+        spamFilterService.shutDown();
 		fontService.shutDown();
 		soundService.shutDown();
 		tutorialService.shutDown();
@@ -439,7 +443,7 @@ public class ModernChatPlugin extends Plugin {
 		}
 	}
 
-	@Subscribe
+	@Subscribe(priority = -3) // run after ChatMessageManager
 	public void onChatMessage(ChatMessage e) {
 		boolean isPrivate = ChatUtil.isPrivateMessage(e.getType());
 		if (isPrivate) {

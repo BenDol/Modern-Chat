@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(./gradlew build:*)",
+      "WebSearch",
+      "WebFetch(domain:static.runelite.net)",
+      "Bash(gradlew build:*)",
+      "Bash(./gradlew.bat build:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:oldschool.runescape.wiki)",
+      "Bash(./gradlew.bat:*)",
+      "WebFetch(domain:rune-server.org)",
+      "WebFetch(domain:www.tabnine.com)",
+      "WebFetch(domain:gist.github.com)",
+      "Bash(unzip:*)",
+      "Bash(jar tf:*)",
+      "Bash(findstr:*)",
+      "Bash(jar:*)",
+      "Bash(./gradlew compileJava:*)"
+    ]
+  }
+}

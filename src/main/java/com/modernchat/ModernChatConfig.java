@@ -246,6 +246,66 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return false;
     }
 
+    @ConfigItem(
+        keyName = "featureRedesign_ClassicMode",
+        name = "Classic Mode",
+        description = "Classic chat mode - hides unread notifications on other tabs (all messages still visible in All tab)",
+        position = 12,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ClassicMode() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_ClassicMode_AllowPmTabs",
+        name = "Allow PM Tabs (Classic Mode)",
+        description = "Keep private message tabs separate when classic mode is active",
+        position = 13,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ClassicMode_AllowPmTabs() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_ClassicMode_ShowUnread",
+        name = "Show Unread (Classic Mode)",
+        description = "Show unread notification badges on tabs when classic mode is active",
+        position = 14,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ClassicMode_ShowUnread() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_GameTabEnabled",
+        name = "Game Tab",
+        description = "Show a dedicated Game tab for game messages",
+        position = 15,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_GameTabEnabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_TradeTabEnabled",
+        name = "Trade Tab",
+        description = "Show a dedicated Trade tab for trade messages",
+        position = 16,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_TradeTabEnabled() {
+        return true;
+    }
+
     /* ------------ Modern Chat Style ------------ */
 
     @ConfigItem(
@@ -621,6 +681,19 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Alpha
     @Override
     default Color featureRedesign_TabCloseButtonTextColor() {
+        return Color.WHITE;
+    }
+
+    @ConfigItem(
+        keyName = "featureRedesign_FilterButtonColor",
+        name = "Filter Button Color",
+        description = "Color for the filter button icon",
+        position = 30,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_FilterButtonColor() {
         return Color.WHITE;
     }
 
@@ -1290,6 +1363,31 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default int featurePeek_FadeDuration() {
         return 600;
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_SourceTabKey",
+        name = "Peek Source Tab",
+        description = "Tab to use as the source for peek messages (empty = all messages)",
+        position = 19,
+        section = peekOverlaySection,
+        hidden = true
+    )
+    @Override
+    default String featurePeek_SourceTabKey() {
+        return "";
+    }
+
+    @ConfigItem(
+        keyName = "featurePeek_SuppressFadeAtGE",
+        name = "Suppress Fade at GE",
+        description = "Don't auto-reset fade when at the Grand Exchange (busy area)",
+        position = 20,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_SuppressFadeAtGE() {
+        return false;
     }
 
     /* ------------ Feature: Commands ------------ */

@@ -5,15 +5,24 @@ import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.MessageLine;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.draw.ChannelFilterType;
 import com.modernchat.draw.ChatColors;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
+import com.modernchat.draw.RichLine;
 import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
+import com.modernchat.event.SetPeekSourceEvent;
+import com.modernchat.event.TabClosedEvent;
+import com.modernchat.overlay.ChannelFilterState;
+import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatPeekOverlay;
+import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
 import com.modernchat.util.ChatUtil;
+import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
@@ -25,6 +34,7 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -65,6 +75,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		boolean featurePeek_FadeEnabled();
 		int featurePeek_FadeDelay();
 		int featurePeek_FadeDuration();
+		String featurePeek_SourceTabKey();
+		boolean featurePeek_SuppressFadeAtGE();
 	}
 
 	@Inject private Client client;
@@ -72,6 +84,9 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private OverlayManager overlayManager;
 	@Inject private ChatPeekOverlay chatPeekOverlay;
 	@Inject private WidgetBucket widgetBucket;
+	@Inject private ChatOverlay chatOverlay;
+	@Inject private ConfigManager configManager;
+	@Inject private ChannelFilterState channelFilterState;
 
 	@Inject
 	public PeekChatFeature(ModernChatConfig config, EventBus eventBus) {
@@ -101,6 +116,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_FadeEnabled() { return config.featurePeek_FadeEnabled(); }
 			@Override public int featurePeek_FadeDelay() { return config.featurePeek_FadeDelay(); }
 			@Override public int featurePeek_FadeDuration() { return config.featurePeek_FadeDuration(); }
+			@Override public String featurePeek_SourceTabKey() { return config.featurePeek_SourceTabKey(); }
+			@Override public boolean featurePeek_SuppressFadeAtGE() { return config.featurePeek_SuppressFadeAtGE(); }
 
 			public Color featurePeek_FriendsChatColor() { return config.general_FriendsChatColor(); }
 			public Color featurePeek_ClanChatColor() { return config.general_ClanChatColor(); }
@@ -205,7 +222,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		}
 	}
 
-	@Subscribe
+	@Subscribe(priority = -3) // run after ChatMessageManager
 	public void onChatMessage(ChatMessage e) {
         MessageLine line = ChatUtil.createMessageLine(e, client, false);
         if (line == null) {
@@ -213,8 +230,115 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
             return; // Ignore empty messages
         }
 
+        if (!shouldShowMessageForPeekSource(line)) {
+            return;
+        }
+
         log.debug("Chat message received: {}", line);
 		chatPeekOverlay.pushLine(line);
+	}
+
+	@Subscribe
+	public void onSetPeekSourceEvent(SetPeekSourceEvent e) {
+		setPeekSource(e.getTabKey());
+	}
+
+	@Subscribe
+	public void onTabClosedEvent(TabClosedEvent e) {
+		String currentSource = config.featurePeek_SourceTabKey();
+		if (e.getTabKey().equals(currentSource)) {
+			setPeekSource("ALL"); // Default back to All tab
+		}
+	}
+
+	private boolean shouldShowMessageForPeekSource(MessageLine line) {
+		String sourceKey = config.featurePeek_SourceTabKey();
+		if (StringUtil.isNullOrEmpty(sourceKey)) {
+			return true; // Show all messages when no source is set
+		}
+
+		ChatMessageType type = line.getType();
+
+		// ALL tab - show everything
+		if (sourceKey.equals("ALL")) {
+			return true;
+		}
+
+		// GAME tab - game messages only
+		if (sourceKey.equals("GAME")) {
+			ChannelFilterType filterType = channelFilterState.mapMessageTypeToFilter(type);
+			return filterType == ChannelFilterType.GAME;
+		}
+
+		// TRADE tab - trade messages only
+		if (sourceKey.equals("TRADE")) {
+			ChannelFilterType filterType = channelFilterState.mapMessageTypeToFilter(type);
+			return filterType == ChannelFilterType.TRADE;
+		}
+
+		// Friends Chat tab
+		if (sourceKey.equals("FRIENDS_CHAT")) {
+			return ChatUtil.isFriendsChatMessage(type);
+		}
+
+		// Clan tabs
+		if (sourceKey.equals("CLAN_MAIN") || sourceKey.equals("CLAN_GUEST") || sourceKey.equals("CLAN_GIM")) {
+			return ChatUtil.isClanMessage(type);
+		}
+
+		// Public tab
+		if (sourceKey.equals("PUBLIC")) {
+			return type == ChatMessageType.PUBLICCHAT || type == ChatMessageType.MODCHAT;
+		}
+
+		// Private tab - check target name
+		if (sourceKey.startsWith("private_")) {
+			String target = sourceKey.substring("private_".length());
+			if (!ChatUtil.isPrivateMessage(type)) {
+				return false;
+			}
+			String senderName = line.getSenderName();
+			String receiverName = line.getReceiverName();
+			return (target.equalsIgnoreCase(senderName)) ||
+				   (target.equalsIgnoreCase(receiverName));
+		}
+
+		return true; // Default: show message
+	}
+
+	private void setPeekSource(String tabKey) {
+		configManager.setConfiguration(ModernChatConfig.GROUP, "featurePeek_SourceTabKey",
+			tabKey == null ? "" : tabKey);
+		chatPeekOverlay.clearMessages();
+		populateFromTabContainer(tabKey);
+		chatPeekOverlay.resetFade();
+	}
+
+	private void populateFromTabContainer(String tabKey) {
+		if (StringUtil.isNullOrEmpty(tabKey)) {
+			return;
+		}
+
+		MessageContainer container = null;
+		if (tabKey.equals("ALL")) {
+			container = chatOverlay.getAllContainer();
+		} else if (tabKey.equals("GAME")) {
+			container = chatOverlay.getGameContainer();
+		} else if (tabKey.equals("TRADE")) {
+			container = chatOverlay.getTradeContainer();
+		} else if (tabKey.startsWith("private_")) {
+			String target = tabKey.substring("private_".length());
+			container = chatOverlay.getPrivateContainers().get(target);
+		} else {
+			// Standard tabs: PUBLIC, FRIENDS_CHAT, CLAN_MAIN, CLAN_GUEST, etc.
+			container = chatOverlay.getMessageContainers().get(tabKey);
+		}
+
+		if (container != null) {
+			for (RichLine rl : container.getLines()) {
+				chatPeekOverlay.copyLine(rl);
+			}
+		}
 	}
 
 	@Subscribe

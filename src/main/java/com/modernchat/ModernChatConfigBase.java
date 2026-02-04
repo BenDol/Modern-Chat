@@ -65,6 +65,11 @@ public interface ModernChatConfigBase extends
         String featureRedesign_AllowClickThrough = "featureRedesign_AllowClickThrough";
         String featureRedesign_AutoSelectPrivateTab = "featureRedesign_AutoSelectPrivateTab";
         String featureRedesign_ShowNpc = "featureRedesign_ShowNpc";
+        String featureRedesign_ClassicMode = "featureRedesign_ClassicMode";
+        String featureRedesign_ClassicMode_AllowPmTabs = "featureRedesign_ClassicMode_AllowPmTabs";
+        String featureRedesign_ClassicMode_ShowUnread = "featureRedesign_ClassicMode_ShowUnread";
+        String featureRedesign_GameTabEnabled = "featureRedesign_GameTabEnabled";
+        String featureRedesign_TradeTabEnabled = "featureRedesign_TradeTabEnabled";
 
         // Style: fonts & sizes
         String featureRedesign_FontStyle = "featureRedesign_FontStyle";
@@ -100,6 +105,7 @@ public interface ModernChatConfigBase extends
         String featureRedesign_TabNotificationTextColor = "featureRedesign_TabNotificationTextColor";
         String featureRedesign_TabCloseButtonColor = "featureRedesign_TabCloseButtonColor";
         String featureRedesign_TabCloseButtonTextColor = "featureRedesign_TabCloseButtonTextColor";
+        String featureRedesign_FilterButtonColor = "featureRedesign_FilterButtonColor";
 
         // Message container geometry/colors
         String featureRedesign_MessageContainer_OffsetX = "featureRedesign_MessageContainer_OffsetX";
@@ -159,6 +165,8 @@ public interface ModernChatConfigBase extends
         String featurePeek_FadeEnabled = "featurePeek_FadeEnabled";
         String featurePeek_FadeDelay = "featurePeek_FadeDelay";
         String featurePeek_FadeDuration = "featurePeek_FadeDuration";
+        String featurePeek_SourceTabKey = "featurePeek_SourceTabKey";
+        String featurePeek_SuppressFadeAtGE = "featurePeek_SuppressFadeAtGE";
 
         // Commands
         String featureCommands_Enabled = "featureCommands_Enabled";
@@ -207,6 +215,11 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_ALLOW_CLICK_THROUGH(Keys.featureRedesign_AllowClickThrough, Kind.BOOL, ModernChatConfigBase::featureRedesign_AllowClickThrough),
         FEATURE_REDESIGN_AUTO_SELECT_PRIVATE_TAB(Keys.featureRedesign_AutoSelectPrivateTab, Kind.BOOL, ModernChatConfigBase::featureRedesign_AutoSelectPrivateTab),
         FEATURE_REDESIGN_SHOW_NPC(Keys.featureRedesign_ShowNpc, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowNpc),
+        FEATURE_REDESIGN_CLASSIC_MODE(Keys.featureRedesign_ClassicMode, Kind.BOOL, ModernChatConfigBase::featureRedesign_ClassicMode),
+        FEATURE_REDESIGN_CLASSIC_MODE_ALLOW_PM_TABS(Keys.featureRedesign_ClassicMode_AllowPmTabs, Kind.BOOL, ModernChatConfigBase::featureRedesign_ClassicMode_AllowPmTabs),
+        FEATURE_REDESIGN_CLASSIC_MODE_SHOW_UNREAD(Keys.featureRedesign_ClassicMode_ShowUnread, Kind.BOOL, ModernChatConfigBase::featureRedesign_ClassicMode_ShowUnread),
+        FEATURE_REDESIGN_GAME_TAB_ENABLED(Keys.featureRedesign_GameTabEnabled, Kind.BOOL, ModernChatConfigBase::featureRedesign_GameTabEnabled),
+        FEATURE_REDESIGN_TRADE_TAB_ENABLED(Keys.featureRedesign_TradeTabEnabled, Kind.BOOL, ModernChatConfigBase::featureRedesign_TradeTabEnabled),
 
         // ---- Style: fonts & sizes ----
         FEATURE_REDESIGN_FONT_STYLE(Keys.featureRedesign_FontStyle, FontStyle.class, ModernChatConfigBase::featureRedesign_FontStyle),
@@ -242,6 +255,7 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_TAB_NOTIF_TEXT_COLOR(Keys.featureRedesign_TabNotificationTextColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TabNotificationTextColor),
         FEATURE_REDESIGN_TAB_CLOSE_BTN_COLOR(Keys.featureRedesign_TabCloseButtonColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TabCloseButtonColor),
         FEATURE_REDESIGN_TAB_CLOSE_BTN_TEXT_COLOR(Keys.featureRedesign_TabCloseButtonTextColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TabCloseButtonTextColor),
+        FEATURE_REDESIGN_FILTER_BTN_COLOR(Keys.featureRedesign_FilterButtonColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_FilterButtonColor),
 
         // ---- Message container geometry ----
         FEATURE_REDESIGN_MSG_OFFSET_X(Keys.featureRedesign_MessageContainer_OffsetX, Kind.INT, ModernChatConfigBase::featureRedesign_MessageContainer_OffsetX),
@@ -450,6 +464,11 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureRedesign_AllowClickThrough() { return getBool(Keys.featureRedesign_AllowClickThrough, DEFAULTS.featureRedesign_AllowClickThrough()); }
         @Override public boolean featureRedesign_AutoSelectPrivateTab() { return getBool(Keys.featureRedesign_AutoSelectPrivateTab, DEFAULTS.featureRedesign_AutoSelectPrivateTab()); }
         @Override public boolean featureRedesign_ShowNpc() { return getBool(Keys.featureRedesign_ShowNpc, DEFAULTS.featureRedesign_ShowNpc()); }
+        @Override public boolean featureRedesign_ClassicMode() { return getBool(Keys.featureRedesign_ClassicMode, DEFAULTS.featureRedesign_ClassicMode()); }
+        @Override public boolean featureRedesign_ClassicMode_AllowPmTabs() { return getBool(Keys.featureRedesign_ClassicMode_AllowPmTabs, DEFAULTS.featureRedesign_ClassicMode_AllowPmTabs()); }
+        @Override public boolean featureRedesign_ClassicMode_ShowUnread() { return getBool(Keys.featureRedesign_ClassicMode_ShowUnread, DEFAULTS.featureRedesign_ClassicMode_ShowUnread()); }
+        @Override public boolean featureRedesign_GameTabEnabled() { return getBool(Keys.featureRedesign_GameTabEnabled, DEFAULTS.featureRedesign_GameTabEnabled()); }
+        @Override public boolean featureRedesign_TradeTabEnabled() { return getBool(Keys.featureRedesign_TradeTabEnabled, DEFAULTS.featureRedesign_TradeTabEnabled()); }
 
         // Style: fonts & sizes
         @Override public FontStyle featureRedesign_FontStyle() { return getEnum(Keys.featureRedesign_FontStyle, DEFAULTS.featureRedesign_FontStyle(), FontStyle.class); }
@@ -485,6 +504,7 @@ public interface ModernChatConfigBase extends
         @Override public Color featureRedesign_TabNotificationTextColor() { return getColor(Keys.featureRedesign_TabNotificationTextColor, DEFAULTS.featureRedesign_TabNotificationTextColor()); }
         @Override public Color featureRedesign_TabCloseButtonColor() { return getColor(Keys.featureRedesign_TabCloseButtonColor, DEFAULTS.featureRedesign_TabCloseButtonColor()); }
         @Override public Color featureRedesign_TabCloseButtonTextColor() { return getColor(Keys.featureRedesign_TabCloseButtonTextColor, DEFAULTS.featureRedesign_TabCloseButtonTextColor()); }
+        @Override public Color featureRedesign_FilterButtonColor() { return getColor(Keys.featureRedesign_FilterButtonColor, DEFAULTS.featureRedesign_FilterButtonColor()); }
 
         // Message container geometry
         @Override public int featureRedesign_MessageContainer_OffsetX() { return getInt(Keys.featureRedesign_MessageContainer_OffsetX, DEFAULTS.featureRedesign_MessageContainer_OffsetX()); }
@@ -546,6 +566,8 @@ public interface ModernChatConfigBase extends
         @Override public boolean featurePeek_FadeEnabled() { return getBool(Keys.featurePeek_FadeEnabled, DEFAULTS.featurePeek_FadeEnabled()); }
         @Override public int featurePeek_FadeDelay() { return getInt(Keys.featurePeek_FadeDelay, DEFAULTS.featurePeek_FadeDelay()); }
         @Override public int featurePeek_FadeDuration() { return getInt(Keys.featurePeek_FadeDuration, DEFAULTS.featurePeek_FadeDuration()); }
+        @Override public String featurePeek_SourceTabKey() { return getString(Keys.featurePeek_SourceTabKey, DEFAULTS.featurePeek_SourceTabKey()); }
+        @Override public boolean featurePeek_SuppressFadeAtGE() { return getBool(Keys.featurePeek_SuppressFadeAtGE, DEFAULTS.featurePeek_SuppressFadeAtGE()); }
 
         // Commands
         @Override public boolean featureCommands_Enabled() { return getBool(Keys.featureCommands_Enabled, DEFAULTS.featureCommands_Enabled()); }
@@ -607,6 +629,19 @@ public interface ModernChatConfigBase extends
                 if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isNumber())
                     return (int)Math.round(el.getAsDouble());
                 return Integer.parseInt(el.getAsString().trim());
+            } catch (Exception ignore) {
+                return def;
+            }
+        }
+
+        public String getString(String key, String def) {
+            JsonElement el = get(key);
+            if (el == null || el.isJsonNull())
+                return def;
+            try {
+                if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString())
+                    return el.getAsString();
+                return el.toString();
             } catch (Exception ignore) {
                 return def;
             }

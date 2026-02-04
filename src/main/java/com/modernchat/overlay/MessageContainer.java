@@ -57,14 +57,17 @@ import java.util.function.Supplier;
 
 public class MessageContainer extends Overlay
 {
-    private static final int MAX_LINES = 20;
+    private static final int DEFAULT_MAX_LINES = 20;
     private static final int MIN_THUMB_H = 24;
     private static final int SCROLL_TO_BOTTOM_SENTINEL = Integer.MAX_VALUE;
+
+    @Getter @Setter private int maxLines = DEFAULT_MAX_LINES;
 
     @Inject protected Client client;
     @Inject protected MouseManager mouseManager;
     @Inject protected FontService fontService;
     @Inject protected ImageService imageService;
+    @Inject protected ChannelFilterState channelFilterState;
 
     // Config
     @Getter protected MessageContainerConfig config;
@@ -76,6 +79,7 @@ public class MessageContainer extends Overlay
     // State
     @Getter @Setter protected volatile boolean hidden = false;
     @Getter @Setter protected volatile boolean isPrivate = false;
+    @Getter @Setter protected volatile boolean applyChannelFilters = false;
     @Getter @Setter protected volatile float alpha = 1f;
     @Getter private volatile float fadeAlpha = 1f;
     @Getter private volatile long fadeStartAtMs = Long.MAX_VALUE;
@@ -126,7 +130,7 @@ public class MessageContainer extends Overlay
     }
 
     public void shutDown() {
-        if (this.mouse == null) {
+        if (this.mouse != null) {
             unregisterMouseListener();
             this.mouse = null;
         }
@@ -193,6 +197,11 @@ public class MessageContainer extends Overlay
             final List<VisualLine> all = new ArrayList<>(64);
             for (RichLine rl : lines) {
                 if (!config.isShowPrivateMessages() && ChatUtil.isPrivateMessage(rl.getType())) {
+                    continue;
+                }
+
+                // Channel filter check - only apply to containers with filters enabled (All tab)
+                if (applyChannelFilters && channelFilterState != null && !channelFilterState.shouldShowMessage(rl.getType())) {
                     continue;
                 }
 
@@ -360,6 +369,14 @@ public class MessageContainer extends Overlay
         clearChatWidget();
     }
 
+    /**
+     * Returns a copy of the lines for reading.
+     * This allows external code to iterate over messages without modifying the internal state.
+     */
+    public Deque<RichLine> getLines() {
+        return new ArrayDeque<>(lines);
+    }
+
     public void clearChatWidget() {
         lastViewport = null;
     }
@@ -431,7 +448,9 @@ public class MessageContainer extends Overlay
             senderName,
             receiverName,
             targetName,
-            line.getPrefix());
+            line.getPrefix(),
+            line.getDuplicateKey(),
+            line.isCollapsed());
     }
 
     public void pushLine(
@@ -443,6 +462,20 @@ public class MessageContainer extends Overlay
         String targetName,
         String prefix
     ) {
+        pushLine(s, type, timestamp, sender, receiver, targetName, prefix, null, false);
+    }
+
+    public void pushLine(
+        String s,
+        ChatMessageType type,
+        long timestamp,
+        String sender,
+        String receiver,
+        String targetName,
+        String prefix,
+        String duplicateKey,
+        boolean collapsed
+    ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
         Color c = getColor(type);
         RichLine rl = parseRich(s == null ? "" : s, c == null ? Color.WHITE : c, type, timestamp, prefix);
@@ -450,18 +483,15 @@ public class MessageContainer extends Overlay
         rl.setSender(sender);
         rl.setReceiver(receiver);
         rl.setTargetName(targetName);
-        pushRich(rl);
-    }
+        rl.setDuplicateKey(duplicateKey);
+        rl.setCollapsed(collapsed);
 
-    private void pushRich(RichLine rl) {
-        if (rl == null || rl.getSegs().isEmpty()) return;
-        lines.addLast(rl);
-        while (lines.size() > MAX_LINES) lines.removeFirst();
-
-        // If we haven't scrolled up, auto-stick to bottom on next render
-        if (!userScrolled) {
-            scrollOffsetPx = SCROLL_TO_BOTTOM_SENTINEL;
+        // If this is a collapsed message (has count suffix), remove previous messages with same key
+        if (collapsed && duplicateKey != null) {
+            lines.removeIf(line -> duplicateKey.equals(line.getDuplicateKey()));
         }
+
+        pushRich(rl);
     }
 
     private RichLine parseRich(String s, Color base, ChatMessageType type, long timestamp, String prefix) {
@@ -695,6 +725,40 @@ public class MessageContainer extends Overlay
     public void pushLines(List<String> lines, ChatMessageType type) {
         for (String line : lines) {
             pushLine(line, type, System.currentTimeMillis(), null, null, null, null);
+        }
+    }
+
+    /**
+     * Copy a RichLine to this container by duplicating its segments.
+     * This avoids sharing lineCache between containers with different widths.
+     */
+    public void copyLine(RichLine source) {
+        if (source == null || source.getSegs().isEmpty()) return;
+
+        RichLine copy = new RichLine();
+        copy.setType(source.getType());
+        copy.setTimestamp(source.getTimestamp());
+        copy.setSender(source.getSender());
+        copy.setReceiver(source.getReceiver());
+        copy.setTargetName(source.getTargetName());
+
+        // Copy segments (they're immutable-ish, safe to share references)
+        copy.getSegs().addAll(source.getSegs());
+
+        pushRich(copy);
+    }
+
+    /**
+     * Make pushRich accessible for internal use.
+     */
+    protected void pushRich(RichLine rl) {
+        if (rl == null || rl.getSegs().isEmpty()) return;
+        lines.addLast(rl);
+        while (lines.size() > maxLines) lines.removeFirst();
+
+        // If we haven't scrolled up, auto-stick to bottom on next render
+        if (!userScrolled) {
+            scrollOffsetPx = SCROLL_TO_BOTTOM_SENTINEL;
         }
     }
 

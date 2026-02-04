@@ -9,6 +9,7 @@ import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
 import net.runelite.api.VarClientInt;
 import net.runelite.api.VarClientStr;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -209,5 +210,26 @@ public class ClientUtil
         } catch (Throwable t) {
             return "";
         }
+    }
+
+    // Grand Exchange center coordinates and radius
+    private static final int GE_CENTER_X = 3165;
+    private static final int GE_CENTER_Y = 3472;
+    private static final int GE_RADIUS = 35;
+
+    public static boolean isAtGrandExchange(Client client) {
+        Player localPlayer = client.getLocalPlayer();
+        if (localPlayer == null) {
+            return false;
+        }
+
+        WorldPoint loc = localPlayer.getWorldLocation();
+        if (loc == null) {
+            return false;
+        }
+
+        int dx = loc.getX() - GE_CENTER_X;
+        int dy = loc.getY() - GE_CENTER_Y;
+        return (dx * dx + dy * dy) <= (GE_RADIUS * GE_RADIUS);
     }
 }

@@ -52,10 +52,6 @@ public abstract class Anchor {
     }
 
     public void apply(Widget widget, Widget target) {
-        if (widget.getClass() != widgetClass) {
-            throw new IllegalArgumentException("Widget class does not match the original widget class.");
-        }
-
         Rectangle targetBounds = target.getBounds();
         if (targetBounds == null || targetBounds.height <= 0)
             return;
@@ -80,9 +76,6 @@ public abstract class Anchor {
     }
 
     public void reset(Widget widget) {
-        if (widget.getClass() != widgetClass) {
-            throw new IllegalArgumentException("Widget class does not match the original widget class.");
-        }
         widget.setXPositionMode(originalXMode);
         widget.setYPositionMode(originalYMode);
         widget.setWidthMode(originalWidthMode);

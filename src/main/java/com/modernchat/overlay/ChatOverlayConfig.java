@@ -2,8 +2,10 @@ package com.modernchat.overlay;
 
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.draw.ChannelFilterType;
 import com.modernchat.draw.Padding;
 
+import javax.annotation.Nullable;
 import java.awt.Color;
 
 public interface ChatOverlayConfig
@@ -82,7 +84,62 @@ public interface ChatOverlayConfig
 
     ChatMode getDefaultChatMode();
 
+    boolean isClassicMode();
+
+    boolean isClassicModeAllowPmTabs();
+
+    boolean isClassicModeShowUnread();
+
+    boolean isGameTabEnabled();
+
+    boolean isTradeTabEnabled();
+
     MessageContainerConfig getMessageContainerConfig();
+
+    Color getFilterButtonColor();
+
+    // Channel filter methods - filters are stored as a bitmask integer per ChatMode
+    // A set bit means the filter type is DISABLED (hidden)
+    // Pass null for chatMode to use a global/default filter set
+    int getChannelFilterFlags(@Nullable ChatMode chatMode);
+
+    void setChannelFilterFlags(@Nullable ChatMode chatMode, int flags);
+
+    // Muted tabs - stored as comma-separated tab keys
+    String getMutedTabs();
+
+    void setMutedTabs(String mutedTabs);
+
+    default boolean isTabMuted(String tabKey) {
+        String muted = getMutedTabs();
+        if (muted == null || muted.isEmpty()) {
+            return false;
+        }
+        for (String key : muted.split(",")) {
+            if (key.equals(tabKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    default void setTabMuted(String tabKey, boolean muted) {
+        String current = getMutedTabs();
+        java.util.Set<String> mutedSet = new java.util.HashSet<>();
+        if (current != null && !current.isEmpty()) {
+            for (String key : current.split(",")) {
+                if (!key.isEmpty()) {
+                    mutedSet.add(key);
+                }
+            }
+        }
+        if (muted) {
+            mutedSet.add(tabKey);
+        } else {
+            mutedSet.remove(tabKey);
+        }
+        setMutedTabs(String.join(",", mutedSet));
+    }
 
     class Default implements ChatOverlayConfig
     {
@@ -272,8 +329,58 @@ public interface ChatOverlayConfig
         }
 
         @Override
+        public boolean isClassicMode() {
+            return false;
+        }
+
+        @Override
+        public boolean isClassicModeAllowPmTabs() {
+            return false;
+        }
+
+        @Override
+        public boolean isClassicModeShowUnread() {
+            return false;
+        }
+
+        @Override
+        public boolean isGameTabEnabled() {
+            return true;
+        }
+
+        @Override
+        public boolean isTradeTabEnabled() {
+            return true;
+        }
+
+        @Override
         public MessageContainerConfig getMessageContainerConfig() {
             return new MessageContainerConfig.Default();
+        }
+
+        @Override
+        public Color getFilterButtonColor() {
+            return Color.WHITE;
+        }
+
+        @Override
+        public int getChannelFilterFlags(@Nullable ChatMode chatMode) {
+            return 0; // All filters enabled by default (no bits set)
+        }
+
+        @Override
+        public void setChannelFilterFlags(@Nullable ChatMode chatMode, int flags) {
+            // No-op in default implementation
+        }
+
+        @Override
+        public String getMutedTabs() {
+            return ""; // No tabs muted by default
+        }
+
+        @Override
+        public void setMutedTabs(String mutedTabs) {
+            // No-op in default implementation
         }
     }
 }

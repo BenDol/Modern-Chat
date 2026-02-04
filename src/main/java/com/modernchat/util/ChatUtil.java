@@ -6,6 +6,7 @@ import com.modernchat.common.MessageLine;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
+import net.runelite.api.MessageNode;
 import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.widgets.Widget;
@@ -19,8 +20,10 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -192,6 +195,34 @@ public class ChatUtil
     }
 
     public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer) {
+        return createMessageLine(e, client, requireLocalPlayer, null);
+    }
+
+    /** Pattern to detect ChatFilterPlugin's collapse suffix like " (2)", " (15)" etc. */
+    private static final Pattern COLLAPSE_PATTERN = Pattern.compile(" \\(\\d+\\)$");
+
+    /** Message types that ChatFilterPlugin considers collapsible (game message types) */
+    private static final Set<ChatMessageType> COLLAPSIBLE_MESSAGETYPES = EnumSet.of(
+        ChatMessageType.ENGINE,
+        ChatMessageType.GAMEMESSAGE,
+        ChatMessageType.ITEM_EXAMINE,
+        ChatMessageType.NPC_EXAMINE,
+        ChatMessageType.OBJECT_EXAMINE,
+        ChatMessageType.SPAM,
+        ChatMessageType.PUBLICCHAT,
+        ChatMessageType.MODCHAT,
+        ChatMessageType.NPC_SAY
+    );
+
+    /**
+     * Create a MessageLine from a ChatMessage, optionally using a filtered message text.
+     *
+     * @param e the chat message event
+     * @param client the game client
+     * @param requireLocalPlayer whether to require local player info
+     * @param filteredMessage optional filtered message text (from chat filter plugins), or null to use original
+     */
+    public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer, @Nullable String filteredMessage) {
         Player localPlayer = client.getLocalPlayer();
         if (localPlayer == null && requireLocalPlayer)
             return null;
@@ -208,7 +239,9 @@ public class ChatUtil
         Pair<String, String> senderReceiver = ChatUtil.getSenderAndReceiver(e, localPlayerName);
 
         ChatMessageType type = e.getType();
-        String msg = e.getMessage();
+        String originalMsg = e.getMessage();
+        // Use filtered message if provided, otherwise use original
+        String msg = filteredMessage != null ? filteredMessage : originalMsg;
         String[] params = msg.split("\\|", 3);
         String receiverName = senderReceiver.getRight();
         String senderName = senderReceiver.getLeft();
@@ -237,7 +270,99 @@ public class ChatUtil
 
         builder.append(message, false);
 
-        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix);
+        // Generate duplicate key from name + original message (for collapse detection)
+        String duplicateKey = e.getName() + ":" + originalMsg;
+
+        // Check if the filtered message has a collapse suffix like " (2)"
+        // Only detect collapse for COLLAPSIBLE_MESSAGETYPES (game message types)
+        boolean collapsed = filteredMessage != null
+            && COLLAPSIBLE_MESSAGETYPES.contains(type)
+            && COLLAPSE_PATTERN.matcher(filteredMessage).find();
+
+        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed);
+    }
+
+    /**
+     * Create a MessageLine from a MessageNode (used with ScriptCallbackEvent).
+     * This reads the message AFTER other plugins (like ChatFilterPlugin) have modified it,
+     * allowing us to respect collapse settings and other modifications.
+     */
+    public static @Nullable MessageLine createMessageLineFromNode(MessageNode node, ChatMessageType type, Client client) {
+        if (node == null) {
+            return null;
+        }
+
+        Player localPlayer = client.getLocalPlayer();
+        String localPlayerName = "";
+        if (localPlayer != null) {
+            localPlayerName = localPlayer.getName();
+        }
+
+        long timestamp = node.getTimestamp() > 0 ? node.getTimestamp() * 1000L : System.currentTimeMillis();
+
+        // Get sender and receiver based on message type
+        String senderName = node.getName();
+        String receiverName = localPlayerName;
+        String channelSender = node.getSender(); // Clan/FC channel name
+
+        if (type == ChatMessageType.PRIVATECHATOUT) {
+            receiverName = senderName;
+            senderName = "You";
+        } else if (type == ChatMessageType.PRIVATECHAT || type == ChatMessageType.MODPRIVATECHAT) {
+            receiverName = localPlayerName;
+        } else if (isClanMessage(type) || isFriendsChatMessage(type)) {
+            // senderName is the player name, channelSender is the channel name
+        }
+
+        // Build prefix for clan/FC messages
+        String prefix = "";
+        if ((isClanMessage(type) || isFriendsChatMessage(type)) && channelSender != null && !channelSender.isEmpty()) {
+            prefix = "(" + channelSender + ") ";
+        }
+
+        // Use getRuneLiteFormatMessage() to get the modified message (after ChatFilterPlugin processing)
+        String msg = node.getRuneLiteFormatMessage();
+        if (msg == null) {
+            msg = node.getValue();
+        }
+        if (msg == null) {
+            msg = "";
+        }
+
+        ChatMessageBuilder builder = new ChatMessageBuilder();
+
+        if (!StringUtil.isNullOrEmpty(senderName)) {
+            builder.append(senderName, false).append(": ");
+        }
+
+        // Get original message for duplicate key (before filter modification)
+        String originalMsg = node.getValue();
+        if (originalMsg == null) {
+            originalMsg = "";
+        }
+
+        // Parse message for mod icons (IMG: tags)
+        String[] params = msg.split("\\|", 3);
+        String message = msg;
+        if (params.length > 1) {
+            int icon = getModImageId(params[0]);
+            if (icon != -1) {
+                builder.img(icon);
+            }
+            message = params[params.length - 1];
+        }
+
+        builder.append(message, false);
+
+        // Generate duplicate key from name + original message
+        String duplicateKey = node.getName() + ":" + originalMsg;
+
+        // Check if the message has a collapse suffix like " (2)"
+        // Only detect collapse for COLLAPSIBLE_MESSAGETYPES (game message types)
+        boolean collapsed = COLLAPSIBLE_MESSAGETYPES.contains(type)
+            && COLLAPSE_PATTERN.matcher(msg).find();
+
+        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed);
     }
 
     public static String getPrefix(ChatMessageType type) {
@@ -249,6 +374,7 @@ public class ChatUtil
             case FRIENDSCHAT:
             case FRIENDSCHATNOTIFICATION:
             case FRIENDNOTIFICATION:
+            case AUTOTYPER:
                 break;
             case CLAN_CHAT:
             case CLAN_GIM_FORM_GROUP:
@@ -279,6 +405,14 @@ public class ChatUtil
     }
 
     public static boolean isNpcMessage(ChatMessage e) {
-        return e.getType() == ChatMessageType.NPC_SAY || e.getType() == ChatMessageType.DIALOG;
+        return isNpcMessage(e.getType());
+    }
+
+    public static boolean isNpcMessage(ChatMessageType type) {
+        return type == ChatMessageType.NPC_SAY || type == ChatMessageType.DIALOG;
+    }
+
+    public static boolean isSpamMessage(ChatMessageType type) {
+        return type == ChatMessageType.SPAM;
     }
 }

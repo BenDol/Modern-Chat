@@ -15,6 +15,10 @@ public final class RichLine
     private String sender;
     private String receiver;
     private String targetName;
+    /** Key for duplicate detection: name + original message */
+    private String duplicateKey;
+    /** True if this message has a collapse count suffix like " (2)" */
+    private boolean collapsed;
 
     // Cached values for performance
     private List<VisualLine> lineCache = null;

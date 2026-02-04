@@ -16,6 +16,7 @@ import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
+import com.modernchat.overlay.ChannelFilterState;
 import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatOverlayConfig;
 import com.modernchat.overlay.MessageContainer;
@@ -33,6 +34,7 @@ import net.runelite.api.events.ClanChannelChanged;
 import net.runelite.api.events.FriendsChatChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
@@ -73,6 +75,11 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         boolean featureRedesign_AutoSelectPrivateTab();
         boolean featureRedesign_Resizeable();
         boolean featureRedesign_ShowNpc();
+        boolean featureRedesign_ClassicMode();
+        boolean featureRedesign_ClassicMode_AllowPmTabs();
+        boolean featureRedesign_ClassicMode_ShowUnread();
+        boolean featureRedesign_GameTabEnabled();
+        boolean featureRedesign_TradeTabEnabled();
         ChatMode featureRedesign_DefaultChatMode();
         FontStyle featureRedesign_FontStyle();
         int featureRedesign_Padding();
@@ -99,6 +106,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         Color featureRedesign_TabNotificationTextColor();
         Color featureRedesign_TabCloseButtonColor();
         Color featureRedesign_TabCloseButtonTextColor();
+        Color featureRedesign_FilterButtonColor();
 
         // MessageContainerConfig
         boolean featureRedesign_MessageContainer_PrefixChatType();
@@ -133,8 +141,12 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private MessageService messageService;
     @Inject private NotificationService notificationService;
     @Inject private ChatOverlay overlay;
+    @Inject private ChannelFilterState channelFilterState;
 
     private final ModernChatConfig mainConfig;
+    private static final String CHANNEL_FILTER_PREFIX = "channelFilter_";
+    private static final String MUTED_TABS_KEY = "mutedTabs";
+    private static final String SCRIPT_EVENT_CHAT_FILTER_CHECK = "chatFilterCheck";
 
     @Getter private volatile boolean sizeApplied;
 
@@ -160,6 +172,11 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean featureRedesign_AutoSelectPrivateTab() { return cfg.featureRedesign_AutoSelectPrivateTab(); }
             @Override public boolean featureRedesign_Resizeable() { return cfg.featureRedesign_Resizeable(); }
             @Override public boolean featureRedesign_ShowNpc() { return cfg.featureRedesign_ShowNpc(); }
+            @Override public boolean featureRedesign_ClassicMode() { return cfg.featureRedesign_ClassicMode(); }
+            @Override public boolean featureRedesign_ClassicMode_AllowPmTabs() { return cfg.featureRedesign_ClassicMode_AllowPmTabs(); }
+            @Override public boolean featureRedesign_ClassicMode_ShowUnread() { return cfg.featureRedesign_ClassicMode_ShowUnread(); }
+            @Override public boolean featureRedesign_GameTabEnabled() { return cfg.featureRedesign_GameTabEnabled(); }
+            @Override public boolean featureRedesign_TradeTabEnabled() { return cfg.featureRedesign_TradeTabEnabled(); }
             @Override public FontStyle featureRedesign_FontStyle() { return cfg.featureRedesign_FontStyle(); }
             @Override public int featureRedesign_Padding() { return cfg.featureRedesign_Padding(); }
             @Override public int featureRedesign_InputFontSize() { return cfg.featureRedesign_InputFontSize(); }
@@ -185,6 +202,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color featureRedesign_TabNotificationTextColor() { return cfg.featureRedesign_TabNotificationTextColor(); }
             @Override public Color featureRedesign_TabCloseButtonColor() { return cfg.featureRedesign_TabCloseButtonColor(); }
             @Override public Color featureRedesign_TabCloseButtonTextColor() { return cfg.featureRedesign_TabCloseButtonTextColor(); }
+            @Override public Color featureRedesign_FilterButtonColor() { return cfg.featureRedesign_FilterButtonColor(); }
             @Override public ChatMode featureRedesign_DefaultChatMode() { return cfg.featureRedesign_DefaultChatMode(); }
             @Override public boolean featureRedesign_MessageContainer_PrefixChatType() { return cfg.featureRedesign_MessageContainer_PrefixChatType(); }
             @Override public boolean featureRedesign_MessageContainer_ShowTimestamp() { return cfg.featureRedesign_MessageContainer_ShowTimestamp(); }
@@ -226,6 +244,11 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean isOpenTabOnIncomingPM() { return cfg.featureRedesign_OpenTabOnIncomingPM(); }
             @Override public boolean isClickOutsideToClose() { return cfg.featureRedesign_ClickOutsideToClose(); }
             @Override public ChatMode getDefaultChatMode() { return cfg.featureRedesign_DefaultChatMode(); }
+            @Override public boolean isClassicMode() { return cfg.featureRedesign_ClassicMode(); }
+            @Override public boolean isClassicModeAllowPmTabs() { return cfg.featureRedesign_ClassicMode_AllowPmTabs(); }
+            @Override public boolean isClassicModeShowUnread() { return cfg.featureRedesign_ClassicMode_ShowUnread(); }
+            @Override public boolean isGameTabEnabled() { return cfg.featureRedesign_GameTabEnabled(); }
+            @Override public boolean isTradeTabEnabled() { return cfg.featureRedesign_TradeTabEnabled(); }
             @Override public int getInputFontSize() { return cfg.featureRedesign_InputFontSize(); }
             @Override public Color getBackdropColor() { return cfg.featureRedesign_BackdropColor(); }
             @Override public Color getBorderColor() { return cfg.featureRedesign_BorderColor(); }
@@ -249,8 +272,40 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color getTabNotificationTextColor() { return cfg.featureRedesign_TabNotificationTextColor(); }
             @Override public Color getTabCloseButtonColor() { return cfg.featureRedesign_TabCloseButtonColor(); }
             @Override public Color getTabCloseButtonTextColor() { return cfg.featureRedesign_TabCloseButtonTextColor(); }
+            @Override public Color getFilterButtonColor() { return cfg.featureRedesign_FilterButtonColor(); }
 
             @Override public MessageContainerConfig getMessageContainerConfig() { return containerConfig; }
+
+            @Override
+            public int getChannelFilterFlags(ChatMode chatMode) {
+                String key = CHANNEL_FILTER_PREFIX + (chatMode != null ? chatMode.name() : "GLOBAL");
+                String value = configManager.getConfiguration(GROUP, key);
+                if (value == null || value.isEmpty()) {
+                    return 0; // All filters enabled by default
+                }
+                try {
+                    return Integer.parseInt(value);
+                } catch (NumberFormatException e) {
+                    return 0;
+                }
+            }
+
+            @Override
+            public void setChannelFilterFlags(ChatMode chatMode, int flags) {
+                String key = CHANNEL_FILTER_PREFIX + (chatMode != null ? chatMode.name() : "GLOBAL");
+                configManager.setConfiguration(GROUP, key, String.valueOf(flags));
+            }
+
+            @Override
+            public String getMutedTabs() {
+                String value = configManager.getConfiguration(GROUP, MUTED_TABS_KEY);
+                return value != null ? value : "";
+            }
+
+            @Override
+            public void setMutedTabs(String mutedTabs) {
+                configManager.setConfiguration(GROUP, MUTED_TABS_KEY, mutedTabs != null ? mutedTabs : "");
+            }
 
             final MessageContainerConfig containerConfig = new MessageContainerConfig.Default() {
                 @Override public boolean isPrefixChatType() { return cfg.featureRedesign_MessageContainer_PrefixChatType(); }
@@ -291,7 +346,9 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     public void startUp() {
         super.startUp();
 
-        overlay.startUp(partitionConfig(config));
+        ChatOverlayConfig overlayConfig = partitionConfig(config);
+        channelFilterState.setConfig(overlayConfig);
+        overlay.startUp(overlayConfig);
         overlayManager.add(overlay);
 
         // Hide original message lines on the client thread
@@ -350,6 +407,13 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             return;
 
         overlay.dirty();
+
+        // Refresh tabs when tab settings change
+        if (key.equals("featureRedesign_ClassicMode") || key.equals("featureRedesign_ClassicMode_AllowPmTabs")
+                || key.equals("featureRedesign_ClassicMode_ShowUnread")
+                || key.equals("featureRedesign_GameTabEnabled") || key.equals("featureRedesign_TradeTabEnabled")) {
+            clientThread.invokeAtTickEnd(() -> overlay.refreshTabs());
+        }
     }
 
     @Subscribe
@@ -421,12 +485,71 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         overlay.inputTick();
     }
 
-    @Subscribe
+    /**
+     * Manually invoke chatFilterCheck by posting a ScriptCallbackEvent.
+     * This allows ChatFilterPlugin and other filter plugins to process the message.
+     *
+     * @return the filtered message text, or null if message should be blocked
+     */
+    private String invokeChatFilterCheck(ChatMessage e) {
+        int[] intStack = client.getIntStack();
+        int intStackSize = client.getIntStackSize();
+        Object[] objectStack = client.getObjectStack();
+        int objectStackSize = client.getObjectStackSize();
+
+        // Set up stack: [filterResult, messageType, messageId]
+        // filterResult starts as 1 (show), plugins set to 0 to block
+        client.setIntStackSize(intStackSize + 3);
+        intStack[intStackSize] = 1; // filter result - default show
+        intStack[intStackSize + 1] = e.getType().getType(); // message type
+        intStack[intStackSize + 2] = e.getMessageNode().getId(); // message id
+
+        // Set up object stack with message text
+        client.setObjectStackSize(objectStackSize + 1);
+        objectStack[objectStackSize] = e.getMessage();
+
+        // Fire the callback event for other plugins to process
+        ScriptCallbackEvent callbackEvent = new ScriptCallbackEvent();
+        callbackEvent.setEventName(SCRIPT_EVENT_CHAT_FILTER_CHECK);
+        eventBus.post(callbackEvent);
+
+        // Read the filter result (plugins may have set it to 0 to block)
+        int filterResult = intStack[intStackSize];
+
+        // Read the (possibly modified) message
+        String filteredMessage = (String) objectStack[objectStackSize];
+
+        // Restore stack sizes
+        client.setIntStackSize(intStackSize);
+        client.setObjectStackSize(objectStackSize);
+
+        // Return null if blocked, otherwise return the filtered message
+        if (filterResult == 0) {
+            return null;
+        }
+
+        return filteredMessage;
+    }
+
+    @Subscribe(priority = -3) // run after ChatMessageManager
     public void onChatMessage(ChatMessage e) {
+        // Never show SPAM messages
+        if (ChatUtil.isSpamMessage(e.getType())) {
+            return;
+        }
+
+        // Invoke chat filter check to let other plugins filter
+        String filteredMessage = invokeChatFilterCheck(e);
+        if (filteredMessage == null) {
+            log.debug("Message blocked by chat filter plugin");
+            return;
+        }
+
         if (ChatUtil.isNpcMessage(e) && !config.featureRedesign_ShowNpc())
             return;
 
-        MessageLine line = ChatUtil.createMessageLine(e, client, false);
+        // Use the filtered message text
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages
