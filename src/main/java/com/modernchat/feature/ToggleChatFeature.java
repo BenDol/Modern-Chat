@@ -232,7 +232,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged e) {
-		if (e.getGameState() == GameState.LOGGED_IN) {
+		if (e.getGameState() == GameState.LOGGED_IN && !loggedIn) {
 			clientThread.invokeLater(() -> {
 				// If logging in while a prompt is open, avoid immediate hide
 				if (config.featureToggle_StartHidden()) {
