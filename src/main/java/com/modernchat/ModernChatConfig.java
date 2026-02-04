@@ -1578,7 +1578,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Range(min = 0, max = 100)
     @Override
     default int featureNotify_VolumePercent() {
-        return 50;
+        return 30;
     }
 
     @ConfigItem(

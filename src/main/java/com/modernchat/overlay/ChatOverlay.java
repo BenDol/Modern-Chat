@@ -897,7 +897,7 @@ public class ChatOverlay extends OverlayPanel
         return Math.max(badgeHeight(fm), shrunk); // keep pill at least as wide as tall
     }
 
-    private String selectPrivateContainer(String targetName) {
+    private @Nullable String selectPrivateContainer(String targetName) {
         if (StringUtil.isNullOrEmpty(targetName)) {
             log.warn("Attempted to select private container with null or empty target name");
             return null;
@@ -922,6 +922,11 @@ public class ChatOverlay extends OverlayPanel
         }
 
         messageContainer = privateContainer;
+        if (messageContainer == null) {
+            log.warn("Failed to get or create private message container for target: {}", targetName);
+            return null;
+        }
+
         messageContainer.setHidden(false);
         messageContainer.setAlpha(1f);
         return tabKey;
@@ -2483,6 +2488,10 @@ public class ChatOverlay extends OverlayPanel
                 }
             }
 
+            if (client.isMenuOpen()) {
+                return false;
+            }
+
             if (!lastViewport.contains(e.getPoint())) {
                 // Close dropdown if clicking outside
                 if (filterDropdown != null && filterDropdown.isVisible()) {
@@ -2493,10 +2502,6 @@ public class ChatOverlay extends OverlayPanel
                         toggleChatFeatureProvider.get().simulateEscapeKey();
                     });
                 }
-                return false;
-            }
-
-            if (client.isMenuOpen()) {
                 return false;
             }
 
