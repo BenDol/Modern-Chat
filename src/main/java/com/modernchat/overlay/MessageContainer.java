@@ -14,7 +14,6 @@ import com.modernchat.draw.TimestampSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.service.FontService;
-import com.modernchat.service.ForceRecolorService;
 import com.modernchat.service.ImageService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ColorUtil;
@@ -69,7 +68,6 @@ public class MessageContainer extends Overlay
     @Inject protected FontService fontService;
     @Inject protected ImageService imageService;
     @Inject protected ChannelFilterState channelFilterState;
-    @Inject protected ForceRecolorService forceRecolorService;
 
     // Config
     @Getter protected MessageContainerConfig config;
@@ -82,7 +80,6 @@ public class MessageContainer extends Overlay
     @Getter @Setter protected volatile boolean hidden = false;
     @Getter @Setter protected volatile boolean isPrivate = false;
     @Getter @Setter protected volatile boolean applyChannelFilters = false;
-    @Getter @Setter protected volatile boolean isPeekOverlay = false;
     @Getter @Setter protected volatile float alpha = 1f;
     @Getter private volatile float fadeAlpha = 1f;
     @Getter private volatile long fadeStartAtMs = Long.MAX_VALUE;
@@ -494,17 +491,7 @@ public class MessageContainer extends Overlay
         boolean collapsed
     ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
-
-        // Check ForceRecolor first for message line color
-        Color c = null;
-        if (forceRecolorService != null) {
-            c = forceRecolorService.getRecolorForMessage(s, type, isPeekOverlay);
-        }
-
-        // Fall back to default color based on message type
-        if (c == null) {
-            c = getColor(type);
-        }
+        Color c = getColor(type);
 
         RichLine rl = parseRich(s == null ? "" : s, c == null ? Color.WHITE : c, type, timestamp, prefix);
         rl.setType(type);

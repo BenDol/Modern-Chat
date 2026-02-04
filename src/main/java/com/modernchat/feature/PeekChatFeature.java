@@ -240,9 +240,16 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		}
 	}
 
-	@Subscribe(priority = -3) // run after ChatMessageManager
+	@Subscribe(priority = -4) // run after ForceRecolor and ChatMessageManager
 	public void onChatMessage(ChatMessage e) {
-        MessageLine line = ChatUtil.createMessageLine(e, client, false);
+        // Read from MessageNode to get ForceRecolor's color tags (if any)
+        // ForceRecolor modifies the node directly with <col=XXXXXX> tags
+        String messageWithColors = e.getMessageNode().getValue();
+        if (messageWithColors == null || messageWithColors.isEmpty()) {
+            messageWithColors = e.getMessage();
+        }
+
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, messageWithColors);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages
