@@ -6,6 +6,7 @@ import com.modernchat.util.ClientUtil;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 
@@ -99,6 +100,17 @@ public class ChatProxy
                 ChatUtil.setChatHidden(legacyChat, hidden);
                 client.refreshChat();
             }
+        }
+    }
+
+    private void setChatboxWidgetInput(Widget widget, String input)
+    {
+        String text = widget.getText();
+        int idx = text.indexOf(':');
+        if (idx != -1)
+        {
+            String newText = text.substring(0, idx) + ": " + input;
+            widget.setText(newText);
         }
     }
 

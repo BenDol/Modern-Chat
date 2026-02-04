@@ -19,6 +19,7 @@ import net.runelite.api.VarClientStr;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.VarClientStrChanged;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
@@ -71,6 +72,12 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	private boolean deferredHideRequested = false;
 	private int deferDelayTicksLeft = 0;
 	private int deferTimeoutTicksLeft = 0;
+
+	// KeyRemapping escape detection (backup when Escape event is consumed)
+	private static final String PRESS_ENTER_TO_CHAT = "Press Enter to Chat...";
+	private boolean wasInTypingMode = false;
+	private long lastKeyRemappingHideTime = 0;
+	private static final long KEY_REMAPPING_HIDE_THROTTLE_MS = 150;
 
 	@Inject
 	public ToggleChatFeature(ModernChatConfig config, EventBus eventBus) {
@@ -138,19 +145,38 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			}
 		}
 
+		// HACK: When KeyRemappingPlugin is active and chat shows "Press Enter to Chat...",
+		// pressing Backspace would delete the placeholder instead of opening chat.
+		// We detect this and simulate a Slash key press to properly enter typing mode.
+		if (chatProxy.isLegacy() && !chatProxy.isHidden()) {
+			Widget input = ClientUtil.getChatInputWidget(client);
+			if (input != null) {
+				String raw = input.getText();
+				if (raw != null) {
+					String t = Text.removeTags(raw).trim();
+					if (t.endsWith(PRESS_ENTER_TO_CHAT)) {
+						simulateSlashKey();
+						e.consume();
+					}
+				}
+			}
+		}
+
 		if (!isCanvasFocused())
 			return;
+
+		// Handle Escape before isConsumed check - KeyRemapping consumes Escape
+		// when exiting typing mode, but we still need to hide our chat
+		if (config.featureToggle_EscapeHides() && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+			clientThread.invoke(this::hide);
+			return;
+		}
 
 		if (e.isConsumed())
 			return;
 
 		Keybind kb = config.featureToggle_ToggleKey();
 		if (kb == null || !kb.matches(e)) {
-			if (config.featureToggle_EscapeHides()) {
-				if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-					hide();
-				}
-            }
             return;
         }
 
@@ -260,6 +286,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	@Subscribe
 	public void onGameTick(GameTick tick) {
 		handleDeferredHide();
+		detectKeyRemappingEscape();
 	}
 
 	private boolean handleDeferredHide() {
@@ -316,6 +343,60 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		setHidden(false);
 	}
 
+	public void simulateEscapeKey() {
+		Canvas canvas = client.getCanvas();
+		if (canvas == null) {
+			return;
+		}
+
+		KeyEvent press = new KeyEvent(
+			canvas,
+			KeyEvent.KEY_PRESSED,
+			System.currentTimeMillis(),
+			0,
+			KeyEvent.VK_ESCAPE,
+			KeyEvent.CHAR_UNDEFINED
+		);
+		KeyEvent release = new KeyEvent(
+			canvas,
+			KeyEvent.KEY_RELEASED,
+			System.currentTimeMillis(),
+			0,
+			KeyEvent.VK_ESCAPE,
+			KeyEvent.CHAR_UNDEFINED
+		);
+
+		canvas.dispatchEvent(press);
+		canvas.dispatchEvent(release);
+	}
+
+	private void simulateSlashKey() {
+		Canvas canvas = client.getCanvas();
+		if (canvas == null) {
+			return;
+		}
+
+		KeyEvent press = new KeyEvent(
+			canvas,
+			KeyEvent.KEY_PRESSED,
+			System.currentTimeMillis(),
+			0,
+			KeyEvent.VK_SLASH,
+			'/'
+		);
+		KeyEvent release = new KeyEvent(
+			canvas,
+			KeyEvent.KEY_RELEASED,
+			System.currentTimeMillis(),
+			0,
+			KeyEvent.VK_SLASH,
+			'/'
+		);
+
+		canvas.dispatchEvent(press);
+		canvas.dispatchEvent(release);
+	}
+
 	public void scheduleDeferredHide() {
 		deferredHideRequested = true;
 		deferDelayTicksLeft = DEFER_HIDE_DELAY_TICKS;
@@ -326,6 +407,49 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		deferredHideRequested = false;
 		deferDelayTicksLeft = 0;
 		deferTimeoutTicksLeft = 0;
+	}
+
+	/**
+	 * Detects when KeyRemappingPlugin has consumed Escape by watching for
+	 * the chatbox input changing to "Press Enter to Chat..."
+	 */
+	private void detectKeyRemappingEscape() {
+		if (chatProxy.isLegacy()) {
+			return;
+		} else {
+			// make sure the chat isnt locked
+
+		}
+
+		if (!config.featureToggle_EscapeHides()) {
+			return;
+		}
+
+		// Throttle detection
+		long now = System.currentTimeMillis();
+		if ((now - lastKeyRemappingHideTime) < KEY_REMAPPING_HIDE_THROTTLE_MS) {
+			return;
+		}
+
+		Widget chatboxInput = client.getWidget(InterfaceID.Chatbox.INPUT);
+		if (chatboxInput == null) {
+			wasInTypingMode = false;
+			return;
+		}
+
+		String inputText = chatboxInput.getText();
+		boolean isInTypingMode = inputText != null && !inputText.contains(PRESS_ENTER_TO_CHAT);
+
+		// Detect transition from typing mode to non-typing mode
+		if (wasInTypingMode && !isInTypingMode) {
+			// KeyRemapping likely consumed Escape - hide our chat if visible
+			if (!chatProxy.isHidden()) {
+				lastKeyRemappingHideTime = now;
+				hide();
+			}
+		}
+
+		wasInTypingMode = isInTypingMode;
 	}
 
 	private void setHidden(boolean hidden) {
@@ -365,6 +489,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			return false;
 
         // empty chat placeholder
-        return !t.endsWith(": *");
+        return !t.endsWith(": *") && !t.endsWith(PRESS_ENTER_TO_CHAT);
     }
 }

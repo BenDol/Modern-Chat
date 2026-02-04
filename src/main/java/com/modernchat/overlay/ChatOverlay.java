@@ -1,5 +1,6 @@
 package com.modernchat.overlay;
 
+import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
@@ -123,6 +124,7 @@ public class ChatOverlay extends OverlayPanel
     @Inject @Getter private ResizePanel resizePanel;
     @Inject private Provider<MessageContainer> messageContainerProvider;
     @Inject @Getter private ChannelFilterState channelFilterState;
+    @Inject private Provider<ToggleChatFeature> toggleChatFeatureProvider;
 
     private ChatOverlayConfig config;
     private final ChatMouse mouse = new ChatMouse();
@@ -2485,7 +2487,9 @@ public class ChatOverlay extends OverlayPanel
                     filterDropdown.close();
                 }
                 if (config.isClickOutsideToClose()) {
-                    setHidden(true);
+                    clientThread.invokeLater(() -> {
+                        toggleChatFeatureProvider.get().simulateEscapeKey();
+                    });
                 }
                 return false;
             }
@@ -2793,12 +2797,10 @@ public class ChatOverlay extends OverlayPanel
                     // e.consume();
                     break;
                 }
-                case KeyEvent.VK_ESCAPE: {
-                    if (config.isHideOnEscape())
-                        setHidden(true);
-                    e.consume();
+                case KeyEvent.VK_ESCAPE:
+                    // Escape is handled by ToggleChatFeature to avoid duplicate calls
+                    // and ensure KeyRemapping sees the event to exit typing mode
                     break;
-                }
                 case KeyEvent.VK_TAB: {
                     if (activeTab != null && !tabOrder.isEmpty()) {
                         final int size = tabOrder.size();

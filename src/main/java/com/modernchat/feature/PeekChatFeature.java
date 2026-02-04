@@ -77,6 +77,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		int featurePeek_FadeDuration();
 		String featurePeek_SourceTabKey();
 		boolean featurePeek_SuppressFadeAtGE();
+		boolean featureRedesign_ShowNpc();
 	}
 
 	@Inject private Client client;
@@ -118,6 +119,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public int featurePeek_FadeDuration() { return config.featurePeek_FadeDuration(); }
 			@Override public String featurePeek_SourceTabKey() { return config.featurePeek_SourceTabKey(); }
 			@Override public boolean featurePeek_SuppressFadeAtGE() { return config.featurePeek_SuppressFadeAtGE(); }
+			@Override public boolean featureRedesign_ShowNpc() { return config.featureRedesign_ShowNpc(); }
 
 			public Color featurePeek_FriendsChatColor() { return config.general_FriendsChatColor(); }
 			public Color featurePeek_ClanChatColor() { return config.general_ClanChatColor(); }
@@ -228,6 +230,11 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages
+        }
+
+        // Respect the ShowNpc config
+        if (ChatUtil.isNpcMessage(line.getType()) && !config.featureRedesign_ShowNpc()) {
+            return;
         }
 
         if (!shouldShowMessageForPeekSource(line)) {
