@@ -258,13 +258,10 @@ public class ProfileService implements ChatService
     }
 
     private static Path resolveDefaultProfilesDir() {
-        Path rlHome = null;
+        Path rlHome;
         try {
-            java.io.File dir = RuneLite.RUNELITE_DIR;
-            if (dir != null)
-                rlHome = dir.toPath();
-        } catch (Throwable ignored) { }
-        if (rlHome == null) {
+            rlHome = RuneLite.RUNELITE_DIR.toPath();
+        } catch (Throwable ignored) {
             rlHome = Paths.get(System.getProperty("user.home", ".")).resolve(".runelite");
         }
         return rlHome.resolve("modern-chat");

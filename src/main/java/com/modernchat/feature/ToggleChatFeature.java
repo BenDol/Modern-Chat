@@ -1,8 +1,11 @@
 package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.ModernChatConfigBase;
 import com.modernchat.common.ChatProxy;
+import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.service.ExtendedInputService;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.DialogOptionsOpenedEvent;
@@ -25,8 +28,11 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
+import net.runelite.client.input.MouseListener;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
@@ -34,6 +40,7 @@ import javax.inject.Singleton;
 import java.awt.Canvas;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 
 import static com.modernchat.feature.ToggleChatFeature.ToggleChatFeatureConfig;
 
@@ -51,6 +58,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	{
 		boolean featureToggle_Enabled();
 		Keybind featureToggle_ToggleKey();
+		ExtendedKeybind featureToggle_ExtendedToggleKey();
 		boolean featureToggle_EscapeHides();
 		boolean featureToggle_StartHidden();
 		boolean featureToggle_AutoHideOnSend();
@@ -59,13 +67,16 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	private static final int DEFER_HIDE_DELAY_TICKS = 0;   // initial wait before first check
 	private static final int DEFER_HIDE_TIMEOUT_TICKS = 5; // give up if input never clears
+	private static final String EXTENDED_BINDING_ID = "toggleChat";
 	public static Rectangle LAST_CHAT_BOUNDS = null;
 
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
 	@Inject private KeyManager keyManager;
+	@Inject private MouseManager mouseManager;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
+	@Inject private ExtendedInputService extendedInputService;
 
 	// Deferred hide state
 	private boolean autoHide = false;
@@ -89,6 +100,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		return new ToggleChatFeatureConfig() {
 			@Override public boolean featureToggle_Enabled() { return config.featureToggle_Enabled(); }
 			@Override public Keybind featureToggle_ToggleKey() { return config.featureToggle_ToggleKey(); }
+			@Override public ExtendedKeybind featureToggle_ExtendedToggleKey() { return config.featureToggle_ExtendedToggleKey(); }
 			@Override public boolean featureToggle_EscapeHides() { return config.featureToggle_EscapeHides(); }
 			@Override public boolean featureToggle_StartHidden() { return config.featureToggle_StartHidden(); }
 			@Override public boolean featureToggle_AutoHideOnSend() { return config.featureToggle_AutoHideOnSend(); }
@@ -111,6 +123,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		super.shutDown(fullShutdown);
 
 		keyManager.unregisterKeyListener(this);
+		unregisterExtendedKeybind();
 
 		clientThread.invoke(() -> setHidden(false));
 	}
@@ -122,6 +135,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		// We want to register this after all the other features have started,
 		// so that it can be overridden.
 		keyManager.registerKeyListener(this);
+		registerExtendedKeybind();
 	}
 
 	@Override
@@ -176,27 +190,14 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			return;
 
 		Keybind kb = config.featureToggle_ToggleKey();
-		if (kb == null || !kb.matches(e)) {
+		if (kb == null || kb.getKeyCode() != e.getKeyCode() || kb.getModifiers() != e.getModifiersEx()) {
+			// log out the key event and kb for debugging purposes
+			log.debug("KeyPressed: keycode={}, char='{}', modifiers={}, kb={}",
+				e.getKeyCode(), e.getKeyChar(), e.getModifiersEx(), kb);
             return;
         }
 
-		clientThread.invoke(() -> {
-			// If we are currently typing in a system prompt,
-			// do not toggle chat visibility.
-			if (ClientUtil.isSystemWidgetActive(client)) {
-				cancelDeferredHide();
-				return;
-			}
-
-			// If there is actual text ready to send in chat, defer the hide.
-			if (hasPendingChatInputCT()) {
-				if (!chatProxy.isHidden() && config.featureToggle_AutoHideOnSend())
-					scheduleDeferredHide();
-				return;
-			}
-
-			setHidden(!chatProxy.isHidden());
-		});
+		clientThread.invoke(this::handleToggleRequest);
 	}
 
 	@Subscribe
@@ -343,58 +344,35 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		setHidden(false);
 	}
 
-	public void simulateEscapeKey() {
-		Canvas canvas = client.getCanvas();
-		if (canvas == null) {
+	/**
+	 * Handles a toggle request from either the standard keybind or extended keybind.
+	 * MUST be called on client thread.
+	 */
+	private void handleToggleRequest() {
+		// If we are currently typing in a system prompt,
+		// do not toggle chat visibility.
+		if (ClientUtil.isSystemWidgetActive(client)) {
+			cancelDeferredHide();
 			return;
 		}
 
-		KeyEvent press = new KeyEvent(
-			canvas,
-			KeyEvent.KEY_PRESSED,
-			System.currentTimeMillis(),
-			0,
-			KeyEvent.VK_ESCAPE,
-			KeyEvent.CHAR_UNDEFINED
-		);
-		KeyEvent release = new KeyEvent(
-			canvas,
-			KeyEvent.KEY_RELEASED,
-			System.currentTimeMillis(),
-			0,
-			KeyEvent.VK_ESCAPE,
-			KeyEvent.CHAR_UNDEFINED
-		);
+		// If there is actual text ready to send in chat, defer the hide.
+		if (hasPendingChatInputCT()) {
+			if (!chatProxy.isHidden() && config.featureToggle_AutoHideOnSend()) {
+				scheduleDeferredHide();
+			}
+			return;
+		}
 
-		canvas.dispatchEvent(press);
-		canvas.dispatchEvent(release);
+		setHidden(!chatProxy.isHidden());
+	}
+
+	public void simulateEscapeKey() {
+		ClientUtil.simulateKeyInput(client, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED);
 	}
 
 	private void simulateSlashKey() {
-		Canvas canvas = client.getCanvas();
-		if (canvas == null) {
-			return;
-		}
-
-		KeyEvent press = new KeyEvent(
-			canvas,
-			KeyEvent.KEY_PRESSED,
-			System.currentTimeMillis(),
-			0,
-			KeyEvent.VK_SLASH,
-			'/'
-		);
-		KeyEvent release = new KeyEvent(
-			canvas,
-			KeyEvent.KEY_RELEASED,
-			System.currentTimeMillis(),
-			0,
-			KeyEvent.VK_SLASH,
-			'/'
-		);
-
-		canvas.dispatchEvent(press);
-		canvas.dispatchEvent(release);
+		ClientUtil.simulateKeyInput(client, KeyEvent.VK_SLASH, '/');
 	}
 
 	public void scheduleDeferredHide() {
@@ -491,4 +469,28 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
         // empty chat placeholder
         return !t.endsWith(": *") && !t.endsWith(PRESS_ENTER_TO_CHAT);
     }
+
+	@Override
+	public void onFeatureConfigChanged(ConfigChanged e) {
+		if (ModernChatConfigBase.Keys.featureToggle_ExtendedToggleKey.equals(e.getKey())) {
+			unregisterExtendedKeybind();
+			registerExtendedKeybind();
+		}
+	}
+
+	private void registerExtendedKeybind() {
+		ExtendedKeybind keybind = config.featureToggle_ExtendedToggleKey();
+		extendedInputService.registerBinding(EXTENDED_BINDING_ID, keybind, (v) -> {
+			Keybind primaryKey = config.featureToggle_ToggleKey();
+			if (primaryKey != null) {
+				// We're simulating the key input here to avoid issues with KeyRemappingPlugin.
+				// This way the KeyRemappingPlugin will also see the key event.
+				ClientUtil.simulateKeyInput(client, primaryKey.getKeyCode(), KeyEvent.CHAR_UNDEFINED, primaryKey.getModifiers());
+			}
+		});
+	}
+
+	private void unregisterExtendedKeybind() {
+		extendedInputService.unregisterBinding(EXTENDED_BINDING_ID);
+	}
 }

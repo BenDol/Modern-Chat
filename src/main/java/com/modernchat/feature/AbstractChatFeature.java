@@ -19,6 +19,10 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
 
     protected abstract T partitionConfig(ModernChatConfig config);
 
+    protected void onFeatureConfigChanged(ConfigChanged e) {
+        // Default implementation does nothing
+    }
+
     @Override
     public T getConfig() {
         return config;
@@ -68,6 +72,8 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
                     startUp();
                 }
             }
+
+            onFeatureConfigChanged(e);
         }
     }
 }

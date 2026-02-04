@@ -1,6 +1,7 @@
 package com.modernchat;
 
 import com.modernchat.common.ChatMode;
+import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.Sfx;
 import net.runelite.client.config.Alpha;
@@ -1072,10 +1073,22 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = "featureToggle_ExtendedToggleKey",
+        name = "Extended Toggle Key",
+        description = "Additional key/button to toggle chat (Mouse 4/5 or F13-F24). Works alongside the standard hotkey.",
+        position = 2,
+        section = toggleChatSection
+    )
+    @Override
+    default ExtendedKeybind featureToggle_ExtendedToggleKey() {
+        return ExtendedKeybind.NONE;
+    }
+
+    @ConfigItem(
         keyName = "featureToggle_AutoHideOnSend",
         name = "Auto-hide on send",
         description = "Hide chat automatically after sending a message",
-        position = 2,
+        position = 3,
         section = toggleChatSection
     )
     @Override
@@ -1087,7 +1100,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "featureToggle_EscapeHides",
         name = "Escape hides",
         description = "Hide the chatbox when pressing Escape",
-        position = 3,
+        position = 4,
         section = toggleChatSection
     )
     @Override
@@ -1099,7 +1112,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "featureToggle_StartHidden",
         name = "Start hidden",
         description = "Hide the chatbox when the plugin starts",
-        position = 4,
+        position = 5,
         section = toggleChatSection
     )
     @Override
@@ -1111,7 +1124,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = "featureToggle_LockCameraWhenVisible",
         name = "Lock camera keys",
         description = "Lock the camera key arrows when chat is visible",
-        position = 5,
+        position = 6,
         section = toggleChatSection
     )
     @Override

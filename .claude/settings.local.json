@@ -20,7 +20,8 @@
       "Bash(jar tf:*)",
       "Bash(findstr:*)",
       "Bash(jar:*)",
-      "Bash(./gradlew compileJava:*)"
+      "Bash(./gradlew compileJava:*)",
+      "Bash(./gradlew clean build:*)"
     ]
   }
 }

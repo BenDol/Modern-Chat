@@ -10,8 +10,6 @@ import java.awt.Rectangle;
 public abstract class Anchor {
 
     protected Client client;
-    protected Class<?> widgetClass;
-
 
     @Getter @Setter
     protected int offsetX = 0;
@@ -40,7 +38,6 @@ public abstract class Anchor {
 
     public Anchor(Client client, Widget widget) {
         this.client = client;
-        widgetClass = widget.getClass();
         originalXMode = widget.getXPositionMode();
         originalYMode = widget.getYPositionMode();
         originalWidthMode = widget.getWidthMode();

@@ -16,7 +16,9 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.util.Text;
 
 import javax.annotation.Nullable;
+import java.awt.Canvas;
 import java.awt.Image;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
@@ -231,5 +233,36 @@ public class ClientUtil
         int dx = loc.getX() - GE_CENTER_X;
         int dy = loc.getY() - GE_CENTER_Y;
         return (dx * dx + dy * dy) <= (GE_RADIUS * GE_RADIUS);
+    }
+
+    public static void simulateKeyInput(Client client, int keyCode, char keyChar) {
+        simulateKeyInput(client, keyCode, keyChar, 0);
+    }
+
+    public static void simulateKeyInput(Client client, int keyCode, char keyChar, int modifiers) {
+        Canvas canvas = client.getCanvas();
+        if (canvas == null) {
+            return;
+        }
+
+        KeyEvent press = new KeyEvent(
+            canvas,
+            KeyEvent.KEY_PRESSED,
+            System.currentTimeMillis(),
+            modifiers,
+            keyCode,
+            keyChar
+        );
+        KeyEvent release = new KeyEvent(
+            canvas,
+            KeyEvent.KEY_RELEASED,
+            System.currentTimeMillis(),
+            modifiers,
+            keyCode,
+            keyChar
+        );
+
+        canvas.dispatchEvent(press);
+        canvas.dispatchEvent(release);
     }
 }

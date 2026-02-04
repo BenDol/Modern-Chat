@@ -5,6 +5,7 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.modernchat.common.ChatMode;
+import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.Sfx;
 import com.modernchat.feature.ChatRedesignFeature;
@@ -140,6 +141,7 @@ public interface ModernChatConfigBase extends
         // Toggle
         String featureToggle_Enabled = "featureToggle_Enabled";
         String featureToggle_ToggleKey = "featureToggle_ToggleKey";
+        String featureToggle_ExtendedToggleKey = "featureToggle_ExtendedToggleKey";
         String featureToggle_AutoHideOnSend = "featureToggle_AutoHideOnSend";
         String featureToggle_EscapeHides = "featureToggle_EscapeHides";
         String featureToggle_StartHidden = "featureToggle_StartHidden";
@@ -292,6 +294,7 @@ public interface ModernChatConfigBase extends
         // ---- Toggle ----
         TOGGLE_ENABLED(Keys.featureToggle_Enabled, Kind.BOOL, ModernChatConfigBase::featureToggle_Enabled),
         TOGGLE_KEY(Keys.featureToggle_ToggleKey, Kind.KEYBIND, ModernChatConfigBase::featureToggle_ToggleKey),
+        TOGGLE_EXTENDED_KEY(Keys.featureToggle_ExtendedToggleKey, ExtendedKeybind.class, ModernChatConfigBase::featureToggle_ExtendedToggleKey),
         TOGGLE_AUTOHIDE_ON_SEND(Keys.featureToggle_AutoHideOnSend, Kind.BOOL, ModernChatConfigBase::featureToggle_AutoHideOnSend),
         TOGGLE_ESCAPE_HIDES(Keys.featureToggle_EscapeHides, Kind.BOOL, ModernChatConfigBase::featureToggle_EscapeHides),
         TOGGLE_START_HIDDEN(Keys.featureToggle_StartHidden, Kind.BOOL, ModernChatConfigBase::featureToggle_StartHidden),
@@ -541,6 +544,7 @@ public interface ModernChatConfigBase extends
         // Toggle feature
         @Override public boolean featureToggle_Enabled() { return getBool(Keys.featureToggle_Enabled, DEFAULTS.featureToggle_Enabled()); }
         @Override public Keybind featureToggle_ToggleKey() { return getKeybind(Keys.featureToggle_ToggleKey, DEFAULTS.featureToggle_ToggleKey()); }
+        @Override public ExtendedKeybind featureToggle_ExtendedToggleKey() { return getEnum(Keys.featureToggle_ExtendedToggleKey, DEFAULTS.featureToggle_ExtendedToggleKey(), ExtendedKeybind.class); }
         @Override public boolean featureToggle_AutoHideOnSend() { return getBool(Keys.featureToggle_AutoHideOnSend, DEFAULTS.featureToggle_AutoHideOnSend()); }
         @Override public boolean featureToggle_EscapeHides() { return getBool(Keys.featureToggle_EscapeHides, DEFAULTS.featureToggle_EscapeHides()); }
         @Override public boolean featureToggle_StartHidden() { return getBool(Keys.featureToggle_StartHidden, DEFAULTS.featureToggle_StartHidden()); }

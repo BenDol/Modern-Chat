@@ -17,7 +17,7 @@ import net.runelite.client.events.ConfigChanged;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import static com.modernchat.ModernChatConfigBase.Field.*;
+import static com.modernchat.ModernChatConfigBase.Field.NOTIFY_MESSAGE_RECEIVED_SFX;
 
 @Slf4j
 @Singleton
