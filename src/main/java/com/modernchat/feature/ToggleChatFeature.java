@@ -13,6 +13,7 @@ import com.modernchat.event.LeftDialogClosedEvent;
 import com.modernchat.event.LeftDialogOpenedEvent;
 import com.modernchat.event.RightDialogClosedEvent;
 import com.modernchat.event.RightDialogOpenedEvent;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +79,8 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	@Inject private ChatProxy chatProxy;
 	@Inject private ExtendedInputService extendedInputService;
 
+	private boolean loggedIn = false;
+
 	// Deferred hide state
 	private boolean autoHide = false;
 	private boolean deferredHideRequested = false;
@@ -119,6 +122,10 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 		keyManager.registerKeyListener(this);
 		registerExtendedKeybind();
+
+		if (loggedIn) {
+			clientThread.invokeAtTickEnd(() -> setHidden(config.featureToggle_StartHidden()));
+		}
 	}
 
 	@Override
@@ -129,6 +136,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		unregisterExtendedKeybind();
 
 		clientThread.invoke(() -> setHidden(false));
+
+		loggedIn = false;
+		autoHide = false;
 	}
 
 	@Override
@@ -167,21 +177,20 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		// pressing Backspace would delete the placeholder instead of opening chat.
 		// We detect this and simulate a Slash key press to properly enter typing mode.
 		if (chatProxy.isLegacy() && !chatProxy.isHidden()) {
-			Widget input = ClientUtil.getChatInputWidget(client);
-			if (input != null) {
-				String raw = input.getText();
-				if (raw != null) {
-					String t = Text.removeTags(raw).trim();
-					if (t.endsWith(PRESS_ENTER_TO_CHAT)) {
-						simulateSlashKey();
-						e.consume();
+			if (e.getKeyCode() != KeyEvent.VK_SLASH) {
+				Widget input = ClientUtil.getChatInputWidget(client);
+				if (input != null) {
+					String raw = input.getText();
+					if (raw != null) {
+						String t = Text.removeTags(raw).trim();
+						if (t.endsWith(PRESS_ENTER_TO_CHAT)) {
+							simulateSlashKey();
+							e.consume();
+						}
 					}
 				}
 			}
 		}
-
-		if (!isCanvasFocused())
-			return;
 
 		// Handle Escape before isConsumed check - KeyRemapping consumes Escape
 		// when exiting typing mode, but we still need to hide our chat
@@ -201,7 +210,24 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
             return;
         }
 
-		clientThread.invoke(this::handleToggleRequest);
+		clientThread.invokeLater(() -> {
+			// If we are currently typing in a system prompt,
+			// do not toggle chat visibility.
+			if (ClientUtil.isSystemWidgetActive(client)) {
+				cancelDeferredHide();
+				return;
+			}
+
+			// If there is actual text ready to send in chat, defer the hide.
+			if (hasPendingChatInputCT()) {
+				if (!chatProxy.isHidden() && config.featureToggle_AutoHideOnSend()) {
+					scheduleDeferredHide();
+				}
+				return;
+			}
+
+			setHidden(!chatProxy.isHidden());
+		});
 	}
 
 	@Subscribe
@@ -215,6 +241,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 					show();
 				}
 			});
+			loggedIn = true;
+		} else if (e.getGameState() == GameState.LOGIN_SCREEN) {
+			loggedIn = false;
 		}
 	}
 
@@ -348,29 +377,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		setHidden(false);
 	}
 
-	/**
-	 * Handles a toggle request from either the standard keybind or extended keybind.
-	 * MUST be called on client thread.
-	 */
-	private void handleToggleRequest() {
-		// If we are currently typing in a system prompt,
-		// do not toggle chat visibility.
-		if (ClientUtil.isSystemWidgetActive(client)) {
-			cancelDeferredHide();
-			return;
-		}
-
-		// If there is actual text ready to send in chat, defer the hide.
-		if (hasPendingChatInputCT()) {
-			if (!chatProxy.isHidden() && config.featureToggle_AutoHideOnSend()) {
-				scheduleDeferredHide();
-			}
-			return;
-		}
-
-		setHidden(!chatProxy.isHidden());
-	}
-
 	public void simulateEscapeKey() {
 		ClientUtil.simulateKeyInput(client, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED);
 	}
@@ -398,9 +404,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	private void detectKeyRemappingEscape() {
 		if (chatProxy.isLegacy()) {
 			return;
-		} else {
-			// make sure the chat isnt locked
-
 		}
 
 		if (!config.featureToggle_EscapeHides()) {
@@ -435,8 +438,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	}
 
 	private void setHidden(boolean hidden) {
-		boolean wasHidden = chatProxy.isHidden();
-		chatProxy.setHidden(hidden);
 		cancelDeferredHide();
 
 		Widget root = widgetBucket.getChatWidget();
@@ -444,8 +445,12 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			LAST_CHAT_BOUNDS = root.getBounds();
 		}
 
-		if (wasHidden != hidden)
-			eventBus.post(new ChatToggleEvent(hidden));
+		boolean wasHidden = chatProxy.isHidden();
+		if (wasHidden == hidden)
+			return;
+
+		chatProxy.setHidden(hidden);
+		eventBus.post(new ChatToggleEvent(hidden));
 	}
 
 	private boolean isCanvasFocused() {

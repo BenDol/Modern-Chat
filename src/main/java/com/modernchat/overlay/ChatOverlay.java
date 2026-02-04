@@ -2128,6 +2128,8 @@ public class ChatOverlay extends OverlayPanel
 
         if (messageContainer != null)
             messageContainer.dirty();
+
+        lastViewport = null;
     }
 
     public void showLegacyChat() {

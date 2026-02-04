@@ -451,8 +451,9 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     public void onScriptPostFired(ScriptPostFired e) {
         if (e.getScriptId() == ScriptID.BUILD_CHATBOX) {
             clientThread.invoke(() -> {
-                if (!overlay.isLegacyShowing())
+                if (!overlay.isLegacyShowing()) {
                     overlay.hideLegacyChat(false);
+                }
             });
         }
     }
@@ -462,8 +463,10 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         // If the chatbox is loaded, we can suppress original message lines
         if (e.getGroupId() == InterfaceID.CHATBOX) {
             clientThread.invoke(() -> {
-                if (!overlay.isLegacyShowing())
+                if (!overlay.isLegacyShowing()) {
                     overlay.hideLegacyChat(false);
+                    loadChatSize();
+                }
             });
         }
     }

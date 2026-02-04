@@ -140,6 +140,7 @@ public class ModernChatPlugin extends Plugin {
 		profileService.startUp();
 		panel = new ModernChatPanel(profileService, configManager);
 
+		widgetBucket.startUp();
         filterService.startUp();
         messageService.startUp();
         privateChatService.startUp();
@@ -210,6 +211,7 @@ public class ModernChatPlugin extends Plugin {
 		}
 		profileService.shutDown();
 
+		widgetBucket.shutDown();
         filterService.shutDown();
         messageService.shutDown();
         privateChatService.shutDown();
@@ -456,6 +458,12 @@ public class ModernChatPlugin extends Plugin {
 		boolean isPrivate = ChatUtil.isPrivateMessage(e.getType());
 		if (isPrivate) {
 			clientThread.invoke(() -> maybeReanchor(true));
+		}
+
+		// MSGBOX messages often require the chat to be open to be seen,
+		// so if we receive one while hidden, unhide to show it
+		if (e.getType() == ChatMessageType.MESBOX && chatProxy.isHidden()) {
+			chatProxy.setHidden(false);
 		}
 
 		if (chatProxy.isHidden() || !chatProxy.isTabOpen(e)) {

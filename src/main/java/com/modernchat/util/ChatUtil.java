@@ -238,7 +238,8 @@ public class ChatUtil
                 return null;
         }
 
-        long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() : System.currentTimeMillis();
+        // Server timestamp is in seconds, convert to milliseconds for local time formatting
+        long timestamp = e.getTimestamp() > 0 ? e.getTimestamp() * 1000L : System.currentTimeMillis();
 
         Pair<String, String> senderReceiver = ChatUtil.getSenderAndReceiver(e, localPlayerName);
 

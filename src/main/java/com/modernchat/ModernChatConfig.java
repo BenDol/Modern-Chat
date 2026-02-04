@@ -1322,7 +1322,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Units(Units.PIXELS)
     @Override
     default int featurePeek_OffsetY() {
-        return -55;
+        return 0;
     }
 
     @ConfigItem(
