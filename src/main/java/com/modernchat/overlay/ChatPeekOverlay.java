@@ -20,6 +20,7 @@ public class ChatPeekOverlay extends MessageContainer
     @Inject private Provider<ChatOverlay> chatOverlayProvider;
 
     public ChatPeekOverlay() {
+        setPeekOverlay(true);
         setCanShowDecider((c) -> {
             return !isHidden() && (chatProxy == null ||
                 (chatProxy.isHidden() && chatProxy.isLegacyHidden() && !ClientUtil.isSystemWidgetActive(client)));
