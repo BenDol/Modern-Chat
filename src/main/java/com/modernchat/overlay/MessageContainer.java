@@ -492,6 +492,7 @@ public class MessageContainer extends Overlay
     ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
         Color c = getColor(type);
+
         RichLine rl = parseRich(s == null ? "" : s, c == null ? Color.WHITE : c, type, timestamp, prefix);
         rl.setType(type);
         rl.setSender(sender);

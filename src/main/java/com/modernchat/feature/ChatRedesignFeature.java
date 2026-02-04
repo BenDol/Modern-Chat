@@ -470,7 +470,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             });
         }
     }
-
+    
     @Subscribe
     public void onWidgetClosed(WidgetClosed e) {
         // If the chatbox is loaded, we can suppress original message lines
@@ -544,7 +544,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         return filteredMessage;
     }
 
-    @Subscribe(priority = -3) // run after ChatMessageManager
+    @Subscribe(priority = -4) // run after ForceRecolor and ChatMessageManager
     public void onChatMessage(ChatMessage e) {
         // Never show SPAM messages
         if (ChatUtil.isSpamMessage(e.getType())) {
@@ -561,8 +561,15 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         if (ChatUtil.isNpcMessage(e) && !config.featureRedesign_ShowNpc())
             return;
 
-        // Use the filtered message text
-        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
+        // Read from MessageNode to get ForceRecolor's color tags (if any)
+        // ForceRecolor modifies the node directly with <col=XXXXXX> tags
+        String messageWithColors = e.getMessageNode().getValue();
+        if (messageWithColors == null || messageWithColors.isEmpty()) {
+            messageWithColors = filteredMessage;
+        }
+
+        // Use the message with ForceRecolor's color tags
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, messageWithColors);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages

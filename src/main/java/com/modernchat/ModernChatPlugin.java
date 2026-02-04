@@ -453,7 +453,7 @@ public class ModernChatPlugin extends Plugin {
 		}
 	}
 
-	@Subscribe(priority = -3) // run after ChatMessageManager
+	@Subscribe(priority = -4) // run after ChatMessageManager
 	public void onChatMessage(ChatMessage e) {
 		boolean isPrivate = ChatUtil.isPrivateMessage(e.getType());
 		if (isPrivate) {
