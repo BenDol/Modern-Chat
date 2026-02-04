@@ -67,7 +67,9 @@ public class ChannelFilterState {
                 return ChannelFilterType.FRIENDS_CHAT;
 
             case CLAN_CHAT:
+            case CLAN_MESSAGE:
             case CLAN_GUEST_CHAT:
+            case CLAN_GUEST_MESSAGE:
             case CLAN_GIM_CHAT:
             case CLAN_GIM_MESSAGE:
             case CLAN_GIM_FORM_GROUP:

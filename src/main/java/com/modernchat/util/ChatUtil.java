@@ -63,8 +63,10 @@ public class ChatUtil
             case FRIENDNOTIFICATION:
                 return ChatMode.PRIVATE;
             case CLAN_CHAT:
+            case CLAN_MESSAGE:
                 return ChatMode.CLAN_MAIN;
             case CLAN_GUEST_CHAT:
+            case CLAN_GUEST_MESSAGE:
                 return ChatMode.CLAN_GUEST;
             case CLAN_GIM_CHAT:
             case CLAN_GIM_FORM_GROUP:
@@ -124,7 +126,9 @@ public class ChatUtil
 
     public static boolean isClanMessage(ChatMessageType type) {
         return type == ChatMessageType.CLAN_CHAT
+            || type == ChatMessageType.CLAN_MESSAGE
             || type == ChatMessageType.CLAN_GUEST_CHAT
+            || type == ChatMessageType.CLAN_GUEST_MESSAGE
             || type == ChatMessageType.CLAN_GIM_CHAT
             || type == ChatMessageType.CLAN_GIM_FORM_GROUP
             || type == ChatMessageType.CLAN_GIM_MESSAGE
