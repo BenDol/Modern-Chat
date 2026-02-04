@@ -169,6 +169,12 @@ public interface ModernChatConfigBase extends
         String featurePeek_FadeDuration = "featurePeek_FadeDuration";
         String featurePeek_SourceTabKey = "featurePeek_SourceTabKey";
         String featurePeek_SuppressFadeAtGE = "featurePeek_SuppressFadeAtGE";
+        String featurePeek_TimestampColor = "featurePeek_TimestampColor";
+        String featurePeek_TypePrefixColor = "featurePeek_TypePrefixColor";
+
+        // Timestamp and type prefix colors
+        String featureRedesign_TimestampColor = "featureRedesign_TimestampColor";
+        String featureRedesign_TypePrefixColor = "featureRedesign_TypePrefixColor";
 
         // Commands
         String featureCommands_Enabled = "featureCommands_Enabled";
@@ -277,6 +283,8 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_MSG_SHADOW_COLOR(Keys.featureRedesign_MessageContainer_ShadowColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_MessageContainer_ShadowColor),
         FEATURE_REDESIGN_MSG_SCROLL_TRACK_COLOR(Keys.featureRedesign_MessageContainer_ScrollbarTrackColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_MessageContainer_ScrollbarTrackColor),
         FEATURE_REDESIGN_MSG_SCROLL_THUMB_COLOR(Keys.featureRedesign_MessageContainer_ScrollbarThumbColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_MessageContainer_ScrollbarThumbColor),
+        FEATURE_REDESIGN_TIMESTAMP_COLOR(Keys.featureRedesign_TimestampColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TimestampColor),
+        FEATURE_REDESIGN_TYPE_PREFIX_COLOR(Keys.featureRedesign_TypePrefixColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TypePrefixColor),
 
         // ---- General ----
         GENERAL_ANCHOR_PM(Keys.general_AnchorPrivateChat, Kind.BOOL, ModernChatConfigBase::general_AnchorPrivateChat),
@@ -320,6 +328,8 @@ public interface ModernChatConfigBase extends
         PEEK_FADE_ENABLED(Keys.featurePeek_FadeEnabled, Kind.BOOL, ModernChatConfigBase::featurePeek_FadeEnabled),
         PEEK_FADE_DELAY(Keys.featurePeek_FadeDelay, Kind.INT, ModernChatConfigBase::featurePeek_FadeDelay),
         PEEK_FADE_DURATION(Keys.featurePeek_FadeDuration, Kind.INT, ModernChatConfigBase::featurePeek_FadeDuration),
+        PEEK_TIMESTAMP_COLOR(Keys.featurePeek_TimestampColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TimestampColor),
+        PEEK_TYPE_PREFIX_COLOR(Keys.featurePeek_TypePrefixColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TypePrefixColor),
 
         // ---- Commands ----
         CMD_ENABLED(Keys.featureCommands_Enabled, Kind.BOOL, ModernChatConfigBase::featureCommands_Enabled),
@@ -390,6 +400,12 @@ public interface ModernChatConfigBase extends
     Color general_SystemChatColor();
     Color general_WelcomeChatColor();
     Color general_TradeChatColor();
+
+    Color featureRedesign_TimestampColor();
+    Color featureRedesign_TypePrefixColor();
+
+    Color featurePeek_TimestampColor();
+    Color featurePeek_TypePrefixColor();
 
     static JsonObject buildJsonFromConfig(ModernChatConfigBase c) {
         JsonObject j = new JsonObject();
@@ -527,6 +543,8 @@ public interface ModernChatConfigBase extends
         @Override public Color featureRedesign_MessageContainer_ShadowColor() { return getColor(Keys.featureRedesign_MessageContainer_ShadowColor, DEFAULTS.featureRedesign_MessageContainer_ShadowColor()); }
         @Override public Color featureRedesign_MessageContainer_ScrollbarTrackColor() { return getColor(Keys.featureRedesign_MessageContainer_ScrollbarTrackColor, DEFAULTS.featureRedesign_MessageContainer_ScrollbarTrackColor()); }
         @Override public Color featureRedesign_MessageContainer_ScrollbarThumbColor() { return getColor(Keys.featureRedesign_MessageContainer_ScrollbarThumbColor, DEFAULTS.featureRedesign_MessageContainer_ScrollbarThumbColor()); }
+        @Override public Color featureRedesign_TimestampColor() { return getColor(Keys.featureRedesign_TimestampColor, DEFAULTS.featureRedesign_TimestampColor()); }
+        @Override public Color featureRedesign_TypePrefixColor() { return getColor(Keys.featureRedesign_TypePrefixColor, DEFAULTS.featureRedesign_TypePrefixColor()); }
 
         // General colors & options
         @Override public boolean general_AnchorPrivateChat() { return getBool(Keys.general_AnchorPrivateChat, DEFAULTS.general_AnchorPrivateChat()); }
@@ -572,6 +590,8 @@ public interface ModernChatConfigBase extends
         @Override public int featurePeek_FadeDuration() { return getInt(Keys.featurePeek_FadeDuration, DEFAULTS.featurePeek_FadeDuration()); }
         @Override public String featurePeek_SourceTabKey() { return getString(Keys.featurePeek_SourceTabKey, DEFAULTS.featurePeek_SourceTabKey()); }
         @Override public boolean featurePeek_SuppressFadeAtGE() { return getBool(Keys.featurePeek_SuppressFadeAtGE, DEFAULTS.featurePeek_SuppressFadeAtGE()); }
+        @Override public Color featurePeek_TimestampColor() { return getColor(Keys.featurePeek_TimestampColor, DEFAULTS.featurePeek_TimestampColor()); }
+        @Override public Color featurePeek_TypePrefixColor() { return getColor(Keys.featurePeek_TypePrefixColor, DEFAULTS.featurePeek_TypePrefixColor()); }
 
         // Commands
         @Override public boolean featureCommands_Enabled() { return getBool(Keys.featureCommands_Enabled, DEFAULTS.featureCommands_Enabled()); }

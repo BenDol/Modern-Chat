@@ -893,6 +893,32 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return new Color(255, 255, 255, 144);
     }
 
+    @ConfigItem(
+        keyName = Keys.featureRedesign_TimestampColor,
+        name = "Timestamp Color",
+        description = "Color for message timestamps. Set fully transparent to use line color.",
+        position = 45,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_TimestampColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use line color
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_TypePrefixColor,
+        name = "Type Prefix Color",
+        description = "Color for message type prefixes ([Clan], [System], etc.). Set fully transparent to use line color.",
+        position = 46,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_TypePrefixColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use line color
+    }
+
     /* ------------ General Settings ------------ */
 
     @Override default Color getWelcomeColor() { return general_WelcomeChatColor(); }
@@ -1401,6 +1427,32 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default boolean featurePeek_SuppressFadeAtGE() {
         return false;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_TimestampColor,
+        name = "Timestamp Color",
+        description = "Color for message timestamps. Set fully transparent to use Modern Design color, or line color if that is also transparent.",
+        position = 21,
+        section = peekOverlaySection
+    )
+    @Alpha
+    @Override
+    default Color featurePeek_TimestampColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use fallback
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_TypePrefixColor,
+        name = "Type Prefix Color",
+        description = "Color for message type prefixes ([Clan], [System], etc.). Set fully transparent to use Modern Design color, or line color if that is also transparent.",
+        position = 22,
+        section = peekOverlaySection
+    )
+    @Alpha
+    @Override
+    default Color featurePeek_TypePrefixColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use fallback
     }
 
     /* ------------ Feature: Commands ------------ */

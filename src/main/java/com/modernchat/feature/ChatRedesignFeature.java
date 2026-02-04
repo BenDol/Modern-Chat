@@ -132,6 +132,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         Color featureRedesign_MessageContainer_ShadowColor();
         Color featureRedesign_MessageContainer_ScrollbarTrackColor();
         Color featureRedesign_MessageContainer_ScrollbarThumbColor();
+        Color featureRedesign_TimestampColor();
+        Color featureRedesign_TypePrefixColor();
     }
 
     @Inject private Client client;
@@ -227,6 +229,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color featureRedesign_MessageContainer_ShadowColor() { return cfg.featureRedesign_MessageContainer_ShadowColor(); }
             @Override public Color featureRedesign_MessageContainer_ScrollbarTrackColor() { return cfg.featureRedesign_MessageContainer_ScrollbarTrackColor(); }
             @Override public Color featureRedesign_MessageContainer_ScrollbarThumbColor() { return cfg.featureRedesign_MessageContainer_ScrollbarThumbColor(); }
+            @Override public Color featureRedesign_TimestampColor() { return cfg.featureRedesign_TimestampColor(); }
+            @Override public Color featureRedesign_TypePrefixColor() { return cfg.featureRedesign_TypePrefixColor(); }
         };
     }
 
@@ -334,6 +338,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 @Override public Color getClanColor() { return mainConfig.general_ClanChatColor(); }
                 @Override public Color getSystemColor() { return mainConfig.general_SystemChatColor(); }
                 @Override public Color getTradeColor() { return mainConfig.general_TradeChatColor(); }
+                @Override public Color getTimestampColor() { return cfg.featureRedesign_TimestampColor(); }
+                @Override public Color getTypePrefixColor() { return cfg.featureRedesign_TypePrefixColor(); }
             };
         };
     }

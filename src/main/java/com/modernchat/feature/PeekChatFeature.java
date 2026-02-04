@@ -90,9 +90,12 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private ConfigManager configManager;
 	@Inject private ChannelFilterState channelFilterState;
 
+	private final ModernChatConfig mainConfig;
+
 	@Inject
 	public PeekChatFeature(ModernChatConfig config, EventBus eventBus) {
 		super(config, eventBus);
+		mainConfig = config;
 	}
 
 	@Override
@@ -165,6 +168,18 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Color getClanColor() { return cfg.getClanColor(); }
 			@Override public Color getSystemColor() { return cfg.getSystemColor(); }
 			@Override public Color getTradeColor() { return cfg.getTradeColor(); }
+			@Override public Color getTimestampColor() {
+				// Peek color -> Modern Design color -> transparent (line color fallback)
+				Color peekColor = mainConfig.featurePeek_TimestampColor();
+				if (peekColor.getAlpha() > 0) return peekColor;
+				return mainConfig.featureRedesign_TimestampColor();
+			}
+			@Override public Color getTypePrefixColor() {
+				// Peek color -> Modern Design color -> transparent (line color fallback)
+				Color peekColor = mainConfig.featurePeek_TypePrefixColor();
+				if (peekColor.getAlpha() > 0) return peekColor;
+				return mainConfig.featureRedesign_TypePrefixColor();
+			}
 		};
 	}
 

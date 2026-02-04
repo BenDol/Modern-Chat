@@ -275,7 +275,21 @@ public class MessageContainer extends Overlay
                             g.drawString(segText, dx + shadowOffset, y + shadowOffset);
                         }
 
-                        g.setColor(seg.getColor());
+                        // Determine color: use config override if not transparent, else segment color
+                        Color segColor = seg.getColor();
+                        if (seg instanceof TimestampSegment) {
+                            Color tsColor = config.getTimestampColor();
+                            if (tsColor.getAlpha() > 0) {
+                                segColor = tsColor;
+                            }
+                        } else if (seg instanceof PrefixSegment) {
+                            Color pfxColor = config.getTypePrefixColor();
+                            if (pfxColor.getAlpha() > 0) {
+                                segColor = pfxColor;
+                            }
+                        }
+
+                        g.setColor(segColor);
                         g.drawString(segText, dx, y);
 
                         dx += fm.stringWidth(segText);
@@ -503,10 +517,16 @@ public class MessageContainer extends Overlay
         Color cur = base;
         StringBuilder buf = new StringBuilder();
 
-        out.getSegs().add(new TimestampSegment("[" + FormatUtil.toHmTime(timestamp) + "] ", cur));
+        // Timestamp color: use configured color if not transparent, else use line color
+        Color timestampColor = config.getTimestampColor();
+        out.getSegs().add(new TimestampSegment("[" + FormatUtil.toHmTime(timestamp) + "] ",
+            timestampColor.getAlpha() > 0 ? timestampColor : cur));
+
+        // Prefix color: use configured color if not transparent, else use line color
+        Color prefixColor = config.getTypePrefixColor();
         out.getSegs().add(new PrefixSegment(StringUtil.isNullOrEmpty(prefix)
             ? ChatUtil.getPrefix(type)
-            : prefix, cur));
+            : prefix, prefixColor.getAlpha() > 0 ? prefixColor : cur));
 
         for (int i = 0; i < s.length(); ) {
             char ch = s.charAt(i);
@@ -618,6 +638,23 @@ public class MessageContainer extends Overlay
                 }
                 cur.getSegs().add(img); // keep as ImageSegment for renderer
                 curW += iw;
+                continue;
+            }
+
+            // Timestamp and Prefix segments: unbreakable tokens that preserve their type
+            if (s instanceof TimestampSegment || s instanceof PrefixSegment) {
+                String txt = s.getText();
+                if (txt == null || txt.isEmpty())
+                    continue;
+
+                int sw = fm.stringWidth(txt);
+                if (curW + sw > maxWidth && !cur.getSegs().isEmpty()) {
+                    out.add(cur);
+                    cur = new VisualLine();
+                    curW = 0;
+                }
+                cur.getSegs().add(s); // preserve original segment type for renderer
+                curW += sw;
                 continue;
             }
 
