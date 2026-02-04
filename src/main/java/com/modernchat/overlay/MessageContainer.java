@@ -14,6 +14,7 @@ import com.modernchat.draw.TimestampSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.service.FontService;
+import com.modernchat.service.ForceRecolorService;
 import com.modernchat.service.ImageService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ColorUtil;
@@ -68,6 +69,7 @@ public class MessageContainer extends Overlay
     @Inject protected FontService fontService;
     @Inject protected ImageService imageService;
     @Inject protected ChannelFilterState channelFilterState;
+    @Inject protected ForceRecolorService forceRecolorService;
 
     // Config
     @Getter protected MessageContainerConfig config;
@@ -80,6 +82,7 @@ public class MessageContainer extends Overlay
     @Getter @Setter protected volatile boolean hidden = false;
     @Getter @Setter protected volatile boolean isPrivate = false;
     @Getter @Setter protected volatile boolean applyChannelFilters = false;
+    @Getter @Setter protected volatile boolean isPeekOverlay = false;
     @Getter @Setter protected volatile float alpha = 1f;
     @Getter private volatile float fadeAlpha = 1f;
     @Getter private volatile long fadeStartAtMs = Long.MAX_VALUE;
@@ -491,9 +494,21 @@ public class MessageContainer extends Overlay
         boolean collapsed
     ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
-        Color c = getColor(type);
 
-        RichLine rl = parseRich(s == null ? "" : s, c == null ? Color.WHITE : c, type, timestamp, prefix);
+        // Always use default color as base (for sender name, etc.)
+        Color baseColor = getColor(type);
+
+        // Check ForceRecolor for message body color
+        String messageToRender = s == null ? "" : s;
+        if (forceRecolorService != null) {
+            Color forceColor = forceRecolorService.getRecolorForMessage(s, type, isPeekOverlay);
+            if (forceColor != null) {
+                // Apply ForceRecolor only to message body, sender gets base color
+                messageToRender = applyForceRecolorToBody(s, sender, baseColor, forceColor);
+            }
+        }
+
+        RichLine rl = parseRich(messageToRender, baseColor == null ? Color.WHITE : baseColor, type, timestamp, prefix);
         rl.setType(type);
         rl.setSender(sender);
         rl.setReceiver(receiver);
@@ -507,6 +522,44 @@ public class MessageContainer extends Overlay
         }
 
         pushRich(rl);
+    }
+
+    /**
+     * Applies ForceRecolor color to the message body and base color to the sender name.
+     * The message format is typically: "SenderName: message body" or just "message body"
+     */
+    private String applyForceRecolorToBody(String message, String sender, Color baseColor, Color forceColor) {
+        if (message == null || message.isEmpty() || forceColor == null) {
+            return message;
+        }
+
+        String forceHex = String.format("%06X", forceColor.getRGB() & 0xFFFFFF);
+        String forceTag = "<col=" + forceHex + ">";
+        String endTag = "</col>";
+
+        // If no sender, color the entire message with ForceRecolor
+        if (sender == null || sender.isEmpty()) {
+            return forceTag + message + endTag;
+        }
+
+        // Find the ": " separator after the sender name
+        // The sender might have formatting like "<img=1>PlayerName"
+        int separatorIdx = message.indexOf(": ");
+        if (separatorIdx > 0) {
+            String senderPart = message.substring(0, separatorIdx + 2); // Include ": "
+            String bodyPart = message.substring(separatorIdx + 2);
+
+            // Apply base color to sender, ForceRecolor to body
+            String baseHex = baseColor != null
+                ? String.format("%06X", baseColor.getRGB() & 0xFFFFFF)
+                : "FFFFFF";
+            String baseTag = "<col=" + baseHex + ">";
+
+            return baseTag + senderPart + endTag + forceTag + bodyPart + endTag;
+        }
+
+        // Fallback: color the entire message with ForceRecolor if no separator found
+        return forceTag + message + endTag;
     }
 
     private RichLine parseRich(String s, Color base, ChatMessageType type, long timestamp, String prefix) {

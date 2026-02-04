@@ -31,6 +31,7 @@ import net.runelite.api.Point;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
+import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -240,16 +241,22 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		}
 	}
 
-	@Subscribe(priority = -4) // run after ForceRecolor and ChatMessageManager
-	public void onChatMessage(ChatMessage e) {
-        // Read from MessageNode to get ForceRecolor's color tags (if any)
-        // ForceRecolor modifies the node directly with <col=XXXXXX> tags
-        String messageWithColors = e.getMessageNode().getValue();
-        if (messageWithColors == null || messageWithColors.isEmpty()) {
-            messageWithColors = e.getMessage();
-        }
+	private static final String SCRIPT_EVENT_CHAT_FILTER_CHECK = "chatFilterCheck";
 
-        MessageLine line = ChatUtil.createMessageLine(e, client, false, messageWithColors);
+	@Subscribe(priority = -3) // run after ChatMessageManager
+	public void onChatMessage(ChatMessage e) {
+		// Never show SPAM messages
+		if (ChatUtil.isSpamMessage(e.getType())) {
+			return;
+		}
+
+		// Invoke chat filter check to let other plugins filter (and get collapsed message text)
+		String filteredMessage = invokeChatFilterCheck(e);
+		if (filteredMessage == null) {
+			return; // Message blocked by chat filter plugin
+		}
+
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages
@@ -266,6 +273,52 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
         log.debug("Chat message received: {}", line);
 		chatPeekOverlay.pushLine(line);
+	}
+
+	/**
+	 * Manually invoke chatFilterCheck by posting a ScriptCallbackEvent.
+	 * This allows ChatFilterPlugin and other filter plugins to process the message.
+	 *
+	 * @return the filtered message text, or null if message should be blocked
+	 */
+	private String invokeChatFilterCheck(ChatMessage e) {
+		int[] intStack = client.getIntStack();
+		int intStackSize = client.getIntStackSize();
+		Object[] objectStack = client.getObjectStack();
+		int objectStackSize = client.getObjectStackSize();
+
+		// Set up stack: [filterResult, messageType, messageId]
+		// filterResult starts as 1 (show), plugins set to 0 to block
+		client.setIntStackSize(intStackSize + 3);
+		intStack[intStackSize] = 1; // filter result - default show
+		intStack[intStackSize + 1] = e.getType().getType(); // message type
+		intStack[intStackSize + 2] = e.getMessageNode().getId(); // message id
+
+		// Set up object stack with message text
+		client.setObjectStackSize(objectStackSize + 1);
+		objectStack[objectStackSize] = e.getMessage();
+
+		// Fire the callback event for other plugins to process
+		ScriptCallbackEvent callbackEvent = new ScriptCallbackEvent();
+		callbackEvent.setEventName(SCRIPT_EVENT_CHAT_FILTER_CHECK);
+		eventBus.post(callbackEvent);
+
+		// Read the filter result (plugins may have set it to 0 to block)
+		int filterResult = intStack[intStackSize];
+
+		// Read the (possibly modified) message
+		String filteredMessage = (String) objectStack[objectStackSize];
+
+		// Restore stack sizes
+		client.setIntStackSize(intStackSize);
+		client.setObjectStackSize(objectStackSize);
+
+		// Return null if blocked, otherwise return the filtered message
+		if (filterResult == 0) {
+			return null;
+		}
+
+		return filteredMessage;
 	}
 
 	@Subscribe
