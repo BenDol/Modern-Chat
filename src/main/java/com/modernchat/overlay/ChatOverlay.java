@@ -1,5 +1,6 @@
 package com.modernchat.overlay;
 
+import com.modernchat.ModernChatConfig;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
@@ -125,6 +126,7 @@ public class ChatOverlay extends OverlayPanel
     @Inject private Provider<MessageContainer> messageContainerProvider;
     @Inject @Getter private ChannelFilterState channelFilterState;
     @Inject private Provider<ToggleChatFeature> toggleChatFeatureProvider;
+    @Inject private ModernChatConfig mainConfig;
 
     private ChatOverlayConfig config;
     private final ChatMouse mouse = new ChatMouse();
@@ -2793,8 +2795,10 @@ public class ChatOverlay extends OverlayPanel
                         return;
                     }
                     commitInput();
-                    // if (config.isHideOnSend()) setHidden(true);
-                    // e.consume();
+
+                    if (!mainConfig.featureToggle_Enabled() || !mainConfig.featureToggle_AutoHideOnSend()) {
+                        unfocusInput();
+                    }
                     break;
                 }
                 case KeyEvent.VK_ESCAPE:

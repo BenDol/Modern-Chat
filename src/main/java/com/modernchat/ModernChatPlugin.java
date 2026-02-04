@@ -438,6 +438,10 @@ public class ModernChatPlugin extends Plugin {
 		lastChatBounds = null;
 
 		if (e.getGameState() == GameState.LOGGED_IN) {
+			if (!config.featureToggle_Enabled()) {
+				clientThread.invokeLater(() -> chatProxy.setHidden(false));
+			}
+
 			if (!config.featureExample_Enabled()) {
 				Player localPlayer = client.getLocalPlayer();
 				if (localPlayer != null) {

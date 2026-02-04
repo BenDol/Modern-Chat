@@ -116,6 +116,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	@Override
 	public void startUp() {
 		super.startUp();
+
+		keyManager.registerKeyListener(this);
+		registerExtendedKeybind();
 	}
 
 	@Override
@@ -134,6 +137,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 		// We want to register this after all the other features have started,
 		// so that it can be overridden.
+		keyManager.unregisterKeyListener(this);
 		keyManager.registerKeyListener(this);
 		registerExtendedKeybind();
 	}
