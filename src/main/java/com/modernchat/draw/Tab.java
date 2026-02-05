@@ -15,8 +15,6 @@ public final class Tab {
     Rectangle closeBounds = new Rectangle();
     int unread = 0;
     boolean hidden;
-    boolean readOnly;
-    boolean muted = false;
 
     public Tab(String key, String title, boolean closeable) {
         this(key, title, closeable, false);
@@ -30,9 +28,6 @@ public final class Tab {
     }
 
     public void incrementUnread() {
-        if (muted) {
-            return; // Don't increment unread on muted tabs
-        }
         if (unread < Integer.MAX_VALUE) {
             unread++;
         }

@@ -62,33 +62,6 @@ public class ChatPeekOverlay extends MessageContainer
             return false;
         }
 
-        // Check if the peek source tab itself is muted
-        if (isPeekSourceTabMuted()) {
-            return false;
-        }
-
-        // Check if we're at the GE and suppression is enabled
-        // Exception: always allow fade reset for Friends Chat, Clan Chat, and Private messages
-        if (mainConfig.featurePeek_SuppressFadeAtGE() && ClientUtil.isAtGrandExchange(client)) {
-            return isImportantMessageType(type);
-        }
-
         return true;
-    }
-
-    private boolean isPeekSourceTabMuted() {
-        String sourceKey = mainConfig.featurePeek_SourceTabKey();
-        if (StringUtil.isNullOrEmpty(sourceKey)) {
-            return false;
-        }
-
-        Tab sourceTab = chatOverlayProvider.get().getTabsByKey().get(sourceKey);
-        return sourceTab != null && sourceTab.isMuted();
-    }
-
-    private boolean isImportantMessageType(ChatMessageType type) {
-        return ChatUtil.isPrivateMessage(type)
-            || ChatUtil.isFriendsChatMessage(type)
-            || ChatUtil.isClanMessage(type);
     }
 }
