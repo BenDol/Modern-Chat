@@ -1,6 +1,7 @@
 package com.modernchat;
 
 import com.modernchat.common.ChatMode;
+import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.Sfx;
 import net.runelite.client.config.Alpha;
@@ -244,6 +245,66 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default boolean featureRedesign_ShowNpc() {
         return false;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_ClassicMode,
+        name = "Classic Mode",
+        description = "Classic chat mode - hides unread notifications on other tabs (all messages still visible in All tab)",
+        position = 12,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ClassicMode() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_ClassicMode_AllowPmTabs,
+        name = "Allow PM Tabs (Classic Mode)",
+        description = "Keep private message tabs separate when classic mode is active",
+        position = 13,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ClassicMode_AllowPmTabs() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_ClassicMode_ShowUnread,
+        name = "Show Unread (Classic Mode)",
+        description = "Show unread notification badges on tabs when classic mode is active",
+        position = 14,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ClassicMode_ShowUnread() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_GameTabEnabled,
+        name = "Game Tab",
+        description = "Show a dedicated Game tab for game messages",
+        position = 15,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_GameTabEnabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_TradeTabEnabled,
+        name = "Trade Tab",
+        description = "Show a dedicated Trade tab for trade messages",
+        position = 16,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_TradeTabEnabled() {
+        return true;
     }
 
     /* ------------ Modern Chat Style ------------ */
@@ -625,6 +686,19 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.featureRedesign_FilterButtonColor,
+        name = "Filter Button Color",
+        description = "Color for the filter button icon",
+        position = 30,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_FilterButtonColor() {
+        return Color.WHITE;
+    }
+
+    @ConfigItem(
         keyName = Keys.featureRedesign_MessageContainer_OffsetX,
         name = "Message Offset X",
         description = "Horizontal offset for the message container",
@@ -819,6 +893,32 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return new Color(255, 255, 255, 144);
     }
 
+    @ConfigItem(
+        keyName = Keys.featureRedesign_TimestampColor,
+        name = "Timestamp Color",
+        description = "Color for message timestamps. Set fully transparent to use line color.",
+        position = 45,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_TimestampColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use line color
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_TypePrefixColor,
+        name = "Type Prefix Color",
+        description = "Color for message type prefixes ([Clan], [System], etc.). Set fully transparent to use line color.",
+        position = 46,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_TypePrefixColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use line color
+    }
+
     /* ------------ General Settings ------------ */
 
     @Override default Color getWelcomeColor() { return general_WelcomeChatColor(); }
@@ -996,6 +1096,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default Keybind featureToggle_ToggleKey() {
         return new Keybind(KeyEvent.VK_ENTER, 0);
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureToggle_ExtendedToggleKey,
+        name = "Extended Toggle Key",
+        description = "Additional key/button to toggle chat (Mouse 4/5 or F13-F24). Works alongside the standard hotkey.",
+        position = 2,
+        section = toggleChatSection
+    )
+    @Override
+    default ExtendedKeybind featureToggle_ExtendedToggleKey() {
+        return ExtendedKeybind.NONE;
     }
 
     @ConfigItem(
@@ -1290,6 +1402,70 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default int featurePeek_FadeDuration() {
         return 600;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_SourceTabKey,
+        name = "Peek Source Tab",
+        description = "Tab to use as the source for peek messages (empty = all messages)",
+        position = 19,
+        section = peekOverlaySection,
+        hidden = true
+    )
+    @Override
+    default String featurePeek_SourceTabKey() {
+        return "";
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_SuppressFadeAtGE,
+        name = "Suppress Fade at GE",
+        description = "Don't auto-reset fade when at the Grand Exchange (busy area)",
+        position = 20,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_SuppressFadeAtGE() {
+        return false;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_TimestampColor,
+        name = "Timestamp Color",
+        description = "Color for message timestamps. Set fully transparent to use Modern Design color, or line color if that is also transparent.",
+        position = 21,
+        section = peekOverlaySection
+    )
+    @Alpha
+    @Override
+    default Color featurePeek_TimestampColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use fallback
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_TypePrefixColor,
+        name = "Type Prefix Color",
+        description = "Color for message type prefixes ([Clan], [System], etc.). Set fully transparent to use Modern Design color, or line color if that is also transparent.",
+        position = 22,
+        section = peekOverlaySection
+    )
+    @Alpha
+    @Override
+    default Color featurePeek_TypePrefixColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use fallback
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_SourceTabIndicatorColor,
+        name = "Source Tab Indicator",
+        description = "Border color to highlight which tab is the peek overlay source. Set fully transparent to disable.",
+        position = 23,
+        section = peekOverlaySection
+    )
+    @Alpha
+    @Override
+    default Color featurePeek_SourceTabIndicatorColor() {
+        return new Color(0, 200, 255, 200); // Cyan highlight
     }
 
     /* ------------ Feature: Commands ------------ */

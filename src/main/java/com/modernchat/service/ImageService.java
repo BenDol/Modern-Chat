@@ -22,6 +22,7 @@ public class ImageService implements ChatService
     public static final Pattern IMG_TAG = Pattern.compile(".*?<img=(\\d+)>\\s*(?:<[^>]+>\\s*)*([^:<>]+?)\\s*:", Pattern.CASE_INSENSITIVE);
 
     private final Map<Integer, Image> modIconCache = new ConcurrentHashMap<>();
+    private BufferedImage filterIcon;
 
     @Inject private Client client;
     @Inject private SpriteManager spriteManager;
@@ -34,6 +35,17 @@ public class ImageService implements ChatService
     @Override
     public void shutDown() {
 
+    }
+
+    public @Nullable BufferedImage getFilterIcon() {
+        if (filterIcon == null) {
+            try {
+                filterIcon = ImageUtil.loadImageResource(getClass(), "/com/modernchat/images/filter.png");
+            } catch (Exception e) {
+                log.warn("Failed to load filter icon: {}", e.getMessage());
+            }
+        }
+        return filterIcon;
     }
 
     public @Nullable Image getModIcon(int id) {

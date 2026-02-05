@@ -24,13 +24,16 @@ import com.modernchat.feature.NotificationChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.PeekChatFeature;
+import com.modernchat.service.ExtendedInputService;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
+import com.modernchat.service.ForceRecolorService;
 import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageService;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.service.ProfileService;
 import com.modernchat.service.SoundService;
+import com.modernchat.service.SpamFilterService;
 import com.modernchat.service.TutorialService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
@@ -116,6 +119,9 @@ public class ModernChatPlugin extends Plugin {
     @Inject private FilterService filterService;
     @Inject private MessageService messageService;
     @Inject private ImageService imageService;
+    @Inject private SpamFilterService spamFilterService;
+	@Inject private ExtendedInputService extendedInputService;
+	@Inject private ForceRecolorService forceRecolorService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
 	@Inject private PluginManager pluginManager;
@@ -152,9 +158,12 @@ public class ModernChatPlugin extends Plugin {
         filterService.startUp();
         messageService.startUp();
         privateChatService.startUp();
+        spamFilterService.startUp();
 		fontService.startUp();
 		soundService.startUp();
 		imageService.startUp();
+		extendedInputService.startUp();
+		forceRecolorService.startUp();
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/modernchat/images/icon.png");
 		if (icon == null) {
@@ -224,10 +233,13 @@ public class ModernChatPlugin extends Plugin {
         filterService.shutDown();
         messageService.shutDown();
         privateChatService.shutDown();
+        spamFilterService.shutDown();
 		fontService.shutDown();
 		soundService.shutDown();
 		tutorialService.shutDown();
 		imageService.shutDown();
+		extendedInputService.shutDown();
+		forceRecolorService.shutDown();
 
 		if (features != null) {
 			features.forEach((feature) -> {

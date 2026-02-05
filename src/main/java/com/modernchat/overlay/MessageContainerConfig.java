@@ -60,6 +60,10 @@ public interface MessageContainerConfig extends ChatColors
 
     int getFadeDuration();
 
+    default Color getTimestampColor() { return new Color(0, 0, 0, 0); }
+
+    default Color getTypePrefixColor() { return new Color(0, 0, 0, 0); }
+
     class Default implements MessageContainerConfig
     {
         @Override
