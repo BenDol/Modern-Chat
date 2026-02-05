@@ -1455,6 +1455,19 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return new Color(0, 0, 0, 0); // Fully transparent = use fallback
     }
 
+    @ConfigItem(
+        keyName = Keys.featurePeek_SourceTabIndicatorColor,
+        name = "Source Tab Indicator",
+        description = "Border color to highlight which tab is the peek overlay source. Set fully transparent to disable.",
+        position = 23,
+        section = peekOverlaySection
+    )
+    @Alpha
+    @Override
+    default Color featurePeek_SourceTabIndicatorColor() {
+        return new Color(0, 200, 255, 200); // Cyan highlight
+    }
+
     /* ------------ Feature: Commands ------------ */
 
     @ConfigItem(

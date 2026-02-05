@@ -528,6 +528,11 @@ public class ChatOverlay extends OverlayPanel
         g.setColor(config.getTabBarBackgroundColor());
         g.fillRoundRect(x, y, width, h, 8, 8);
 
+        // Peek source indicator config (outside loop for efficiency)
+        final String peekSourceKey = mainConfig.featurePeek_SourceTabKey();
+        final Color peekIndicatorColor = mainConfig.featurePeek_SourceTabIndicatorColor();
+        final boolean showPeekIndicator = peekIndicatorColor.getAlpha() > 0;
+
         int cx = x + 4 - tabsScrollPx;
         int filteredIdx = 0;
 
@@ -572,6 +577,12 @@ public class ChatOverlay extends OverlayPanel
             g.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
             g.setColor(selected ? config.getTabBorderSelectedColor() : config.getTabBorderColor());
             g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
+
+            // Peek source indicator border
+            if (showPeekIndicator && t.getKey().equals(peekSourceKey)) {
+                g.setColor(peekIndicatorColor);
+                g.drawRoundRect(bounds.x + 1, bounds.y + 1, bounds.width - 2, bounds.height - 2, r - 1, r - 1);
+            }
 
             // Label (with subtle shadow)
             g.setFont(tabFont);

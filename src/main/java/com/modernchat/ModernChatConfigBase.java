@@ -171,6 +171,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_SuppressFadeAtGE = "featurePeek_SuppressFadeAtGE";
         String featurePeek_TimestampColor = "featurePeek_TimestampColor";
         String featurePeek_TypePrefixColor = "featurePeek_TypePrefixColor";
+        String featurePeek_SourceTabIndicatorColor = "featurePeek_SourceTabIndicatorColor";
 
         // Timestamp and type prefix colors
         String featureRedesign_TimestampColor = "featureRedesign_TimestampColor";
@@ -406,6 +407,7 @@ public interface ModernChatConfigBase extends
 
     Color featurePeek_TimestampColor();
     Color featurePeek_TypePrefixColor();
+    Color featurePeek_SourceTabIndicatorColor();
 
     static JsonObject buildJsonFromConfig(ModernChatConfigBase c) {
         JsonObject j = new JsonObject();
@@ -592,6 +594,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featurePeek_SuppressFadeAtGE() { return getBool(Keys.featurePeek_SuppressFadeAtGE, DEFAULTS.featurePeek_SuppressFadeAtGE()); }
         @Override public Color featurePeek_TimestampColor() { return getColor(Keys.featurePeek_TimestampColor, DEFAULTS.featurePeek_TimestampColor()); }
         @Override public Color featurePeek_TypePrefixColor() { return getColor(Keys.featurePeek_TypePrefixColor, DEFAULTS.featurePeek_TypePrefixColor()); }
+        @Override public Color featurePeek_SourceTabIndicatorColor() { return getColor(Keys.featurePeek_SourceTabIndicatorColor, DEFAULTS.featurePeek_SourceTabIndicatorColor()); }
 
         // Commands
         @Override public boolean featureCommands_Enabled() { return getBool(Keys.featureCommands_Enabled, DEFAULTS.featureCommands_Enabled()); }
