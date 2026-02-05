@@ -1027,7 +1027,7 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onDialogOptionsOpenedEvent(DialogOptionsOpenedEvent e) {
-        clientThread.invoke(() -> showLegacyChat());
+        clientThread.invokeLater(() -> showLegacyChat());
     }
 
     @Subscribe

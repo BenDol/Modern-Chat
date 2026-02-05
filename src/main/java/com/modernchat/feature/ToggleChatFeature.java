@@ -220,7 +220,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	@Subscribe
 	public void onDialogOptionsOpenedEvent(DialogOptionsOpenedEvent e) {
-		clientThread.invoke(() -> {
+		clientThread.invokeLater(() -> {
 			if (chatProxy.isLegacyHidden()) {
 				chatProxy.ensureLegacyChatVisible();
 				autoHide = true;
