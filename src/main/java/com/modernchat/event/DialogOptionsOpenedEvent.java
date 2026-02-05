@@ -6,5 +6,5 @@ import net.runelite.api.widgets.Widget;
 @Value
 public class DialogOptionsOpenedEvent
 {
-    Widget widget;
+    int groupId;
 }

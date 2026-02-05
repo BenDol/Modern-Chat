@@ -16,17 +16,12 @@ import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.event.ChatMenuOpenedEvent;
-import com.modernchat.event.ChatPrivateMessageSentEvent;
 import com.modernchat.event.ChatResizedEvent;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.DialogOptionsOpenedEvent;
-import com.modernchat.event.LeftDialogClosedEvent;
-import com.modernchat.event.LeftDialogOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.event.NavigateHistoryEvent;
-import com.modernchat.event.RightDialogClosedEvent;
-import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.event.TabChangeEvent;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
@@ -1028,26 +1023,6 @@ public class ChatOverlay extends OverlayPanel
 
     public static String tabKey(ChatMode mode) {
         return mode.name();
-    }
-
-    @Subscribe
-    public void onLeftDialogOpenedEvent(LeftDialogOpenedEvent e) {
-        clientThread.invoke(() -> showLegacyChat());
-    }
-
-    @Subscribe
-    public void onLeftDialogClosedEvent(LeftDialogClosedEvent e) {
-        clientThread.invokeLater(() -> hideLegacyChat());
-    }
-
-    @Subscribe
-    public void onRightDialogOpenedEvent(RightDialogOpenedEvent e) {
-        clientThread.invoke(() -> showLegacyChat());
-    }
-
-    @Subscribe
-    public void onRightDialogClosedEvent(RightDialogClosedEvent e) {
-        clientThread.invokeLater(() -> hideLegacyChat());
     }
 
     @Subscribe
