@@ -148,7 +148,7 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         if (e.getGameState() == GameState.LOGGED_IN) {
             // Load history when logging in
             loadHistory();
-        } else if (e.getGameState() == GameState.LOGIN_SCREEN) {
+        } else if (e.getGameState() == GameState.LOGIN_SCREEN || e.getGameState() == GameState.HOPPING) {
             // Clear history when logging out
             history.clear();
         }

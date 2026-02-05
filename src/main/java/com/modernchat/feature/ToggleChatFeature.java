@@ -215,7 +215,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 				}
 			});
 			loggedIn = true;
-		} else if (e.getGameState() == GameState.LOGIN_SCREEN) {
+		} else if (e.getGameState() == GameState.LOGIN_SCREEN || e.getGameState() == GameState.HOPPING) {
 			loggedIn = false;
 		}
 	}

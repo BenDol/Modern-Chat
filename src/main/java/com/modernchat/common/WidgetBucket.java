@@ -107,7 +107,9 @@ public class WidgetBucket {
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged e) {
-        if (e.getGameState() == GameState.LOGIN_SCREEN || e.getGameState() == GameState.LOGGING_IN) {
+        if (e.getGameState() == GameState.LOGIN_SCREEN
+         || e.getGameState() == GameState.LOGGING_IN
+         || e.getGameState() == GameState.HOPPING) {
             chatBoxArea = null;
             chatWidget = null;
             chatParentWidget = null;

@@ -150,6 +150,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     private static final String MUTED_TABS_KEY = "mutedTabs";
 
     @Getter private volatile boolean sizeApplied;
+    @Getter private volatile boolean loggedIn;
 
     @Inject
     public ChatRedesignFeature(ModernChatConfig config, EventBus eventBus) {
@@ -479,7 +480,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged e) {
-        if (e.getGameState() == GameState.LOGGED_IN) {
+        if (e.getGameState() == GameState.LOGGED_IN && !loggedIn) {
             clientThread.invoke(() -> overlay.hideLegacyChat(false));
 
             overlay.refreshTabs();
@@ -488,6 +489,11 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
             if (mainConfig.featureToggle_StartHidden())
                 clientThread.invokeAtTickEnd(() -> overlay.setHidden(true));
+
+            loggedIn = true;
+        }
+        else if (e.getGameState() == GameState.LOGIN_SCREEN || e.getGameState() == GameState.HOPPING) {
+            loggedIn = false;
         }
     }
 
