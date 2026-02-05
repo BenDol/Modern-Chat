@@ -59,7 +59,9 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
@@ -69,14 +71,20 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginInstantiationException;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Rectangle;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -116,6 +124,7 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private ForceRecolorService forceRecolorService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
+	@Inject private PluginManager pluginManager;
 
 	//@Inject private ExampleChatFeature exampleChatFeature;
 	@Inject private ToggleChatFeature toggleChatFeature;
@@ -130,8 +139,10 @@ public class ModernChatPlugin extends Plugin {
 
 	private Set<ChatFeature<?>> features;
 	private final AtomicBoolean chatVisible = new AtomicBoolean(false);
+	private final AtomicBoolean keyRemapperReloading = new AtomicBoolean(false);
 	private volatile Anchor pmAnchor = null;
 	private volatile Rectangle lastChatBounds;
+	private boolean loggedIn;
 
 	@Provides
 	ModernChatConfig provideConfig(ConfigManager configManager) {
@@ -192,6 +203,9 @@ public class ModernChatPlugin extends Plugin {
 
 		// Force an initial re-anchor if enabled once widgets are available
 		lastChatBounds = null;
+
+        // Reload KeyRemappingPlugin to ensure it picks up our key listeners
+		SwingUtilities.invokeLater(this::reloadKeyRemappingPlugin);
 
 		if (!config.featureExample_Enabled()) {
 			toggleChatFeature.scheduleDeferredHide();
@@ -366,6 +380,14 @@ public class ModernChatPlugin extends Plugin {
 					.append(" in the OSRS settings for the 'Anchor Private Chat' feature."));
 			}
 		}
+		else if (key.equals(ModernChatConfigBase.Keys.featureToggle_Enabled)) {
+			boolean enabled = Boolean.parseBoolean(e.getNewValue());
+			if (enabled) {
+				clientThread.invokeAtTickEnd(() -> {
+					SwingUtilities.invokeLater(this::reloadKeyRemappingPlugin);
+				});
+			}
+		}
 	}
 
 	@Subscribe
@@ -403,9 +425,14 @@ public class ModernChatPlugin extends Plugin {
 		if (e.getGroupId() == InterfaceID.CHATBOX) {
 			lastChatBounds = null;
 
+			if (!config.featureToggle_Enabled()) {
+				clientThread.invokeLater(() -> chatProxy.setHidden(false));
+			}
+
 			// force once loaded
 			clientThread.invokeAtTickEnd(() -> maybeReanchor(true));
 		}
+
 		if (e.getGroupId() == InterfaceID.PM_CHAT) {
 			maybeReanchor(true);
 		}
@@ -454,17 +481,15 @@ public class ModernChatPlugin extends Plugin {
 	public void onGameStateChanged(GameStateChanged e) {
 		lastChatBounds = null;
 
-		if (e.getGameState() == GameState.LOGGED_IN) {
-			if (!config.featureToggle_Enabled()) {
-				clientThread.invokeLater(() -> chatProxy.setHidden(false));
-			}
-
+		if (e.getGameState() == GameState.LOGGED_IN && !loggedIn) {
 			if (!config.featureExample_Enabled()) {
 				Player localPlayer = client.getLocalPlayer();
 				if (localPlayer != null) {
 					startInstallIntro();
 				}
 			}
+
+			loggedIn = true;
 		}
 	}
 
@@ -600,5 +625,33 @@ public class ModernChatPlugin extends Plugin {
 
 			configManager.setConfiguration(ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featureExample_Enabled, true);
 		});
+	}
+
+	private void reloadKeyRemappingPlugin() {
+		// Prevent re-entry to avoid stack overflow
+		if (!keyRemapperReloading.compareAndSet(false, true)) {
+			return;
+		}
+
+		try {
+			for (Plugin plugin : pluginManager.getPlugins()) {
+				if (plugin.getClass().getSimpleName().equals("KeyRemappingPlugin")) {
+					try {
+						if (pluginManager.isPluginEnabled(plugin) && pluginManager.isPluginActive(plugin)) {
+							pluginManager.stopPlugin(plugin);
+							pluginManager.setPluginEnabled(plugin, false);
+							pluginManager.setPluginEnabled(plugin, true);
+							pluginManager.startPlugin(plugin);
+							log.debug("Reloaded KeyRemappingPlugin");
+						}
+					} catch (PluginInstantiationException e) {
+						log.error("Failed to reload KeyRemappingPlugin", e);
+					}
+					break;
+				}
+			}
+		} finally {
+			keyRemapperReloading.set(false);
+		}
 	}
 }

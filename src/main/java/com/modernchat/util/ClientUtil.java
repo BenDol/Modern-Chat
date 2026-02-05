@@ -1,8 +1,10 @@
 package com.modernchat.util;
 
+import com.modernchat.ModernChatPlugin;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatLineBuffer;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.IndexedSprite;
 import net.runelite.api.MessageNode;
 import net.runelite.api.Player;
@@ -11,12 +13,17 @@ import net.runelite.api.VarClientInt;
 import net.runelite.api.VarClientStr;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.ui.JagexColors;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
 import javax.annotation.Nullable;
 import java.awt.Canvas;
+import java.awt.Color;
 import java.awt.Image;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
@@ -27,6 +34,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 public class ClientUtil
 {
+    public static final String PRESS_ENTER_TO_CHAT = "Press Enter to Chat...";
+
     /**
      * MUST be on client thread.
      */
@@ -64,6 +73,11 @@ public class ClientUtil
 
         Widget dialogOptions = client.getWidget(InterfaceID.CHATMENU, 0);
         if (dialogOptions != null && !dialogOptions.isHidden()) {
+            return true;
+        }
+
+        Widget dialogOptions2 = client.getWidget(InterfaceID.OBJECTBOX, 0);
+        if (dialogOptions2 != null && !dialogOptions2.isHidden()) {
             return true;
         }
 
@@ -264,5 +278,35 @@ public class ClientUtil
 
         canvas.dispatchEvent(press);
         canvas.dispatchEvent(release);
+    }
+
+    public static void simulateEscapeKey(Client client) {
+        simulateKeyInput(client, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED);
+    }
+
+    public static void simulateSlashKey(Client client) {
+        simulateKeyInput(client, KeyEvent.VK_SLASH, KeyEvent.CHAR_UNDEFINED);
+    }
+
+    public static boolean isChatLocked(Client client) {
+        String input = getChatboxWidgetInput(client);
+        return input != null && input.endsWith(PRESS_ENTER_TO_CHAT);
+    }
+
+    public static String getChatboxWidgetInput(Client client) {
+        Widget chatboxInput = client.getWidget(InterfaceID.Chatbox.INPUT);
+        if (chatboxInput != null) {
+            return chatboxInput.getText();
+        }
+        return null;
+    }
+
+    public static void setChatboxWidgetInput(Widget widget, String input) {
+        String text = widget.getText();
+        int idx = text.indexOf(':');
+        if (idx != -1) {
+            String newText = text.substring(0, idx) + ": " + input;
+            widget.setText(newText);
+        }
     }
 }

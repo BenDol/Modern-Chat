@@ -5,7 +5,6 @@ import com.modernchat.ModernChatConfigBase;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.WidgetBucket;
-import com.modernchat.service.ExtendedInputService;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.DialogOptionsOpenedEvent;
@@ -13,7 +12,7 @@ import com.modernchat.event.LeftDialogClosedEvent;
 import com.modernchat.event.LeftDialogOpenedEvent;
 import com.modernchat.event.RightDialogClosedEvent;
 import com.modernchat.event.RightDialogOpenedEvent;
-import com.modernchat.util.ChatUtil;
+import com.modernchat.service.ExtendedInputService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +22,6 @@ import net.runelite.api.VarClientStr;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.VarClientStrChanged;
-import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
@@ -32,7 +30,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
-import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.util.Text;
 
@@ -41,7 +38,6 @@ import javax.inject.Singleton;
 import java.awt.Canvas;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
 
 import static com.modernchat.feature.ToggleChatFeature.ToggleChatFeatureConfig;
 
@@ -87,12 +83,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	private int deferDelayTicksLeft = 0;
 	private int deferTimeoutTicksLeft = 0;
 
-	// KeyRemapping escape detection (backup when Escape event is consumed)
-	private static final String PRESS_ENTER_TO_CHAT = "Press Enter to Chat...";
-	private boolean wasInTypingMode = false;
-	private long lastKeyRemappingHideTime = 0;
-	private static final long KEY_REMAPPING_HIDE_THROTTLE_MS = 150;
-
 	@Inject
 	public ToggleChatFeature(ModernChatConfig config, EventBus eventBus) {
 		super(config, eventBus);
@@ -136,9 +126,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		unregisterExtendedKeybind();
 
 		clientThread.invoke(() -> setHidden(false));
-
-		loggedIn = false;
-		autoHide = false;
 	}
 
 	@Override
@@ -173,29 +160,12 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			}
 		}
 
-		// HACK: When KeyRemappingPlugin is active and chat shows "Press Enter to Chat...",
-		// pressing Backspace would delete the placeholder instead of opening chat.
-		// We detect this and simulate a Slash key press to properly enter typing mode.
-		if (chatProxy.isLegacy() && !chatProxy.isHidden()) {
-			if (e.getKeyCode() != KeyEvent.VK_SLASH) {
-				Widget input = ClientUtil.getChatInputWidget(client);
-				if (input != null) {
-					String raw = input.getText();
-					if (raw != null) {
-						String t = Text.removeTags(raw).trim();
-						if (t.endsWith(PRESS_ENTER_TO_CHAT)) {
-							simulateSlashKey();
-							e.consume();
-						}
-					}
-				}
-			}
-		}
-
 		// Handle Escape before isConsumed check - KeyRemapping consumes Escape
 		// when exiting typing mode, but we still need to hide our chat
 		if (config.featureToggle_EscapeHides() && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
 			clientThread.invoke(this::hide);
+			if (!ChatProxy.isSyncingKeyRemapper())
+				e.consume();
 			return;
 		}
 
@@ -226,8 +196,11 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 				return;
 			}
 
-			setHidden(!chatProxy.isHidden());
+			boolean hidden = !chatProxy.isHidden();
+			setHidden(hidden);
 		});
+
+		e.consume();
 	}
 
 	@Subscribe
@@ -238,7 +211,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 				if (config.featureToggle_StartHidden()) {
 					scheduleDeferredHide();
 				} else {
-					show();
+					setHidden(false);
 				}
 			});
 			loggedIn = true;
@@ -320,7 +293,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	@Subscribe
 	public void onGameTick(GameTick tick) {
 		handleDeferredHide();
-		detectKeyRemappingEscape();
 	}
 
 	private boolean handleDeferredHide() {
@@ -377,14 +349,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		setHidden(false);
 	}
 
-	public void simulateEscapeKey() {
-		ClientUtil.simulateKeyInput(client, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED);
-	}
-
-	private void simulateSlashKey() {
-		ClientUtil.simulateKeyInput(client, KeyEvent.VK_SLASH, '/');
-	}
-
 	public void scheduleDeferredHide() {
 		deferredHideRequested = true;
 		deferDelayTicksLeft = DEFER_HIDE_DELAY_TICKS;
@@ -395,46 +359,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		deferredHideRequested = false;
 		deferDelayTicksLeft = 0;
 		deferTimeoutTicksLeft = 0;
-	}
-
-	/**
-	 * Detects when KeyRemappingPlugin has consumed Escape by watching for
-	 * the chatbox input changing to "Press Enter to Chat..."
-	 */
-	private void detectKeyRemappingEscape() {
-		if (chatProxy.isLegacy()) {
-			return;
-		}
-
-		if (!config.featureToggle_EscapeHides()) {
-			return;
-		}
-
-		// Throttle detection
-		long now = System.currentTimeMillis();
-		if ((now - lastKeyRemappingHideTime) < KEY_REMAPPING_HIDE_THROTTLE_MS) {
-			return;
-		}
-
-		Widget chatboxInput = client.getWidget(InterfaceID.Chatbox.INPUT);
-		if (chatboxInput == null) {
-			wasInTypingMode = false;
-			return;
-		}
-
-		String inputText = chatboxInput.getText();
-		boolean isInTypingMode = inputText != null && !inputText.contains(PRESS_ENTER_TO_CHAT);
-
-		// Detect transition from typing mode to non-typing mode
-		if (wasInTypingMode && !isInTypingMode) {
-			// KeyRemapping likely consumed Escape - hide our chat if visible
-			if (!chatProxy.isHidden()) {
-				lastKeyRemappingHideTime = now;
-				hide();
-			}
-		}
-
-		wasInTypingMode = isInTypingMode;
 	}
 
 	private void setHidden(boolean hidden) {
@@ -476,7 +400,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			return false;
 
         // empty chat placeholder
-        return !t.endsWith(": *") && !t.endsWith(PRESS_ENTER_TO_CHAT);
+        return !t.endsWith(": *") && !t.endsWith(ClientUtil.PRESS_ENTER_TO_CHAT);
     }
 
 	@Override

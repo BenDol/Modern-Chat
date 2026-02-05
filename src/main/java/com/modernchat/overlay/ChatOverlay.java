@@ -1,6 +1,7 @@
 package com.modernchat.overlay;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.common.ChatProxy;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
@@ -55,7 +56,6 @@ import net.runelite.api.Point;
 import net.runelite.api.ScriptID;
 import net.runelite.api.VarClientStr;
 import net.runelite.api.clan.ClanID;
-import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.MenuOpened;
@@ -299,10 +299,8 @@ public class ChatOverlay extends OverlayPanel
 
         refreshTabs();
 
+        clientThread.invoke(() -> setHidden(config.isStartHidden()));
         clientThread.invokeAtTickEnd(() -> selectTab(config.getDefaultChatMode()));
-
-        if (config.isStartHidden())
-            setHidden(true);
     }
 
     public void shutDown() {
@@ -2500,9 +2498,7 @@ public class ChatOverlay extends OverlayPanel
                     filterDropdown.close();
                 }
                 if (config.isClickOutsideToClose()) {
-                    clientThread.invokeLater(() -> {
-                        toggleChatFeatureProvider.get().simulateEscapeKey();
-                    });
+                    clientThread.invokeLater(() -> ClientUtil.simulateEscapeKey(client));
                 }
                 return false;
             }
@@ -2798,56 +2794,85 @@ public class ChatOverlay extends OverlayPanel
                 case KeyEvent.VK_ENTER: {
                     if (!inputFocused) {
                         focusInput();
-                        e.consume();
-                        return;
+
+                        if (!mainConfig.featureToggle_Enabled() || !mainConfig.featureToggle_AutoHideOnSend()) {
+                            ChatProxy.syncKeyRemapperState(client, false);
+                        }
+
+                        if (!ChatProxy.isSyncingKeyRemapper())
+                            e.consume();
+                        break;
                     }
+
                     commitInput();
 
                     if (!mainConfig.featureToggle_Enabled() || !mainConfig.featureToggle_AutoHideOnSend()) {
                         unfocusInput();
+                        ChatProxy.syncKeyRemapperState(client, true);
+
+                        if (!ChatProxy.isSyncingKeyRemapper())
+                            e.consume();
                     }
                     break;
                 }
                 case KeyEvent.VK_ESCAPE:
                     // Escape is handled by ToggleChatFeature to avoid duplicate calls
                     // and ensure KeyRemapping sees the event to exit typing mode
+                    if (!mainConfig.featureToggle_Enabled()) {
+                        if (inputFocused) {
+                            unfocusInput();
+                        }
+                        ChatProxy.syncKeyRemapperState(client, true);
+                        if (!ChatProxy.isSyncingKeyRemapper())
+                            e.consume();
+                    }
                     break;
                 case KeyEvent.VK_TAB: {
-                    if (activeTab != null && !tabOrder.isEmpty()) {
-                        final int size = tabOrder.size();
-                        final int dir = e.isShiftDown() ? -1 : 1;
-                        int currentIndex = tabOrder.indexOf(activeTab);
-                        if (currentIndex < 0) currentIndex = 0;
+                    if (inputFocused) {
+                        if (activeTab != null && !tabOrder.isEmpty()) {
+                            final int size = tabOrder.size();
+                            final int dir = e.isShiftDown() ? -1 : 1;
+                            int currentIndex = tabOrder.indexOf(activeTab);
+                            if (currentIndex < 0) currentIndex = 0;
 
-                        // wrap properly even when dir is -1
-                        int nextIndex = Math.floorMod(currentIndex + dir, size);
-                        selectTab(tabOrder.get(nextIndex));
+                            // wrap properly even when dir is -1
+                            int nextIndex = Math.floorMod(currentIndex + dir, size);
+                            selectTab(tabOrder.get(nextIndex));
+                        }
+                        e.consume();
                     }
-                    e.consume();
                     break;
                 }
                 case KeyEvent.VK_A: {
-                    if (inputFocused && ctrl) {
-                        selAnchor = 0; caret = inputBuf.length(); setSelectionRange(0, caret);
+                    if (inputFocused) {
+                        if (ctrl) {
+                            selAnchor = 0;
+                            caret = inputBuf.length();
+                            setSelectionRange(0, caret);
+                        }
                         e.consume();
                     }
                     break;
                 }
                 case KeyEvent.VK_C: {
-                    if (inputFocused && ctrl && hasSelection()) {
-                        int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
-                        copyToClipboard(inputBuf.substring(lo, hi));
+                    if (inputFocused) {
+                        if (ctrl && hasSelection()){
+                            int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
+                            copyToClipboard(inputBuf.substring(lo, hi));
+                        }
                         e.consume();
                     }
                     break;
                 }
                 case KeyEvent.VK_X: {
-                    if (inputFocused && ctrl && hasSelection()) {
-                        int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
-                        copyToClipboard(inputBuf.substring(lo, hi));
-                        deleteSelection();
+                    if (inputFocused) {
+                        if (ctrl && hasSelection()) {
+                            int lo = Math.min(selStart, selEnd), hi = Math.max(selStart, selEnd);
+                            copyToClipboard(inputBuf.substring(lo, hi));
+                            deleteSelection();
+                            syncChatInputLater();
+                        }
                         e.consume();
-                        syncChatInputLater();
                     }
                     break;
                 }
@@ -2869,6 +2894,11 @@ public class ChatOverlay extends OverlayPanel
                         }
                     }*/
                     break;
+                }
+                default: {
+                    if (inputFocused && e.getKeyChar() != KeyEvent.CHAR_UNDEFINED) {
+                        e.consume();
+                    }
                 }
             }
             // keep caret visible after nav/edit
