@@ -54,6 +54,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
@@ -418,6 +419,11 @@ public class ModernChatPlugin extends Plugin {
 		else if (e.getGroupId() == InterfaceID.CHATMENU) {
 			eventBus.post(new DialogOptionsOpenedEvent(widgetBucket.getDialogOptions()));
 		}
+		else if (e.getGroupId() == InterfaceID.OBJECTBOX) {
+			// Object box uses the chatbox interface ID but is a different widget
+			// so we need to ensure the chatbox is visible when it loads
+			eventBus.post(new DialogOptionsOpenedEvent(widgetBucket.getDialogOptions()));
+		}
 	}
 
 	@Subscribe
@@ -435,6 +441,11 @@ public class ModernChatPlugin extends Plugin {
 			eventBus.post(new RightDialogClosedEvent(widgetBucket.getDialogRight()));
 		}
 		else if (e.getGroupId() == InterfaceID.CHATMENU) {
+			eventBus.post(new DialogOptionsClosedEvent(widgetBucket.getDialogOptions()));
+		}
+		else if (e.getGroupId() == InterfaceID.OBJECTBOX) {
+			// Object box uses the chatbox interface ID but is a different widget
+			// so we need to ensure the chatbox is visible when it loads
 			eventBus.post(new DialogOptionsClosedEvent(widgetBucket.getDialogOptions()));
 		}
 	}
@@ -462,12 +473,6 @@ public class ModernChatPlugin extends Plugin {
 		boolean isPrivate = ChatUtil.isPrivateMessage(e.getType());
 		if (isPrivate) {
 			clientThread.invoke(() -> maybeReanchor(true));
-		}
-
-		// MSGBOX messages often require the chat to be open to be seen,
-		// so if we receive one while hidden, unhide to show it
-		if (e.getType() == ChatMessageType.MESBOX && chatProxy.isHidden()) {
-			chatProxy.setHidden(false);
 		}
 
 		if (chatProxy.isHidden() || !chatProxy.isTabOpen(e)) {
