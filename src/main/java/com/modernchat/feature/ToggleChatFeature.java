@@ -160,8 +160,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		// when exiting typing mode, but we still need to hide our chat
 		if (config.featureToggle_EscapeHides() && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
 			clientThread.invoke(this::hide);
-			if (!ChatProxy.isSyncingKeyRemapper())
-				e.consume();
+			e.consume();
 			return;
 		}
 
