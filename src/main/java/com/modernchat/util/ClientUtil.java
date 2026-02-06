@@ -309,4 +309,18 @@ public class ClientUtil
             widget.setText(newText);
         }
     }
+
+    public static boolean isDialogOpen(Client client) {
+        return isHidden(client, InterfaceID.Chatbox.MES_LAYER_HIDE)
+            || isHidden(client, InterfaceID.Chatbox.CHATDISPLAY);
+    }
+
+    boolean isOptionsDialogOpen(Client client) {
+        return client.getWidget(InterfaceID.Chatmenu.OPTIONS) != null;
+    }
+
+    public static boolean isHidden(Client client, int component) {
+        Widget w = client.getWidget(component);
+        return w == null || w.isSelfHidden();
+    }
 }

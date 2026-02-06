@@ -8,10 +8,6 @@ import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.DialogOptionsOpenedEvent;
-import com.modernchat.event.LeftDialogClosedEvent;
-import com.modernchat.event.LeftDialogOpenedEvent;
-import com.modernchat.event.RightDialogClosedEvent;
-import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.service.ExtendedInputService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
@@ -234,46 +230,8 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	}
 
 	@Subscribe
-	public void onLeftDialogOpenedEvent(LeftDialogOpenedEvent e) {
-		clientThread.invoke(() -> {
-			if (chatProxy.isLegacyHidden()) {
-				chatProxy.ensureLegacyChatVisible();
-				autoHide = true;
-			}
-		});
-	}
-
-	@Subscribe
-	public void onLeftDialogClosedEvent(LeftDialogClosedEvent e) {
-		clientThread.invoke(() -> {
-			if (autoHide && !chatProxy.isHidden() && chatProxy.isLegacy()) {
-				chatProxy.setHidden(true);
-			}
-		});
-	}
-
-	@Subscribe
-	public void onRightDialogOpenedEvent(RightDialogOpenedEvent e) {
-		clientThread.invoke(() -> {
-			if (chatProxy.isLegacyHidden()) {
-				chatProxy.ensureLegacyChatVisible();
-				autoHide = true;
-			}
-		});
-	}
-
-	@Subscribe
-	public void onRightDialogClosedEvent(RightDialogClosedEvent e) {
-		clientThread.invoke(() -> {
-			if (autoHide && !chatProxy.isHidden() && chatProxy.isLegacy()) {
-				chatProxy.setHidden(true);
-			}
-		});
-	}
-
-	@Subscribe
 	public void onDialogOptionsOpenedEvent(DialogOptionsOpenedEvent e) {
-		clientThread.invoke(() -> {
+		clientThread.invokeLater(() -> {
 			if (chatProxy.isLegacyHidden()) {
 				chatProxy.ensureLegacyChatVisible();
 				autoHide = true;

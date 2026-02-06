@@ -12,15 +12,12 @@ import com.modernchat.event.DialogOptionsOpenedEvent;
 import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
-import com.modernchat.event.LeftDialogClosedEvent;
-import com.modernchat.event.LeftDialogOpenedEvent;
 import com.modernchat.event.NotificationEvent;
-import com.modernchat.event.RightDialogClosedEvent;
-import com.modernchat.event.RightDialogOpenedEvent;
 import com.modernchat.feature.ChatFeature;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
 import com.modernchat.feature.NotificationChatFeature;
+import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.feature.PeekChatFeature;
@@ -35,9 +32,9 @@ import com.modernchat.service.ProfileService;
 import com.modernchat.service.SoundService;
 import com.modernchat.service.SpamFilterService;
 import com.modernchat.service.TutorialService;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
-import com.modernchat.util.ChatUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
@@ -54,14 +51,11 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
 import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
-import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
@@ -74,9 +68,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
-import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.NavigationButton;
-import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
@@ -84,7 +76,6 @@ import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Rectangle;
-import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -139,6 +130,7 @@ public class ModernChatPlugin extends Plugin {
 
 	private Set<ChatFeature<?>> features;
 	private final AtomicBoolean chatVisible = new AtomicBoolean(false);
+	private final AtomicBoolean dialogOpen = new AtomicBoolean(false);
 	private final AtomicBoolean keyRemapperReloading = new AtomicBoolean(false);
 	private volatile Anchor pmAnchor = null;
 	private volatile Rectangle lastChatBounds;
@@ -219,6 +211,7 @@ public class ModernChatPlugin extends Plugin {
 
 	@Override
 	protected void shutDown() {
+		dialogOpen.set(false);
 		if (navButton != null) {
 			clientToolbar.removeNavigation(navButton);
 			navButton = null;
@@ -437,20 +430,8 @@ public class ModernChatPlugin extends Plugin {
 			maybeReanchor(true);
 		}
 
-		if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
-			eventBus.post(new LeftDialogOpenedEvent(widgetBucket.getDialogLeft()));
-		}
-		else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
-			eventBus.post(new RightDialogOpenedEvent(widgetBucket.getDialogRight()));
-		}
-		else if (e.getGroupId() == InterfaceID.CHATMENU) {
-			eventBus.post(new DialogOptionsOpenedEvent(widgetBucket.getDialogOptions()));
-		}
-		else if (e.getGroupId() == InterfaceID.OBJECTBOX) {
-			// Object box uses the chatbox interface ID but is a different widget
-			// so we need to ensure the chatbox is visible when it loads
-			eventBus.post(new DialogOptionsOpenedEvent(widgetBucket.getDialogOptions()));
-		}
+		int groupId = e.getGroupId();
+		clientThread.invokeAtTickEnd(() -> updateDialogState(groupId));
 	}
 
 	@Subscribe
@@ -461,20 +442,9 @@ public class ModernChatPlugin extends Plugin {
 		else if (e.getGroupId() == InterfaceID.PM_CHAT) {
 			resetSplitPmAnchor();
 		}
-		else if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
-			eventBus.post(new LeftDialogClosedEvent(widgetBucket.getDialogLeft()));
-		}
-		else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
-			eventBus.post(new RightDialogClosedEvent(widgetBucket.getDialogRight()));
-		}
-		else if (e.getGroupId() == InterfaceID.CHATMENU) {
-			eventBus.post(new DialogOptionsClosedEvent(widgetBucket.getDialogOptions()));
-		}
-		else if (e.getGroupId() == InterfaceID.OBJECTBOX) {
-			// Object box uses the chatbox interface ID but is a different widget
-			// so we need to ensure the chatbox is visible when it loads
-			eventBus.post(new DialogOptionsClosedEvent(widgetBucket.getDialogOptions()));
-		}
+
+		int groupId = e.getGroupId();
+		clientThread.invokeAtTickEnd(() -> updateDialogState(groupId));
 	}
 
 	@Subscribe
@@ -503,6 +473,17 @@ public class ModernChatPlugin extends Plugin {
 		if (chatProxy.isHidden() || !chatProxy.isTabOpen(e)) {
 			eventBus.post(new NotificationEvent(MESSAGE_RECEIVED,
 				e.getType(), e.getMessage(), true, isPrivate, chatProxy));
+		}
+	}
+
+	private void updateDialogState(int groupId) {
+		boolean isDialog = ClientUtil.isDialogOpen(client);
+		if (dialogOpen.getAndSet(isDialog) != isDialog) {
+			if (isDialog) {
+				eventBus.post(new DialogOptionsOpenedEvent(groupId));
+			} else {
+				eventBus.post(new DialogOptionsClosedEvent(groupId));
+			}
 		}
 	}
 
