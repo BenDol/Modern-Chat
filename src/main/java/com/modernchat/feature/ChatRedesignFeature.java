@@ -435,11 +435,6 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe(priority = -3) // run after ChatMessageManager
     public void onChatMessage(ChatMessage e) {
-        // Never show SPAM messages
-        if (ChatUtil.isSpamMessage(e.getType())) {
-            return;
-        }
-
         // Invoke chat filter check to let other plugins filter
         String filteredMessage = ChatUtil.invokeChatFilterCheck(client, eventBus, e);
         if (filteredMessage == null) {
