@@ -24,8 +24,6 @@ public class ChatProxy
     @Inject private Client client;
     @Inject private ClientThread clientThread;
 
-    private static final AtomicBoolean syncingKeyRemapper = new AtomicBoolean(false);
-
     public boolean isHidden() {
         if (modernChat.isEnabled())
             return modernChat.isHidden();
@@ -95,8 +93,6 @@ public class ChatProxy
     }
 
     public void setHidden(boolean hidden) {
-        syncKeyRemapperState(client, hidden);
-
         if (modernChat.isEnabled()) {
             modernChat.setHidden(hidden);
         } else {
@@ -106,29 +102,6 @@ public class ChatProxy
                 client.refreshChat();
             }
         }
-    }
-
-    public static void syncKeyRemapperState(Client client, boolean hiding) {
-        // Prevent re-entry to avoid stack overflow from simulated key events
-        if (!syncingKeyRemapper.compareAndSet(false, true)) {
-            return;
-        }
-
-        try {
-            if (hiding) {
-                if (!ClientUtil.isChatLocked(client))
-                    ClientUtil.simulateEscapeKey(client);
-            } else {
-                if (ClientUtil.isChatLocked(client))
-                    ClientUtil.simulateSlashKey(client);
-            }
-        } finally {
-            syncingKeyRemapper.set(false);
-        }
-    }
-
-    public static boolean isSyncingKeyRemapper() {
-        return syncingKeyRemapper.get();
     }
 
     public boolean isTabOpen(ChatMessage msg) {

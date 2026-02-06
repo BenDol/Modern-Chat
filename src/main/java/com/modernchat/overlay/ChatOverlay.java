@@ -1981,7 +1981,7 @@ public class ChatOverlay extends OverlayPanel
 
             if (!lastViewport.contains(e.getPoint())) {
                 if (config.isClickOutsideToClose()) {
-                    clientThread.invokeLater(() -> ClientUtil.simulateEscapeKey(client));
+                    setHidden(true);
                 }
                 return false;
             }
@@ -2263,13 +2263,7 @@ public class ChatOverlay extends OverlayPanel
                 case KeyEvent.VK_ENTER: {
                     if (!inputFocused) {
                         focusInput();
-
-                        if (!mainConfig.featureToggle_Enabled() || !mainConfig.featureToggle_AutoHideOnSend()) {
-                            ChatProxy.syncKeyRemapperState(client, false);
-                        }
-
-                        if (!ChatProxy.isSyncingKeyRemapper())
-                            e.consume();
+                        e.consume();
                         break;
                     }
 
@@ -2277,10 +2271,7 @@ public class ChatOverlay extends OverlayPanel
 
                     if (!mainConfig.featureToggle_Enabled() || !mainConfig.featureToggle_AutoHideOnSend()) {
                         unfocusInput();
-                        ChatProxy.syncKeyRemapperState(client, true);
-
-                        if (!ChatProxy.isSyncingKeyRemapper())
-                            e.consume();
+                        e.consume();
                     }
                     break;
                 }
@@ -2291,9 +2282,7 @@ public class ChatOverlay extends OverlayPanel
                         if (inputFocused) {
                             unfocusInput();
                         }
-                        ChatProxy.syncKeyRemapperState(client, true);
-                        if (!ChatProxy.isSyncingKeyRemapper())
-                            e.consume();
+                        e.consume();
                     }
                     break;
                 case KeyEvent.VK_TAB: {

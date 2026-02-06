@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
+import net.runelite.api.events.CommandExecuted;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.api.events.ScriptCallbackEvent;
@@ -19,6 +20,7 @@ import net.runelite.api.gameval.VarClientID;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
@@ -72,21 +74,18 @@ public class MessageService implements ChatService
             return;
         }
 
-        // Handle :: commands by triggering ChatInputManager via ScriptCallbackEvent
-        if (text.startsWith("::")) {
-            log.debug("Posting ScriptCallbackEvent for command: {}", text);
-
+        // Handle :: commands
+        if (text.trim().startsWith("::")) {
             clientThread.invoke(() -> {
-                // Set the chat input so ChatInputManager.runCommand() can read it
                 client.setVarcStrValue(VarClientID.CHATINPUT, text);
-
-                // Post ScriptCallbackEvent to trigger ChatInputManager
-                ScriptCallbackEvent event = new ScriptCallbackEvent();
-                event.setEventName("runeliteCommand");
-                eventBus.post(event);
+                String typedText = text.substring(2);
+                String[] split = typedText.split(" ");
+                if (split.length == 0)
+                    return;
+                String command = split[0];
+                String[] args = Arrays.copyOfRange(split, 1, split.length);
+                eventBus.post(new CommandExecuted(command, args));
             });
-
-            // Commands starting with :: are handled by plugins, don't send to game
             return;
         }
 
@@ -123,6 +122,7 @@ public class MessageService implements ChatService
         final int clanTypeValue = clanType.getValue();
 
         clientThread.invoke(() -> {
+            client.setVarcStrValue(VarClientID.CHATINPUT, text);
             client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
 
             eventBus.post(new ChatMessageSentEvent(text, modeValue, clanTypeValue));
