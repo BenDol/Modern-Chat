@@ -78,7 +78,6 @@ public class MessageContainer extends Overlay
     // State
     @Getter @Setter protected volatile boolean hidden = false;
     @Getter @Setter protected volatile boolean isPrivate = false;
-    @Getter @Setter protected volatile boolean isPeekOverlay = false;
     @Getter @Setter protected volatile float alpha = 1f;
     @Getter private volatile float fadeAlpha = 1f;
     @Getter private volatile long fadeStartAtMs = Long.MAX_VALUE;
@@ -442,9 +441,7 @@ public class MessageContainer extends Overlay
             senderName,
             receiverName,
             targetName,
-            line.getPrefix(),
-            line.getDuplicateKey(),
-            line.isCollapsed());
+            line.getPrefix());
     }
 
     public void pushLine(
@@ -456,20 +453,6 @@ public class MessageContainer extends Overlay
         String targetName,
         String prefix
     ) {
-        pushLine(s, type, timestamp, sender, receiver, targetName, prefix, null, false);
-    }
-
-    public void pushLine(
-        String s,
-        ChatMessageType type,
-        long timestamp,
-        String sender,
-        String receiver,
-        String targetName,
-        String prefix,
-        String duplicateKey,
-        boolean collapsed
-    ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
 
         Color baseColor = getColor(type);
@@ -479,14 +462,6 @@ public class MessageContainer extends Overlay
         rl.setSender(sender);
         rl.setReceiver(receiver);
         rl.setTargetName(targetName);
-        rl.setDuplicateKey(duplicateKey);
-        rl.setCollapsed(collapsed);
-
-        // If this is a collapsed message (has count suffix), remove previous messages with same key
-        if (collapsed && duplicateKey != null) {
-            lines.removeIf(line -> duplicateKey.equals(line.getDuplicateKey()));
-        }
-
         pushRich(rl);
     }
 

@@ -1111,15 +1111,6 @@ public class ChatOverlay extends OverlayPanel
                         selectPrivateTab(targetName);
                         focusInput();
                     });
-
-                // Add kick option for Friends Chat messages if user has permission
-                if (ChatUtil.isFriendsChatMessage(hit.getLine().getType()) && canKickFromFriendsChat()) {
-                    final String kickTarget = targetName;
-                    rootMenu.createMenuEntry(3)
-                        .setOption("Kick " + ColorUtil.wrapWithColorTag(kickTarget, Color.RED))
-                        .setType(MenuAction.RUNELITE)
-                        .onClick(me -> kickFromFriendsChat(kickTarget));
-                }
             }
         }
 
@@ -1168,28 +1159,6 @@ public class ChatOverlay extends OverlayPanel
     private String getLocalPlayerName() {
         Player lp = client.getLocalPlayer();
         return lp != null && lp.getName() != null ? Text.removeTags(lp.getName()) : "Player";
-    }
-
-    private boolean canKickFromFriendsChat() {
-        FriendsChatManager fcManager = client.getFriendsChatManager();
-        if (fcManager == null) {
-            return false;
-        }
-        FriendsChatRank myRank = fcManager.getMyRank();
-        FriendsChatRank kickRank = fcManager.getKickRank();
-        if (myRank == null || kickRank == null) {
-            return false;
-        }
-        return myRank.compareTo(kickRank) >= 0;
-    }
-
-    private void kickFromFriendsChat(String name) {
-        if (name == null || name.isBlank()) {
-            return;
-        }
-        clientThread.invokeLater(() -> {
-            client.runScript(ScriptID.FRIENDS_CHAT_SEND_KICK, name);
-        });
     }
 
     public void inputTick() {
@@ -1356,10 +1325,6 @@ public class ChatOverlay extends OverlayPanel
         return inputBuf.toString();
     }
 
-    private boolean isCurrentTabReadOnly() {
-        return false; // Tab read-only feature removed
-    }
-
     private void commitInput() {
         final String text = getInputText().trim();
         if (!text.isEmpty()) {
@@ -1430,9 +1395,7 @@ public class ChatOverlay extends OverlayPanel
             line.getTimestamp(),
             line.getSenderName(),
             line.getReceiverName(),
-            line.getPrefix(),
-            line.getDuplicateKey(),
-            line.isCollapsed());
+            line.getPrefix());
     }
 
     public void addMessage(
@@ -1442,19 +1405,6 @@ public class ChatOverlay extends OverlayPanel
         String senderName,
         String receiverName,
         String prefix
-    ) {
-        addMessage(line, type, timestamp, senderName, receiverName, prefix, null, false);
-    }
-
-    public void addMessage(
-        String line,
-        ChatMessageType type,
-        long timestamp,
-        String senderName,
-        String receiverName,
-        String prefix,
-        String duplicateKey,
-        boolean collapsed
     ) {
         ChatMode mode = ChatUtil.toChatMode(type);
         String targetName = type == ChatMessageType.PRIVATECHATOUT || type == ChatMessageType.FRIENDNOTIFICATION
@@ -1474,16 +1424,16 @@ public class ChatOverlay extends OverlayPanel
                 Tab pmTab = tabsByKey.get(tabKey);
                 MessageContainer pmContainer = privateContainers.get(targetName);
                 if (pmContainer != null) {
-                    pmContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-                    if (pmTab != null && messageContainer != pmContainer && !collapsed && pmTab.getUnread() < 99) {
+                    pmContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);
+                    if (pmTab != null && messageContainer != pmContainer && pmTab.getUnread() < 99) {
                         pmTab.incrementUnread();
                     }
                 }
             } else if (config.isOpenTabOnIncomingPM() && type != ChatMessageType.PRIVATECHATOUT && type != ChatMessageType.FRIENDNOTIFICATION) {
                 Pair<Tab, MessageContainer> pair = openTabForPrivateChat(targetName);
                 if (pair != null) {
-                    pair.getRight().pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-                    if (messageContainer != pair.getRight() && !collapsed && pair.getLeft().getUnread() < 99) {
+                    pair.getRight().pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);
+                    if (messageContainer != pair.getRight() && pair.getLeft().getUnread() < 99) {
                         pair.getLeft().incrementUnread();
                     }
                 }
@@ -1494,8 +1444,8 @@ public class ChatOverlay extends OverlayPanel
         MessageContainer modeContainer = messageContainers.get(mode.name());
         Tab modeTab = tabsByKey.get(tabKey(mode));
         if (modeContainer != null) {
-            modeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-            if (modeTab != null && messageContainer != modeContainer && !collapsed && modeTab.getUnread() < 99) {
+            modeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);
+            if (modeTab != null && messageContainer != modeContainer && modeTab.getUnread() < 99) {
                 modeTab.incrementUnread();
             }
         }
@@ -1578,16 +1528,6 @@ public class ChatOverlay extends OverlayPanel
             container.setPrivate(true);
             container.startUp(config.getMessageContainerConfig(), ChatMode.PRIVATE);
             privateContainers.put(targetName, container);
-
-            // Copy existing private messages for this target from the Public container
-            MessageContainer publicContainer = messageContainers.get(ChatMode.PUBLIC.name());
-            if (publicContainer != null) {
-                for (RichLine rl : publicContainer.getLines()) {
-                    if (ChatUtil.isPrivateMessage(rl.getType()) && targetName.equals(rl.getTargetName())) {
-                        container.copyLine(rl);
-                    }
-                }
-            }
         }
         return container;
     }
@@ -1969,7 +1909,6 @@ public class ChatOverlay extends OverlayPanel
     private final class ChatMouse implements MouseListener, MouseWheelListener
     {
         private boolean clickThroughNotificationSent = false;
-        private boolean scrollDisabledNotificationSent = false;
 
         private boolean shouldBlockClickThrough(MouseEvent e) {
             boolean shouldBlock = !config.isAllowClickThrough()
@@ -2023,18 +1962,6 @@ public class ChatOverlay extends OverlayPanel
                 clampTabScroll(tabsBarBounds.width);
                 e.consume();
                 return e;
-            }
-
-            // Warn once if scrolling is disabled but user tries to scroll in message area
-            if (!config.getMessageContainerConfig().isScrollable()
-                    && lastViewport != null
-                    && lastViewport.contains(e.getPoint())
-                    && !scrollDisabledNotificationSent) {
-                notificationService.pushHelperNotification(new ChatMessageBuilder()
-                    .append("Scrolling is disabled because ")
-                    .append(Color.ORANGE, "Scrollable")
-                    .append(" is turned off in the settings."));
-                scrollDisabledNotificationSent = true;
             }
 
             return e;
