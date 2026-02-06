@@ -504,11 +504,18 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe(priority = -3) // run after ChatMessageManager
     public void onChatMessage(ChatMessage e) {
+        // Invoke chat filter check to let other plugins filter
+        String filteredMessage = ChatUtil.invokeChatFilterCheck(client, eventBus, e);
+        if (filteredMessage == null) {
+            log.debug("Message blocked by chat filter plugin");
+            return;
+        }
+
         if (ChatUtil.isNpcMessage(e) && !config.featureRedesign_ShowNpc())
             return;
 
         // Use the filtered message text
-        MessageLine line = ChatUtil.createMessageLine(e, client, false);
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages

@@ -242,7 +242,13 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Subscribe(priority = -3) // run after ChatMessageManager
 	public void onChatMessage(ChatMessage e) {
-        MessageLine line = ChatUtil.createMessageLine(e, client, false);
+		// Invoke chat filter check to let other plugins filter (and get collapsed message text)
+		String filteredMessage = ChatUtil.invokeChatFilterCheck(client, eventBus, e);
+		if (filteredMessage == null) {
+			return; // Message blocked by chat filter plugin
+		}
+
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages

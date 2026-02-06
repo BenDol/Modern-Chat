@@ -117,16 +117,49 @@ public class MessageService implements ChatService
                 return; // skip the rest of the logic
         }
 
-        lastSendTimestamp = System.currentTimeMillis();
-
         final int modeValue = selectedMode.getValue();
         final int clanTypeValue = clanType.getValue();
 
-        clientThread.invoke(() -> {
-            client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
+        // Post chatboxInput ScriptCallbackEvent for other plugins to intercept
+        // ChatInputManager.handleInput() reads: objectStack[n-1]=text, intStack[n-2]=chatType, intStack[n-1]=clanTarget
+        final boolean[] consumed = {false};
 
-            eventBus.post(new ChatMessageSentEvent(text, modeValue, clanTypeValue));
+        clientThread.invoke(() -> {
+            Object[] objectStack = client.getObjectStack();
+            int[] intStack = client.getIntStack();
+            int origObjectStackSize = client.getObjectStackSize();
+            int origIntStackSize = client.getIntStackSize();
+
+            objectStack[origObjectStackSize] = text;
+            intStack[origIntStackSize] = modeValue;
+            intStack[origIntStackSize + 1] = clanTypeValue;
+            client.setObjectStackSize(origObjectStackSize + 1);
+            client.setIntStackSize(origIntStackSize + 2);
+
+            log.debug("Posting ScriptCallbackEvent for chatboxInput: {}", text);
+            ScriptCallbackEvent chatboxEvent = new ScriptCallbackEvent();
+            chatboxEvent.setEventName("chatboxInput");
+            eventBus.post(chatboxEvent);
+
+            // Check if consumed (ChatInputManager sets objectStack[n-1] = "" if consumed)
+            consumed[0] = "".equals(objectStack[origObjectStackSize]);
+
+            // Restore stack sizes
+            client.setObjectStackSize(origObjectStackSize);
+            client.setIntStackSize(origIntStackSize);
+
+            if (!consumed[0]) {
+                client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
+                eventBus.post(new ChatMessageSentEvent(text, modeValue, clanTypeValue));
+            }
         });
+
+        if (consumed[0]) {
+            log.debug("Message consumed by another plugin: {}", text);
+            return;
+        }
+
+        lastSendTimestamp = System.currentTimeMillis();
     }
 
     public void sendPrivateChat(String text, String targetName) {
@@ -149,14 +182,47 @@ public class MessageService implements ChatService
             return;
         }
 
-        lastSendTimestamp = System.currentTimeMillis();
+        // Post privateMessage ScriptCallbackEvent for other plugins to intercept
+        // ChatInputManager.handlePrivateMessage() reads: objectStack[n-2]=target, objectStack[n-1]=message
+        final boolean[] consumed = {false};
 
         clientThread.invoke(() -> {
-            client.runScript(ScriptID.PRIVMSG, targetName, text);
+            Object[] objectStack = client.getObjectStack();
+            int[] intStack = client.getIntStack();
+            int origObjectStackSize = client.getObjectStackSize();
+            int origIntStackSize = client.getIntStackSize();
 
-            eventBus.post(new SubmitHistoryEvent(text));
-            eventBus.post(new ChatPrivateMessageSentEvent(text, targetName));
+            objectStack[origObjectStackSize] = targetName;
+            objectStack[origObjectStackSize + 1] = text;
+            intStack[origIntStackSize] = 0; // ChatInputManager checks intStack[n-1] for consumed flag
+            client.setObjectStackSize(origObjectStackSize + 2);
+            client.setIntStackSize(origIntStackSize + 1);
+
+            log.debug("Posting ScriptCallbackEvent for privateMessage: {} -> {}", targetName, text);
+            ScriptCallbackEvent privateMessageEvent = new ScriptCallbackEvent();
+            privateMessageEvent.setEventName("privateMessage");
+            eventBus.post(privateMessageEvent);
+
+            // Check if consumed (ChatInputManager sets intStack[n-1] = 1 if consumed)
+            consumed[0] = intStack[origIntStackSize] == 1;
+
+            // Restore stack sizes
+            client.setObjectStackSize(origObjectStackSize);
+            client.setIntStackSize(origIntStackSize);
+
+            if (!consumed[0]) {
+                client.runScript(ScriptID.PRIVMSG, targetName, text);
+                eventBus.post(new SubmitHistoryEvent(text));
+                eventBus.post(new ChatPrivateMessageSentEvent(text, targetName));
+            }
         });
+
+        if (consumed[0]) {
+            log.debug("Private message consumed by another plugin: {}", text);
+            return;
+        }
+
+        lastSendTimestamp = System.currentTimeMillis();
     }
 
     private void notifyLocked(String targetName, boolean isPrivate) {

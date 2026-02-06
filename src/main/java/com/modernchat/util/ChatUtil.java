@@ -204,6 +204,22 @@ public class ChatUtil
         return createMessageLine(e, client, requireLocalPlayer, null);
     }
 
+    /** Pattern to detect ChatFilterPlugin's collapse suffix like " (2)", " (15)" etc. */
+    private static final Pattern COLLAPSE_PATTERN = Pattern.compile(" \\(\\d+\\)$");
+
+    /** Message types that ChatFilterPlugin considers collapsible (game message types) */
+    private static final Set<ChatMessageType> COLLAPSIBLE_MESSAGETYPES = EnumSet.of(
+        ChatMessageType.ENGINE,
+        ChatMessageType.GAMEMESSAGE,
+        ChatMessageType.ITEM_EXAMINE,
+        ChatMessageType.NPC_EXAMINE,
+        ChatMessageType.OBJECT_EXAMINE,
+        ChatMessageType.SPAM,
+        ChatMessageType.PUBLICCHAT,
+        ChatMessageType.MODCHAT,
+        ChatMessageType.NPC_SAY
+    );
+
     /**
      * Create a MessageLine from a ChatMessage, optionally using a filtered message text.
      *
@@ -230,7 +246,9 @@ public class ChatUtil
         Pair<String, String> senderReceiver = ChatUtil.getSenderAndReceiver(e, localPlayerName);
 
         ChatMessageType type = e.getType();
-        String msg = e.getMessage();
+        String originalMsg = e.getMessage();
+        // Use filtered message if provided, otherwise use original
+        String msg = filteredMessage != null ? filteredMessage : originalMsg;
         String[] params = msg.split("\\|", 3);
         String receiverName = senderReceiver.getRight();
         String senderName = senderReceiver.getLeft();
@@ -259,7 +277,17 @@ public class ChatUtil
 
         builder.append(message, false);
 
-        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix);
+        // Generate duplicate key from name + original message (for collapse detection)
+        String duplicateKey = e.getName() + ":" + originalMsg;
+
+        // Check if the filtered message has a collapse suffix like " (2)"
+        // Only detect collapse for COLLAPSIBLE_MESSAGETYPES (game message types)
+        boolean collapsed = filteredMessage != null && originalMsg != null
+            && COLLAPSIBLE_MESSAGETYPES.contains(type)
+            && COLLAPSE_PATTERN.matcher(filteredMessage).find()
+            && !originalMsg.equals(filteredMessage); // only if filtered differs from original
+
+        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed);
     }
 
     public static String getPrefix(ChatMessageType type) {
@@ -311,5 +339,56 @@ public class ChatUtil
 
     public static boolean isSpamMessage(ChatMessageType type) {
         return type == ChatMessageType.SPAM;
+    }
+
+    private static final String SCRIPT_EVENT_CHAT_FILTER_CHECK = "chatFilterCheck";
+
+    /**
+     * Invoke chatFilterCheck by posting a ScriptCallbackEvent.
+     * This allows ChatFilterPlugin and other filter plugins to process the message.
+     *
+     * @param client the game client
+     * @param eventBus the event bus to post the callback event
+     * @param e the chat message to check
+     * @return the filtered message text, or null if message should be blocked
+     */
+    public static @Nullable String invokeChatFilterCheck(Client client, EventBus eventBus, ChatMessage e) {
+        int[] intStack = client.getIntStack();
+        int intStackSize = client.getIntStackSize();
+        Object[] objectStack = client.getObjectStack();
+        int objectStackSize = client.getObjectStackSize();
+
+        // Set up stack: [filterResult, messageType, messageId]
+        // filterResult starts as 1 (show), plugins set to 0 to block
+        client.setIntStackSize(intStackSize + 3);
+        intStack[intStackSize] = 1; // filter result - default show
+        intStack[intStackSize + 1] = e.getType().getType(); // message type
+        intStack[intStackSize + 2] = e.getMessageNode().getId(); // message id
+
+        // Set up object stack with message text
+        client.setObjectStackSize(objectStackSize + 1);
+        objectStack[objectStackSize] = e.getMessage();
+
+        // Fire the callback event for other plugins to process
+        ScriptCallbackEvent callbackEvent = new ScriptCallbackEvent();
+        callbackEvent.setEventName(SCRIPT_EVENT_CHAT_FILTER_CHECK);
+        eventBus.post(callbackEvent);
+
+        // Read the filter result (plugins may have set it to 0 to block)
+        int filterResult = intStack[intStackSize];
+
+        // Read the (possibly modified) message
+        String filteredMessage = (String) objectStack[objectStackSize];
+
+        // Restore stack sizes
+        client.setIntStackSize(intStackSize);
+        client.setObjectStackSize(objectStackSize);
+
+        // Return null if blocked, otherwise return the filtered message
+        if (filterResult == 0) {
+            return null;
+        }
+
+        return filteredMessage;
     }
 }
