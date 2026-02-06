@@ -14,6 +14,7 @@ import com.modernchat.draw.TimestampSegment;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.service.FontService;
+import com.modernchat.service.ForceRecolorService;
 import com.modernchat.service.ImageService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ColorUtil;
@@ -67,6 +68,8 @@ public class MessageContainer extends Overlay
     @Inject protected MouseManager mouseManager;
     @Inject protected FontService fontService;
     @Inject protected ImageService imageService;
+    @Inject protected ChannelFilterState channelFilterState;
+    @Inject protected ForceRecolorService forceRecolorService;
 
     // Config
     @Getter protected MessageContainerConfig config;
@@ -78,6 +81,8 @@ public class MessageContainer extends Overlay
     // State
     @Getter @Setter protected volatile boolean hidden = false;
     @Getter @Setter protected volatile boolean isPrivate = false;
+    @Getter @Setter protected volatile boolean applyChannelFilters = false;
+    @Getter @Setter protected volatile boolean isPeekOverlay = false;
     @Getter @Setter protected volatile float alpha = 1f;
     @Getter private volatile float fadeAlpha = 1f;
     @Getter private volatile long fadeStartAtMs = Long.MAX_VALUE;
@@ -198,6 +203,11 @@ public class MessageContainer extends Overlay
                     continue;
                 }
 
+                // Channel filter check - only apply to containers with filters enabled (All tab)
+                if (applyChannelFilters && channelFilterState != null && !channelFilterState.shouldShowMessage(rl.getType())) {
+                    continue;
+                }
+
                 if (rl.getLineCache() == null) {
                     rl.setLineCache(wrapRichLine(rl, fm, innerW));
                 }
@@ -268,7 +278,21 @@ public class MessageContainer extends Overlay
                             g.drawString(segText, dx + shadowOffset, y + shadowOffset);
                         }
 
-                        g.setColor(seg.getColor());
+                        // Determine color: use config override if not transparent, else segment color
+                        Color segColor = seg.getColor();
+                        if (seg instanceof TimestampSegment) {
+                            Color tsColor = config.getTimestampColor();
+                            if (tsColor.getAlpha() > 0) {
+                                segColor = tsColor;
+                            }
+                        } else if (seg instanceof PrefixSegment) {
+                            Color pfxColor = config.getTypePrefixColor();
+                            if (pfxColor.getAlpha() > 0) {
+                                segColor = pfxColor;
+                            }
+                        }
+
+                        g.setColor(segColor);
                         g.drawString(segText, dx, y);
 
                         dx += fm.stringWidth(segText);
@@ -362,6 +386,14 @@ public class MessageContainer extends Overlay
         clearChatWidget();
     }
 
+    /**
+     * Returns a copy of the lines for reading.
+     * This allows external code to iterate over messages without modifying the internal state.
+     */
+    public Deque<RichLine> getLines() {
+        return new ArrayDeque<>(lines);
+    }
+
     public void clearChatWidget() {
         lastViewport = null;
     }
@@ -433,7 +465,9 @@ public class MessageContainer extends Overlay
             senderName,
             receiverName,
             targetName,
-            line.getPrefix());
+            line.getPrefix(),
+            line.getDuplicateKey(),
+            line.isCollapsed());
     }
 
     public void pushLine(
@@ -445,14 +479,87 @@ public class MessageContainer extends Overlay
         String targetName,
         String prefix
     ) {
+        pushLine(s, type, timestamp, sender, receiver, targetName, prefix, null, false);
+    }
+
+    public void pushLine(
+        String s,
+        ChatMessageType type,
+        long timestamp,
+        String sender,
+        String receiver,
+        String targetName,
+        String prefix,
+        String duplicateKey,
+        boolean collapsed
+    ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
-        Color c = getColor(type);
-        RichLine rl = parseRich(s == null ? "" : s, c == null ? Color.WHITE : c, type, timestamp, prefix);
+
+        // Always use default color as base (for sender name, etc.)
+        Color baseColor = getColor(type);
+
+        // Check ForceRecolor for message body color
+        String messageToRender = s == null ? "" : s;
+        if (forceRecolorService != null) {
+            Color forceColor = forceRecolorService.getRecolorForMessage(s, type, isPeekOverlay);
+            if (forceColor != null) {
+                // Apply ForceRecolor only to message body, sender gets base color
+                messageToRender = applyForceRecolorToBody(s, sender, baseColor, forceColor);
+            }
+        }
+
+        RichLine rl = parseRich(messageToRender, baseColor == null ? Color.WHITE : baseColor, type, timestamp, prefix);
         rl.setType(type);
         rl.setSender(sender);
         rl.setReceiver(receiver);
         rl.setTargetName(targetName);
+        rl.setDuplicateKey(duplicateKey);
+        rl.setCollapsed(collapsed);
+
+        // If this is a collapsed message (has count suffix), remove previous messages with same key
+        if (collapsed && duplicateKey != null) {
+            lines.removeIf(line -> duplicateKey.equals(line.getDuplicateKey()));
+        }
+
         pushRich(rl);
+    }
+
+    /**
+     * Applies ForceRecolor color to the message body and base color to the sender name.
+     * The message format is typically: "SenderName: message body" or just "message body"
+     */
+    private String applyForceRecolorToBody(String message, String sender, Color baseColor, Color forceColor) {
+        if (message == null || message.isEmpty() || forceColor == null) {
+            return message;
+        }
+
+        String forceHex = String.format("%06X", forceColor.getRGB() & 0xFFFFFF);
+        String forceTag = "<col=" + forceHex + ">";
+        String endTag = "</col>";
+
+        // If no sender, color the entire message with ForceRecolor
+        if (sender == null || sender.isEmpty()) {
+            return forceTag + message + endTag;
+        }
+
+        // Find the ": " separator after the sender name
+        // The sender might have formatting like "<img=1>PlayerName"
+        int separatorIdx = message.indexOf(": ");
+        if (separatorIdx > 0) {
+            String senderPart = message.substring(0, separatorIdx + 2); // Include ": "
+            String bodyPart = message.substring(separatorIdx + 2);
+
+            // Apply base color to sender, ForceRecolor to body
+            String baseHex = baseColor != null
+                ? String.format("%06X", baseColor.getRGB() & 0xFFFFFF)
+                : "FFFFFF";
+            String baseTag = "<col=" + baseHex + ">";
+
+            return baseTag + senderPart + endTag + forceTag + bodyPart + endTag;
+        }
+
+        // Fallback: color the entire message with ForceRecolor if no separator found
+        return forceTag + message + endTag;
     }
 
     private RichLine parseRich(String s, Color base, ChatMessageType type, long timestamp, String prefix) {
@@ -464,10 +571,16 @@ public class MessageContainer extends Overlay
         Color cur = base;
         StringBuilder buf = new StringBuilder();
 
-        out.getSegs().add(new TimestampSegment("[" + FormatUtil.toHmTime(timestamp) + "] ", cur));
+        // Timestamp color: use configured color if not transparent, else use line color
+        Color timestampColor = config.getTimestampColor();
+        out.getSegs().add(new TimestampSegment("[" + FormatUtil.toHmTime(timestamp) + "] ",
+            timestampColor.getAlpha() > 0 ? timestampColor : cur));
+
+        // Prefix color: use configured color if not transparent, else use line color
+        Color prefixColor = config.getTypePrefixColor();
         out.getSegs().add(new PrefixSegment(StringUtil.isNullOrEmpty(prefix)
             ? ChatUtil.getPrefix(type)
-            : prefix, cur));
+            : prefix, prefixColor.getAlpha() > 0 ? prefixColor : cur));
 
         for (int i = 0; i < s.length(); ) {
             char ch = s.charAt(i);
@@ -582,6 +695,23 @@ public class MessageContainer extends Overlay
                 continue;
             }
 
+            // Timestamp and Prefix segments: unbreakable tokens that preserve their type
+            if (s instanceof TimestampSegment || s instanceof PrefixSegment) {
+                String txt = s.getText();
+                if (txt == null || txt.isEmpty())
+                    continue;
+
+                int sw = fm.stringWidth(txt);
+                if (curW + sw > maxWidth && !cur.getSegs().isEmpty()) {
+                    out.add(cur);
+                    cur = new VisualLine();
+                    curW = 0;
+                }
+                cur.getSegs().add(s); // preserve original segment type for renderer
+                curW += sw;
+                continue;
+            }
+
             // Plain text wrapping
             final String txt = s.getTextCache() != null ? s.getTextCache() : s.getText();
             if (txt == null || txt.isEmpty())
@@ -687,6 +817,26 @@ public class MessageContainer extends Overlay
         for (String line : lines) {
             pushLine(line, type, System.currentTimeMillis(), null, null, null, null);
         }
+    }
+
+    /**
+     * Copy a RichLine to this container by duplicating its segments.
+     * This avoids sharing lineCache between containers with different widths.
+     */
+    public void copyLine(RichLine source) {
+        if (source == null || source.getSegs().isEmpty()) return;
+
+        RichLine copy = new RichLine();
+        copy.setType(source.getType());
+        copy.setTimestamp(source.getTimestamp());
+        copy.setSender(source.getSender());
+        copy.setReceiver(source.getReceiver());
+        copy.setTargetName(source.getTargetName());
+
+        // Copy segments (they're immutable-ish, safe to share references)
+        copy.getSegs().addAll(source.getSegs());
+
+        pushRich(copy);
     }
 
     /**

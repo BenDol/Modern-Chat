@@ -661,6 +661,19 @@ public interface ModernChatConfigBase extends
             }
         }
 
+        public String getString(String key, String def) {
+            JsonElement el = get(key);
+            if (el == null || el.isJsonNull())
+                return def;
+            try {
+                if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString())
+                    return el.getAsString();
+                return el.toString();
+            } catch (Exception ignore) {
+                return def;
+            }
+        }
+
         public Color getColor(String key, Color def) {
             JsonElement el = get(key);
             if (el == null || el.isJsonNull())
