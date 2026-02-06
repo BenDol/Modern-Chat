@@ -74,7 +74,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	private boolean loggedIn = false;
 
 	// Deferred hide state
-	private boolean autoHide = false;
 	private boolean deferredHideRequested = false;
 	private int deferDelayTicksLeft = 0;
 	private int deferTimeoutTicksLeft = 0;
@@ -175,6 +174,12 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
             return;
         }
 
+		if (chatProxy.isCommandMode()) {
+			// Don't toggle chat visibility while in command mode
+			// We cannot consume the input event
+			return;
+		}
+
 		clientThread.invokeLater(() -> {
 			// If we are currently typing in a system prompt,
 			// do not toggle chat visibility.
@@ -216,32 +221,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	}
 
 	@Subscribe
-	public void onVarClientStrChanged(VarClientStrChanged e) {
-		if (e.getIndex() != VarClientStr.INPUT_TEXT)
-			return;
-
-		// When the player starts typing into a system prompt, ensure chat is shown
-		String s = client.getVarcStrValue(VarClientStr.INPUT_TEXT);
-		if (s != null && chatProxy.isLegacyHidden() && chatProxy.isLegacy()) {
-			chatProxy.ensureLegacyChatVisible();
-			autoHide = true;
-		}
-	}
-
-	@Subscribe
-	public void onDialogOptionsOpenedEvent(DialogOptionsOpenedEvent e) {
-		clientThread.invokeLater(() -> {
-			if (chatProxy.isLegacyHidden()) {
-				chatProxy.ensureLegacyChatVisible();
-				autoHide = true;
-			}
-		});
-	}
-
-	@Subscribe
 	public void onDialogOptionsClosedEvent(DialogOptionsClosedEvent e) {
 		clientThread.invoke(() -> {
-			if (autoHide && !chatProxy.isHidden() && chatProxy.isLegacy()) {
+			if (chatProxy.isAutoHide() && !chatProxy.isHidden() && chatProxy.isLegacy()) {
 				chatProxy.setHidden(true);
 			}
 		});
@@ -253,7 +235,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	}
 
 	private boolean handleDeferredHide() {
-		if (!deferredHideRequested && !autoHide) {
+		if (!deferredHideRequested && !chatProxy.isAutoHide()) {
 			return false;
 		}
 
@@ -261,8 +243,8 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		if (ClientUtil.isSystemWidgetActive(client)) {
 			cancelDeferredHide();
 			return false;
-		} else if (autoHide) {
-			autoHide = false;
+		} else if (chatProxy.isAutoHide()) {
+			chatProxy.setAutoHide(false);
 			hide();
 			cancelDeferredHide();
 			return true;

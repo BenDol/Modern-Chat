@@ -1,6 +1,7 @@
 package com.modernchat.common;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.util.ChatUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -8,6 +9,7 @@ import net.runelite.client.Notifier;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.Notification;
+import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -23,8 +25,6 @@ import java.util.function.Consumer;
 @Singleton
 public class NotificationService
 {
-    public static final String MODERN_CHAT_TAG = "[ModernChat]";
-
     @Inject private Client client;
     @Inject private Notifier notifier;
     @Inject private ChatMessageManager chatMessageManager;
@@ -180,12 +180,12 @@ public class NotificationService
         notifier.notify(notification, prepareMessage(message));
     }
 
-    private String prepareMessage(String message) {
+    public static String prepareMessage(String message) {
         return prepareMessage(message, "{} ");
     }
 
-    private String prepareMessage(String message, String tagFormat) {
-        return tagFormat.replace("{}", MODERN_CHAT_TAG) + message;
+    public static String prepareMessage(String message, String tagFormat) {
+        return tagFormat.replace("{}", ChatUtil.MODERN_CHAT_TAG) + message;
     }
 
     public void pushHelperNotification(String message) {

@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 public class ClientUtil
 {
+    // Unfortunately this hack is required for KeyRemappingPlugin compatibility
     public static final String PRESS_ENTER_TO_CHAT = "Press Enter to Chat...";
 
     /**
@@ -300,6 +301,13 @@ public class ClientUtil
             return chatboxInput.getText();
         }
         return null;
+    }
+
+    public static void setChatboxWidgetInput(Client client, String input) {
+        Widget chatboxInput = client.getWidget(InterfaceID.Chatbox.INPUT);
+        if (chatboxInput != null) {
+            setChatboxWidgetInput(chatboxInput, input);
+        }
     }
 
     public static void setChatboxWidgetInput(Widget widget, String input) {

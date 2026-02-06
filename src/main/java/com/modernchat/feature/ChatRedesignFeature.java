@@ -521,6 +521,11 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             return; // Ignore empty messages
         }
 
+        if (ChatUtil.isIgnoredMessage(line.getText(), line.getType())) {
+            log.debug("Ignoring message, type: {}, text: {}", line, line);
+            return;
+        }
+
         log.debug("Chat message received: {}", line);
         overlay.addMessage(line);
     }

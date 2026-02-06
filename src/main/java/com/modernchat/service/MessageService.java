@@ -14,7 +14,6 @@ import net.runelite.api.ScriptID;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.gameval.VarClientID;
 
 import javax.annotation.Nullable;

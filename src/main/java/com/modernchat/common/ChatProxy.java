@@ -3,6 +3,8 @@ package com.modernchat.common;
 import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
+import lombok.Getter;
+import lombok.Setter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
@@ -24,6 +26,10 @@ public class ChatProxy
     @Inject private Client client;
     @Inject private ClientThread clientThread;
 
+    @Getter
+    @Setter
+    private boolean autoHide = false;
+
     public boolean isHidden() {
         if (modernChat.isEnabled())
             return modernChat.isHidden();
@@ -43,6 +49,13 @@ public class ChatProxy
 
     public boolean isModernHidden() {
         return modernChat.isHidden();
+    }
+
+    public boolean isCommandMode() {
+        if (modernChat.isEnabled())
+            return modernChat.isCommandMode();
+
+        return false;
     }
 
     public @Nullable Rectangle getBounds() {

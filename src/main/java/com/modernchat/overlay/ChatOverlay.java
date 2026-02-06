@@ -55,6 +55,7 @@ import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.MenuOpened;
+import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.widgets.Widget;
@@ -62,6 +63,7 @@ import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ChatboxInput;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseListener;
@@ -121,7 +123,7 @@ public class ChatOverlay extends OverlayPanel
     @Inject @Getter private ResizePanel resizePanel;
     @Inject private Provider<MessageContainer> messageContainerProvider;
     @Inject @Getter private ChannelFilterState channelFilterState;
-    @Inject private Provider<ToggleChatFeature> toggleChatFeatureProvider;
+    @Inject private Provider<ChatProxy> chatProxyProvider;
     @Inject private ModernChatConfig mainConfig;
 
     private ChatOverlayConfig config;
@@ -135,6 +137,7 @@ public class ChatOverlay extends OverlayPanel
     @Getter private final Map<ChatMode, String> defaultTabNames = new ConcurrentHashMap<>();
     private final Rectangle tabsBarBounds = new Rectangle();
     @Getter private int lastTabBarHeight = 0;
+    @Getter private boolean commandMode;
 
     @Getter private final Map<String, MessageContainer> messageContainers = new ConcurrentHashMap<>();
     @Getter private final Map<String, MessageContainer> privateContainers = new ConcurrentHashMap<>();
@@ -302,7 +305,7 @@ public class ChatOverlay extends OverlayPanel
     public void shutDown() {
         clientThread.invoke(() -> {
             showLegacyChat(true);
-            resetChatbox();
+            resetChatbox(true);
         });
 
         reset();
@@ -331,6 +334,7 @@ public class ChatOverlay extends OverlayPanel
         }
 
         lastViewport = null;
+        commandMode = false;
 
         resizePanel.shutDown();
         overlayManager.remove(resizePanel);
@@ -1318,6 +1322,15 @@ public class ChatOverlay extends OverlayPanel
     }
 
     @Subscribe
+    private void onScriptCallbackEvent(ScriptCallbackEvent event) {
+        if (commandMode) {
+            if (event.getEventName().equals("chatDefaultReturn")) {
+                clientThread.invoke(() -> hideLegacyChat());
+            }
+        }
+    }
+
+    @Subscribe
     public void onVarClientStrChanged(VarClientStrChanged e) {
         if (e.getIndex() == VarClientStr.CHATBOX_TYPED_TEXT) {
             // keep the legacy chat input in sync, if the text matches it will be ignored
@@ -1328,11 +1341,6 @@ public class ChatOverlay extends OverlayPanel
     @Subscribe
     public void onClientTick(ClientTick tick) {
         resizeChatbox(desiredChatWidth, desiredChatHeight);
-
-        /*clientThread.invokeAtTickEnd(() -> {
-            if (!isHidden() && !legacyShowing)
-                hideLegacyChat();
-        });*/
     }
 
     @Subscribe
@@ -1344,6 +1352,13 @@ public class ChatOverlay extends OverlayPanel
             case ScriptID.CHAT_TEXT_INPUT_REBUILD:
                 resizeChatbox(desiredChatWidth, desiredChatHeight);
                 break;
+        }
+    }
+
+    @Subscribe
+    public void onChatboxInput(ChatboxInput e) {
+        if (commandMode) {
+            clientThread.invoke(() -> hideLegacyChat());
         }
     }
 
@@ -1644,6 +1659,9 @@ public class ChatOverlay extends OverlayPanel
             return;
 
         this.hidden = hidden;
+
+        if (commandMode && !hidden)
+            commandMode = false;
 
         if (hidden)
             unfocusInput();
@@ -2093,11 +2111,17 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void resetChatbox() {
-        Widget chatViewport = widgetBucket.getChatboxViewportWidget();
-        if (chatViewport != null && !chatViewport.isHidden()) {
-            chatViewport.setOriginalHeight(165);
-            chatViewport.setOriginalWidth(519);
-            chatViewport.revalidate();
+        resetChatbox(false);
+    }
+
+    public void resetChatbox(boolean resetSize) {
+        if (resetSize) {
+            Widget chatViewport = widgetBucket.getChatboxViewportWidget();
+            if (chatViewport != null && !chatViewport.isHidden()) {
+                chatViewport.setOriginalHeight(165);
+                chatViewport.setOriginalWidth(519);
+                chatViewport.revalidate();
+            }
         }
 
         Widget chatboxParent = widgetBucket.getChatParentWidget();
@@ -2121,12 +2145,13 @@ public class ChatOverlay extends OverlayPanel
         showLegacyChat(true);
     }
 
-    public void showLegacyChat(boolean hideOverlay) {
+    public void showLegacyChat(boolean tryHideOverlay) {
+        if (!legacyShowing)
+            wasHidden = hidden; // remember if we were hidden before
         legacyShowing = true;
-        wasHidden = hidden; // remember if we were hidden before
         resetChatbox();
 
-        if (ClientUtil.setChatHidden(client, false) && hideOverlay) {
+        if (ClientUtil.setChatHidden(client, false) && tryHideOverlay) {
             setHidden(true);
         }
     }
@@ -2135,15 +2160,15 @@ public class ChatOverlay extends OverlayPanel
         hideLegacyChat(true);
     }
 
-    public void hideLegacyChat(boolean showOverlay) {
+    public void hideLegacyChat(boolean tryShowOverlay) {
         if (ClientUtil.isSystemWidgetActive(client))
             return;
 
         legacyShowing = false;
         resizeChatbox(desiredChatWidth, desiredChatHeight);
 
-        if (ClientUtil.setChatHidden(client, true) && showOverlay) {
-            setHidden(wasHidden);
+        if (ClientUtil.setChatHidden(client, true) && (tryShowOverlay || !mainConfig.featureToggle_Enabled())) {
+            setHidden(wasHidden && mainConfig.featureToggle_Enabled());
         }
     }
 
@@ -2315,8 +2340,26 @@ public class ChatOverlay extends OverlayPanel
 
     private void syncChatInputLater() {
         clientThread.invokeLater(() -> {
-            ClientUtil.setChatInputText(client, getInputText());
+            String input = getInputText();
+            ClientUtil.setChatInputText(client, input);
             eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
+
+            if (!commandMode && input.trim().startsWith("::")) {
+                commandMode = true;
+                ChatProxy chatProxy = chatProxyProvider.get();
+                clientThread.invokeAtTickEnd(() -> {
+                    clearInputText(false);
+                    String widgetInput = ClientUtil.getChatboxWidgetInput(client);
+                    ClientUtil.setChatInputText(client,
+                        widgetInput != null && widgetInput.endsWith(ClientUtil.PRESS_ENTER_TO_CHAT) ? "" : input);
+
+                    chatProxy.ensureLegacyChatVisible();
+                    chatProxy.setAutoHide(mainConfig.featureToggle_Enabled());
+
+                    notificationService.pushHelperNotification(new ChatMessageBuilder()
+                        .append(ChatUtil.COMMAND_MODE_MESSAGE));
+                });
+            }
         });
     }
 
@@ -2693,13 +2736,25 @@ public class ChatOverlay extends OverlayPanel
 
         @Override
         public void keyPressed(KeyEvent e) {
-            if (!isEnabled() || isHidden())
+            if (!isEnabled())
                 return;
+
+            int code = e.getKeyCode();
+
+            if (isHidden()) {
+                if (commandMode) {
+                   if (code == KeyEvent.VK_ESCAPE) {
+                       commandMode = false;
+                       clientThread.invoke(() -> hideLegacyChat(true));
+                       e.consume();
+                   }
+                }
+                return;
+            }
 
             final boolean shift = e.isShiftDown();
             final boolean ctrl = e.isControlDown();
             final boolean alt = e.isAltDown();
-            int code = e.getKeyCode();
 
             switch (code) {
                 case KeyEvent.VK_LEFT: {
