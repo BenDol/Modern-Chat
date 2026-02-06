@@ -255,7 +255,7 @@ public class ChatOverlay extends OverlayPanel
     public void shutDown() {
         clientThread.invoke(() -> {
             showLegacyChat(true);
-            resetChatbox();
+            resetChatbox(true);
         });
 
         reset();
@@ -1644,12 +1644,18 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void resetChatbox() {
-        /*Widget chatViewport = widgetBucket.getChatboxViewportWidget();
-        if (chatViewport != null && !chatViewport.isHidden()) {
-            chatViewport.setOriginalHeight(desiredChatHeight);
-            chatViewport.setOriginalWidth(desiredChatWidth);
-            chatViewport.revalidate();
-        }*/
+        resetChatbox(false);
+    }
+
+    public void resetChatbox(boolean resetSize) {
+        if (resetSize) {
+            Widget chatViewport = widgetBucket.getChatboxViewportWidget();
+            if (chatViewport != null && !chatViewport.isHidden()) {
+                chatViewport.setOriginalHeight(165);
+                chatViewport.setOriginalWidth(519);
+                chatViewport.revalidate();
+            }
+        }
 
         Widget chatboxParent = widgetBucket.getChatParentWidget();
         if (chatboxParent != null) {
