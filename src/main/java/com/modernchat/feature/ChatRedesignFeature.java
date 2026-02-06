@@ -293,8 +293,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     public void startUp() {
         super.startUp();
 
-        ChatOverlayConfig overlayConfig = partitionConfig(config);
-        overlay.startUp(overlayConfig);
+        overlay.startUp(partitionConfig(config));
         overlayManager.add(overlay);
 
         // Hide original message lines on the client thread
@@ -353,7 +352,6 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             return;
 
         overlay.dirty();
-
     }
 
     @Subscribe

@@ -201,18 +201,6 @@ public class ChatUtil
     }
 
     public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer) {
-        return createMessageLine(e, client, requireLocalPlayer, null);
-    }
-
-    /**
-     * Create a MessageLine from a ChatMessage, optionally using a filtered message text.
-     *
-     * @param e the chat message event
-     * @param client the game client
-     * @param requireLocalPlayer whether to require local player info
-     * @param filteredMessage optional filtered message text (from chat filter plugins), or null to use original
-     */
-    public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer, @Nullable String filteredMessage) {
         Player localPlayer = client.getLocalPlayer();
         if (localPlayer == null && requireLocalPlayer)
             return null;
@@ -307,9 +295,5 @@ public class ChatUtil
 
     public static boolean isNpcMessage(ChatMessageType type) {
         return type == ChatMessageType.NPC_SAY || type == ChatMessageType.DIALOG;
-    }
-
-    public static boolean isSpamMessage(ChatMessageType type) {
-        return type == ChatMessageType.SPAM;
     }
 }

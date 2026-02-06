@@ -362,14 +362,6 @@ public class MessageContainer extends Overlay
         clearChatWidget();
     }
 
-    /**
-     * Returns a copy of the lines for reading.
-     * This allows external code to iterate over messages without modifying the internal state.
-     */
-    public Deque<RichLine> getLines() {
-        return new ArrayDeque<>(lines);
-    }
-
     public void clearChatWidget() {
         lastViewport = null;
     }
@@ -454,10 +446,8 @@ public class MessageContainer extends Overlay
         String prefix
     ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
-
-        Color baseColor = getColor(type);
-
-        RichLine rl = parseRich(s, baseColor == null ? Color.WHITE : baseColor, type, timestamp, prefix);
+        Color c = getColor(type);
+        RichLine rl = parseRich(s == null ? "" : s, c == null ? Color.WHITE : c, type, timestamp, prefix);
         rl.setType(type);
         rl.setSender(sender);
         rl.setReceiver(receiver);
@@ -475,7 +465,6 @@ public class MessageContainer extends Overlay
         StringBuilder buf = new StringBuilder();
 
         out.getSegs().add(new TimestampSegment("[" + FormatUtil.toHmTime(timestamp) + "] ", cur));
-
         out.getSegs().add(new PrefixSegment(StringUtil.isNullOrEmpty(prefix)
             ? ChatUtil.getPrefix(type)
             : prefix, cur));
@@ -593,23 +582,6 @@ public class MessageContainer extends Overlay
                 continue;
             }
 
-            // Timestamp and Prefix segments: unbreakable tokens that preserve their type
-            if (s instanceof TimestampSegment || s instanceof PrefixSegment) {
-                String txt = s.getText();
-                if (txt == null || txt.isEmpty())
-                    continue;
-
-                int sw = fm.stringWidth(txt);
-                if (curW + sw > maxWidth && !cur.getSegs().isEmpty()) {
-                    out.add(cur);
-                    cur = new VisualLine();
-                    curW = 0;
-                }
-                cur.getSegs().add(s); // preserve original segment type for renderer
-                curW += sw;
-                continue;
-            }
-
             // Plain text wrapping
             final String txt = s.getTextCache() != null ? s.getTextCache() : s.getText();
             if (txt == null || txt.isEmpty())
@@ -715,26 +687,6 @@ public class MessageContainer extends Overlay
         for (String line : lines) {
             pushLine(line, type, System.currentTimeMillis(), null, null, null, null);
         }
-    }
-
-    /**
-     * Copy a RichLine to this container by duplicating its segments.
-     * This avoids sharing lineCache between containers with different widths.
-     */
-    public void copyLine(RichLine source) {
-        if (source == null || source.getSegs().isEmpty()) return;
-
-        RichLine copy = new RichLine();
-        copy.setType(source.getType());
-        copy.setTimestamp(source.getTimestamp());
-        copy.setSender(source.getSender());
-        copy.setReceiver(source.getReceiver());
-        copy.setTargetName(source.getTargetName());
-
-        // Copy segments (they're immutable-ish, safe to share references)
-        copy.getSegs().addAll(source.getSegs());
-
-        pushRich(copy);
     }
 
     /**

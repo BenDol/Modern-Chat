@@ -3,10 +3,7 @@ package com.modernchat.overlay;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.common.MessageLine;
-import com.modernchat.draw.Tab;
-import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
-import com.modernchat.util.StringUtil;
 import net.runelite.api.ChatMessageType;
 
 import javax.inject.Inject;
@@ -18,6 +15,7 @@ public class ChatPeekOverlay extends MessageContainer
     @Inject private ChatProxy chatProxy;
     @Inject private ModernChatConfig mainConfig;
     @Inject private Provider<ChatOverlay> chatOverlayProvider;
+
 
     public ChatPeekOverlay() {
         setCanShowDecider((c) -> {
