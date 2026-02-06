@@ -16,8 +16,4 @@ public class MessageLine
     String senderName;
     String receiverName;
     String prefix;
-    /** Key for duplicate detection: name + original message (before filter modification) */
-    @Nullable String duplicateKey;
-    /** True if this message has a collapse count suffix like " (2)" */
-    boolean collapsed;
 }

@@ -2,7 +2,6 @@ package com.modernchat.overlay;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatProxy;
-import com.modernchat.event.ChatPrivateMessageSentEvent;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
@@ -10,9 +9,6 @@ import com.modernchat.common.FontStyle;
 import com.modernchat.common.MessageLine;
 import com.modernchat.common.NotificationService;
 import com.modernchat.common.WidgetBucket;
-import com.modernchat.draw.ChannelFilterType;
-import com.modernchat.draw.Dropdown;
-import com.modernchat.draw.DropdownItem;
 import com.modernchat.draw.Padding;
 import com.modernchat.draw.RichLine;
 import com.modernchat.draw.RowHit;
@@ -26,14 +22,11 @@ import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.DialogOptionsOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.event.NavigateHistoryEvent;
-import com.modernchat.event.SetPeekSourceEvent;
 import com.modernchat.event.TabChangeEvent;
-import com.modernchat.event.TabClosedEvent;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageService;
-import com.modernchat.service.SpamFilterService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.MathUtil;
@@ -117,10 +110,8 @@ public class ChatOverlay extends OverlayPanel
     @Inject private FilterService filterService;
     @Inject private MessageService messageService;
     @Inject private ImageService imageService;
-    @Inject private SpamFilterService spamFilterService;
     @Inject @Getter private ResizePanel resizePanel;
     @Inject private Provider<MessageContainer> messageContainerProvider;
-    @Inject @Getter private ChannelFilterState channelFilterState;
     @Inject private Provider<ToggleChatFeature> toggleChatFeatureProvider;
     @Inject private ModernChatConfig mainConfig;
 
@@ -139,18 +130,7 @@ public class ChatOverlay extends OverlayPanel
     @Getter private final Map<String, MessageContainer> messageContainers = new ConcurrentHashMap<>();
     @Getter private final Map<String, MessageContainer> privateContainers = new ConcurrentHashMap<>();
     @Getter @Nullable private MessageContainer messageContainer = null;
-    @Getter @Nullable private MessageContainer allContainer = null;
     @Getter private EnumSet<ChatMode> availableChatModes = EnumSet.noneOf(ChatMode.class);
-
-    // All tab constants (replaces Public, receives all messages)
-    private static final String ALL_TAB_KEY = "ALL";
-    private static final int ALL_TAB_MAX_LINES = 100;
-
-    // Static tab constants
-    private static final String GAME_TAB_KEY = "GAME";
-    private static final String TRADE_TAB_KEY = "TRADE";
-    @Getter @Nullable private MessageContainer gameContainer = null;
-    @Getter @Nullable private MessageContainer tradeContainer = null;
 
     @Getter private Rectangle lastViewport = null;
 
@@ -219,13 +199,6 @@ public class ChatOverlay extends OverlayPanel
 
     private static boolean PASTE_WARNING_SHOWN = false;
 
-    // Channel filter state
-    private final Rectangle filterButtonBounds = new Rectangle();
-    private Dropdown<ChannelFilterType> filterDropdown;
-    private int filterInputInnerRight = 0; // Tracks reduced input width when filter button is shown
-    private long filterFlashUntilMs = 0; // Timestamp until which the filter indicator should flash
-    private static final long FILTER_FLASH_DURATION_MS = 5_000; // 5 seconds
-
     public ChatOverlay() {
     }
 
@@ -239,7 +212,6 @@ public class ChatOverlay extends OverlayPanel
 
     public void startUp(ChatOverlayConfig config, MessageContainerConfig containerConfig) {
         this.config = config;
-        channelFilterState.setConfig(config);
 
         clientThread.invoke(() -> hideLegacyChat(false));
 
@@ -277,22 +249,6 @@ public class ChatOverlay extends OverlayPanel
             container.startUp(containerConfig, ChatMode.valueOf(mode));
         });
 
-        // Initialize single chat container for combined mode
-        allContainer = messageContainerProvider.get();
-        allContainer.setChromeEnabled(true);
-        allContainer.setMaxLines(ALL_TAB_MAX_LINES);
-        allContainer.setApplyChannelFilters(true);
-        allContainer.startUp(containerConfig, ChatMode.PUBLIC);
-
-        // Initialize Game and Trade containers (read-only tabs)
-        gameContainer = messageContainerProvider.get();
-        gameContainer.setChromeEnabled(true);
-        gameContainer.startUp(containerConfig, ChatMode.PUBLIC);
-
-        tradeContainer = messageContainerProvider.get();
-        tradeContainer.setChromeEnabled(true);
-        tradeContainer.startUp(containerConfig, ChatMode.PUBLIC);
-
         refreshTabs();
 
         clientThread.invoke(() -> setHidden(config.isStartHidden()));
@@ -317,18 +273,6 @@ public class ChatOverlay extends OverlayPanel
         messageContainers.clear();
         privateContainers.values().forEach(MessageContainer::shutDown);
         privateContainers.clear();
-        if (allContainer != null) {
-            allContainer.shutDown();
-            allContainer = null;
-        }
-        if (gameContainer != null) {
-            gameContainer.shutDown();
-            gameContainer = null;
-        }
-        if (tradeContainer != null) {
-            tradeContainer.shutDown();
-            tradeContainer = null;
-        }
 
         lastViewport = null;
 
@@ -405,9 +349,6 @@ public class ChatOverlay extends OverlayPanel
 
         // Draw input box
         drawInputBox(g, fm, left, msgBottom, innerW, inputHeight, inputPadX, inputPadY, gapAboveInput);
-
-        // Draw filter dropdown on top of everything else
-        drawFilterDropdown(g, fm, left, msgBottom + gapAboveInput, inputHeight, vp);
 
         resizePanel.render(g);
 
@@ -524,11 +465,6 @@ public class ChatOverlay extends OverlayPanel
         g.setColor(config.getTabBarBackgroundColor());
         g.fillRoundRect(x, y, width, h, 8, 8);
 
-        // Peek source indicator config (outside loop for efficiency)
-        final String peekSourceKey = mainConfig.featurePeek_SourceTabKey();
-        final Color peekIndicatorColor = mainConfig.featurePeek_SourceTabIndicatorColor();
-        final boolean showPeekIndicator = peekIndicatorColor.getAlpha() > 0;
-
         int cx = x + 4 - tabsScrollPx;
         int filteredIdx = 0;
 
@@ -573,12 +509,6 @@ public class ChatOverlay extends OverlayPanel
             g.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
             g.setColor(selected ? config.getTabBorderSelectedColor() : config.getTabBorderColor());
             g.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, r, r);
-
-            // Peek source indicator border
-            if (showPeekIndicator && t.getKey().equals(peekSourceKey)) {
-                g.setColor(peekIndicatorColor);
-                g.drawRoundRect(bounds.x + 1, bounds.y + 1, bounds.width - 2, bounds.height - 2, r - 1, r - 1);
-            }
 
             // Label (with subtle shadow)
             g.setFont(tabFont);
@@ -714,20 +644,6 @@ public class ChatOverlay extends OverlayPanel
         g.setColor(config.getInputBorderColor());
         g.drawRoundRect(inputX, inputY, inputW, inputHeight, 8, 8);
 
-        // Draw filter button if applicable
-        if (shouldShowFilterButton()) {
-            final int filterBtnSize = inputHeight - 8;
-            final int filterBtnX = inputX + inputW - inputPadX - filterBtnSize;
-            final int filterBtnY = inputY + (inputHeight - filterBtnSize) / 2;
-            filterButtonBounds.setBounds(filterBtnX, filterBtnY, filterBtnSize, filterBtnSize);
-            drawFilterButton(g, filterBtnX, filterBtnY, filterBtnSize);
-            // Reduce input text width to make room for button
-            inputInnerRight = filterBtnX - 4;
-        } else {
-            filterButtonBounds.setBounds(0, 0, 0, 0);
-        }
-        filterInputInnerRight = inputInnerRight;
-
         // Prefix
         String prefix = getPlayerPrefix();
         int prefixW = fm.stringWidth(prefix);
@@ -787,88 +703,6 @@ public class ChatOverlay extends OverlayPanel
             int caretTop = baseline - fm.getAscent();
             int caretBottom = baseline + fm.getDescent();
             g.fillRect(caretScreenX, caretTop, 1, caretBottom - caretTop);
-        }
-    }
-
-    private boolean shouldShowFilterButton() {
-        // Show filter button only if the current container has filtering enabled
-        return messageContainer != null && messageContainer.isApplyChannelFilters();
-    }
-
-    private void drawFilterButton(Graphics2D g, int x, int y, int size) {
-        // Draw filter icon with configured tint color
-        BufferedImage filterIcon = imageService.getFilterIcon();
-        Color iconColor = config.getFilterButtonColor();
-
-        if (filterIcon != null) {
-            int iconSize = size - 4;
-            int iconX = x + (size - iconSize) / 2;
-            int iconY = y + (size - iconSize) / 2;
-
-            // Apply color tint to icon
-            BufferedImage tintedIcon = tintImage(filterIcon, iconColor);
-            g.drawImage(tintedIcon, iconX, iconY, iconSize, iconSize, null);
-        } else {
-            // Fallback: draw a simple filter symbol
-            g.setColor(iconColor);
-            int cx = x + size / 2;
-            int cy = y + size / 2;
-            g.drawLine(cx - 3, cy - 2, cx + 3, cy - 2);
-            g.drawLine(cx - 2, cy, cx + 2, cy);
-            g.drawLine(cx - 1, cy + 2, cx + 1, cy + 2);
-        }
-
-        // Draw indicator dot only when a filtered message was received
-        long now = System.currentTimeMillis();
-        boolean isFlashing = now < filterFlashUntilMs;
-
-        if (isFlashing) {
-            // Fade in/out using sine wave (smoother than abrupt on/off)
-            long elapsed = FILTER_FLASH_DURATION_MS - (filterFlashUntilMs - now);
-            double phase = (elapsed * 0.006); // ~166ms per cycle
-            float alpha = (float) ((Math.sin(phase) + 1) / 2); // 0 to 1
-
-            g.setColor(new Color(255, 50, 50, (int)(alpha * 255)));
-            g.fillOval(x + size - 5, y + 1, 5, 5);
-        }
-    }
-
-    private BufferedImage tintImage(BufferedImage src, Color tint) {
-        BufferedImage result = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        for (int y = 0; y < src.getHeight(); y++) {
-            for (int x = 0; x < src.getWidth(); x++) {
-                int pixel = src.getRGB(x, y);
-                int alpha = (pixel >> 24) & 0xFF;
-                if (alpha > 0) {
-                    result.setRGB(x, y, (alpha << 24) | (tint.getRed() << 16) | (tint.getGreen() << 8) | tint.getBlue());
-                }
-            }
-        }
-        return result;
-    }
-
-    private void drawFilterDropdown(Graphics2D g, FontMetrics fm, int left, int inputY, int inputHeight, Rectangle viewport) {
-        if (filterDropdown == null || !filterDropdown.isVisible()) {
-            return;
-        }
-
-        filterDropdown.draw(g, fm,
-            filterButtonBounds.x, filterButtonBounds.y,
-            filterButtonBounds.width, filterButtonBounds.height,
-            viewport.y, viewport.y + viewport.height,
-            new Color(35, 35, 35, 240),
-            new Color(80, 80, 80),
-            Color.WHITE,
-            new Color(100, 200, 100));
-    }
-
-    private void initFilterDropdown() {
-        if (filterDropdown == null) {
-            filterDropdown = new Dropdown<>();
-        }
-        filterDropdown.getItems().clear();
-        for (ChannelFilterType type : ChannelFilterType.values()) {
-            filterDropdown.getItems().add(new DropdownItem<>(type, type.getDisplayName(), channelFilterState.isEnabled(type)));
         }
     }
 
@@ -965,9 +799,6 @@ public class ChatOverlay extends OverlayPanel
     public void refreshTabs() {
         tabsScrollPx = 0;
 
-        boolean isClassicMode = config.isClassicMode();
-        boolean allowPmTabs = config.isClassicModeAllowPmTabs();
-
         int i = -1;
         Map<ChatMode, Integer> orderMap = new HashMap<>();
         for (Tab tab : tabOrder) {
@@ -983,23 +814,17 @@ public class ChatOverlay extends OverlayPanel
         }
 
         // Remove existing mode tabs to refresh them
-        // Skip PRIVATE (handled separately) and PUBLIC (now using ALL_TAB_KEY)
+        // Skip PRIVATE (handled separately)
         availableChatModes.forEach((mode) -> {
-            if (mode == ChatMode.PRIVATE || mode == ChatMode.PUBLIC) return;
+            if (mode == ChatMode.PRIVATE) return;
             removeTab(mode);
         });
 
         recomputeAvailableModes();
 
-        // Always add "All" tab first (replaces Public, receives all messages)
-        if (!tabsByKey.containsKey(ALL_TAB_KEY)) {
-            Tab allTab = new Tab(ALL_TAB_KEY, "All", false);
-            addTab(allTab, 0);
-        }
-
-        // Add other mode tabs (Clan, Friends Chat, etc.)
+        // Add mode tabs (Public, Clan, Friends Chat, etc.)
         for (ChatMode mode : availableChatModes) {
-            if (mode == ChatMode.PRIVATE || mode == ChatMode.PUBLIC) continue;
+            if (mode == ChatMode.PRIVATE) continue;
 
             String tabKey = tabKey(mode);
             if (!tabsByKey.containsKey(tabKey)) {
@@ -1011,44 +836,9 @@ public class ChatOverlay extends OverlayPanel
             }
         }
 
-        // In classic mode without PM tabs allowed, remove private tabs
-        if (isClassicMode && !allowPmTabs) {
-            for (Tab tab : new LinkedList<>(tabOrder)) {
-                if (tab.isPrivate()) {
-                    removeTab(tab, true);
-                }
-            }
-        }
-
-        // Select "All" tab if no tab is active or current tab was removed
+        // Select Public tab if no tab is active or current tab was removed
         if (activeTab == null || !tabsByKey.containsKey(activeTab.getKey())) {
-            selectTabByKey(ALL_TAB_KEY);
-        }
-
-        // Handle Game tab (read-only, static)
-        if (config.isGameTabEnabled()) {
-            if (!tabsByKey.containsKey(GAME_TAB_KEY)) {
-                Tab gameTab = new Tab(GAME_TAB_KEY, "Game", false);
-                gameTab.setReadOnly(true);
-                addTab(gameTab);
-            }
-        } else {
-            if (tabsByKey.containsKey(GAME_TAB_KEY)) {
-                removeTab(GAME_TAB_KEY, false);
-            }
-        }
-
-        // Handle Trade tab (read-only, static)
-        if (config.isTradeTabEnabled()) {
-            if (!tabsByKey.containsKey(TRADE_TAB_KEY)) {
-                Tab tradeTab = new Tab(TRADE_TAB_KEY, "Trade", false);
-                tradeTab.setReadOnly(true);
-                addTab(tradeTab);
-            }
-        } else {
-            if (tabsByKey.containsKey(TRADE_TAB_KEY)) {
-                removeTab(TRADE_TAB_KEY, false);
-            }
+            selectTabByKey(ChatMode.PUBLIC.name());
         }
     }
 
@@ -1107,9 +897,6 @@ public class ChatOverlay extends OverlayPanel
             log.warn("Attempted to remove tab with null or empty key");
             return -1;
         }
-
-        // Post TabClosedEvent before removing so listeners can react
-        eventBus.post(new TabClosedEvent(key));
 
         int tabIndex = -1;
         Tab nextTab = null;
@@ -1185,11 +972,6 @@ public class ChatOverlay extends OverlayPanel
             tabOrder.add(index, t);
         }
 
-        // Apply muted state from config
-        if (config != null && config.isTabMuted(t.getKey())) {
-            t.setMuted(true);
-        }
-
         try {
             tabsByKey.put(t.getKey(), t);
         } catch (Exception e) {
@@ -1206,23 +988,11 @@ public class ChatOverlay extends OverlayPanel
 
         t.setUnread(0);
 
-        // Handle "All" tab
-        if (ALL_TAB_KEY.equals(key)) {
-            selectAllContainer();
-            channelFilterState.setCurrentChatMode(null); // Global filter for All tab
-        } else if (GAME_TAB_KEY.equals(key)) {
-            selectGameContainer();
-            channelFilterState.setCurrentChatMode(null);
-        } else if (TRADE_TAB_KEY.equals(key)) {
-            selectTradeContainer();
-            channelFilterState.setCurrentChatMode(null);
-        } else if (t.isPrivate()) {
+        if (t.isPrivate()) {
             selectPrivateContainer(t.getTargetName());
-            // Private tabs don't use channel filters, keep current mode
         } else {
             ChatMode mode = ChatMode.valueOf(key);
             selectMessageContainer(mode);
-            channelFilterState.setCurrentChatMode(mode);
         }
 
         if (activeTab != null && activeTab.equals(t)) // already selected
@@ -1240,51 +1010,6 @@ public class ChatOverlay extends OverlayPanel
 
         if (!inputFocused)
             focusInput(); // autofocus input when switching tabs
-    }
-
-    private void selectAllContainer() {
-        if (allContainer == null) {
-            log.warn("All container is null");
-            return;
-        }
-
-        if (messageContainer != null) {
-            messageContainer.setHidden(true);
-        }
-
-        messageContainer = allContainer;
-        messageContainer.setHidden(false);
-        messageContainer.setAlpha(1f);
-    }
-
-    private void selectGameContainer() {
-        if (gameContainer == null) {
-            log.warn("Game container is null");
-            return;
-        }
-
-        if (messageContainer != null) {
-            messageContainer.setHidden(true);
-        }
-
-        messageContainer = gameContainer;
-        messageContainer.setHidden(false);
-        messageContainer.setAlpha(1f);
-    }
-
-    private void selectTradeContainer() {
-        if (tradeContainer == null) {
-            log.warn("Trade container is null");
-            return;
-        }
-
-        if (messageContainer != null) {
-            messageContainer.setHidden(true);
-        }
-
-        messageContainer = tradeContainer;
-        messageContainer.setHidden(false);
-        messageContainer.setAlpha(1f);
     }
 
     public Color getInputPrefixColor() {
@@ -1376,34 +1101,6 @@ public class ChatOverlay extends OverlayPanel
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> copyToClipboard(rowText));
 
-            // Spam filter menu options
-            boolean isMarkedSpam = spamFilterService.isMarkedSpam(rowText);
-            boolean isMarkedHam = spamFilterService.isMarkedHam(rowText);
-
-            if (isMarkedSpam) {
-                rootMenu.createMenuEntry(1)
-                    .setOption("Unmark spam")
-                    .setType(MenuAction.RUNELITE)
-                    .onClick(me -> spamFilterService.removeFromSpam(rowText));
-            } else {
-                rootMenu.createMenuEntry(1)
-                    .setOption("Mark spam")
-                    .setType(MenuAction.RUNELITE)
-                    .onClick(me -> spamFilterService.markSpam(rowText));
-            }
-
-            if (isMarkedHam) {
-                rootMenu.createMenuEntry(1)
-                    .setOption("Unmark ham")
-                    .setType(MenuAction.RUNELITE)
-                    .onClick(me -> spamFilterService.removeFromHam(rowText));
-            } else {
-                rootMenu.createMenuEntry(1)
-                    .setOption("Mark ham")
-                    .setType(MenuAction.RUNELITE)
-                    .onClick(me -> spamFilterService.markHam(rowText));
-            }
-
             String targetName = hit.getTargetName();
             if (targetName != null && !targetName.isBlank() && !targetName.equals(getLocalPlayerName())) {
                 rootMenu.createMenuEntry(2)
@@ -1414,15 +1111,6 @@ public class ChatOverlay extends OverlayPanel
                         selectPrivateTab(targetName);
                         focusInput();
                     });
-
-                // Add kick option for Friends Chat messages if user has permission
-                if (ChatUtil.isFriendsChatMessage(hit.getLine().getType()) && canKickFromFriendsChat()) {
-                    final String kickTarget = targetName;
-                    rootMenu.createMenuEntry(3)
-                        .setOption("Kick " + ColorUtil.wrapWithColorTag(kickTarget, Color.RED))
-                        .setType(MenuAction.RUNELITE)
-                        .onClick(me -> kickFromFriendsChat(kickTarget));
-                }
             }
         }
 
@@ -1463,66 +1151,14 @@ public class ChatOverlay extends OverlayPanel
                 .setOption("Mark all as read")
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> hovered.setUnread(0));
-
-            sub.createMenuEntry(index++)
-                .setOption(hovered.isMuted() ? "Unmute notifications" : "Mute notifications")
-                .setType(MenuAction.RUNELITE)
-                .onClick(me -> {
-                    boolean newMuted = !hovered.isMuted();
-                    hovered.setMuted(newMuted);
-                    config.setTabMuted(hovered.getKey(), newMuted);
-                });
-
-            sub.createMenuEntry(index++)
-                .setOption("Set as peek source")
-                .setType(MenuAction.RUNELITE)
-                .onClick(me -> eventBus.post(new SetPeekSourceEvent(hovered.getKey())));
         }
 
         eventBus.post(new ChatMenuOpenedEvent());
     }
 
-    @Subscribe
-    public void onChatPrivateMessageSentEvent(ChatPrivateMessageSentEvent e) {
-        // In single chat mode with PM tabs disabled, close the PM tab after sending
-        // This allows the user to send a PM and return to the All chat view
-        if (!config.isClassicMode() || config.isClassicModeAllowPmTabs()) {
-            return;
-        }
-
-        // Close the PM tab for the target, regardless of whether it's active
-        String targetName = e.getTargetName();
-        if (isPrivateTabOpen(targetName)) {
-            removePrivateTab(targetName, false);
-            selectTabByKey(ALL_TAB_KEY);
-        }
-    }
-
     private String getLocalPlayerName() {
         Player lp = client.getLocalPlayer();
         return lp != null && lp.getName() != null ? Text.removeTags(lp.getName()) : "Player";
-    }
-
-    private boolean canKickFromFriendsChat() {
-        FriendsChatManager fcManager = client.getFriendsChatManager();
-        if (fcManager == null) {
-            return false;
-        }
-        FriendsChatRank myRank = fcManager.getMyRank();
-        FriendsChatRank kickRank = fcManager.getKickRank();
-        if (myRank == null || kickRank == null) {
-            return false;
-        }
-        return myRank.compareTo(kickRank) >= 0;
-    }
-
-    private void kickFromFriendsChat(String name) {
-        if (name == null || name.isBlank()) {
-            return;
-        }
-        clientThread.invokeLater(() -> {
-            client.runScript(ScriptID.FRIENDS_CHAT_SEND_KICK, name);
-        });
     }
 
     public void inputTick() {
@@ -1689,10 +1325,6 @@ public class ChatOverlay extends OverlayPanel
         return inputBuf.toString();
     }
 
-    private boolean isCurrentTabReadOnly() {
-        return activeTab != null && activeTab.isReadOnly();
-    }
-
     private void commitInput() {
         final String text = getInputText().trim();
         if (!text.isEmpty()) {
@@ -1763,9 +1395,7 @@ public class ChatOverlay extends OverlayPanel
             line.getTimestamp(),
             line.getSenderName(),
             line.getReceiverName(),
-            line.getPrefix(),
-            line.getDuplicateKey(),
-            line.isCollapsed());
+            line.getPrefix());
     }
 
     public void addMessage(
@@ -1776,65 +1406,10 @@ public class ChatOverlay extends OverlayPanel
         String receiverName,
         String prefix
     ) {
-        addMessage(line, type, timestamp, senderName, receiverName, prefix, null, false);
-    }
-
-    public void addMessage(
-        String line,
-        ChatMessageType type,
-        long timestamp,
-        String senderName,
-        String receiverName,
-        String prefix,
-        String duplicateKey,
-        boolean collapsed
-    ) {
         ChatMode mode = ChatUtil.toChatMode(type);
         String targetName = type == ChatMessageType.PRIVATECHATOUT || type == ChatMessageType.FRIENDNOTIFICATION
             ? receiverName
             : senderName;
-
-        boolean isClassicMode = config.isClassicMode();
-        boolean allowPmTabs = config.isClassicModeAllowPmTabs();
-        boolean showUnreadInClassic = config.isClassicModeShowUnread();
-        boolean canShowUnread = !isClassicMode || showUnreadInClassic;
-
-        // Check if message passes through filters (for unread badge suppression)
-        ChannelFilterType filterType = channelFilterState.mapMessageTypeToFilter(type);
-        boolean messagePassesFilters = filterType == null || channelFilterState.isEnabled(filterType);
-
-        // If viewing All tab and message passes filters, user already saw it - suppress unread on other tabs
-        boolean viewingAllTab = messageContainer == allContainer;
-        boolean suppressOtherTabUnread = viewingAllTab && messagePassesFilters;
-
-        // Always push to All container first (receives all messages)
-        if (allContainer != null) {
-            allContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-        }
-
-        // Track if message was routed to any specific tab (to avoid double unread on All tab)
-        // If user is viewing that tab, they've already "read" it there
-        boolean routedToSpecificTab = false;
-
-        // Route to Game tab if it's a game message and tab is enabled
-        if (filterType == ChannelFilterType.GAME && config.isGameTabEnabled() && gameContainer != null) {
-            gameContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-            routedToSpecificTab = true;
-            Tab gameTab = tabsByKey.get(GAME_TAB_KEY);
-            if (gameTab != null && messageContainer != gameContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && gameTab.getUnread() < 99) {
-                gameTab.incrementUnread();
-            }
-        }
-
-        // Route to Trade tab if it's a trade message and tab is enabled
-        if (filterType == ChannelFilterType.TRADE && config.isTradeTabEnabled() && tradeContainer != null) {
-            tradeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-            routedToSpecificTab = true;
-            Tab tradeTab = tabsByKey.get(TRADE_TAB_KEY);
-            if (tradeTab != null && messageContainer != tradeContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && tradeTab.getUnread() < 99) {
-                tradeTab.incrementUnread();
-            }
-        }
 
         // Handle private messages
         if (mode == ChatMode.PRIVATE) {
@@ -1843,63 +1418,36 @@ public class ChatOverlay extends OverlayPanel
                 return;
             }
 
-            // Flash filter indicator if incoming PM is filtered and no tab will open for it
-            if (type != ChatMessageType.PRIVATECHATOUT && type != ChatMessageType.FRIENDNOTIFICATION) {
-                boolean isPrivateFiltered = !channelFilterState.isEnabled(ChannelFilterType.PRIVATE);
-                boolean noTabWillOpen = !config.isOpenTabOnIncomingPM() && !isPrivateTabOpen(targetName);
-                if (isPrivateFiltered && noTabWillOpen) {
-                    filterFlashUntilMs = System.currentTimeMillis() + FILTER_FLASH_DURATION_MS;
-                }
-            }
-
             // Route to private tab if exists or should be created
-            if (!isClassicMode || allowPmTabs) {
-                if (isPrivateTabOpen(targetName)) {
-                    String tabKey = "private_" + targetName;
-                    Tab pmTab = tabsByKey.get(tabKey);
-                    MessageContainer pmContainer = privateContainers.get(targetName);
-                    if (pmContainer != null) {
-                        pmContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-                        routedToSpecificTab = true;
-                        if (pmTab != null && messageContainer != pmContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && pmTab.getUnread() < 99) {
-                            pmTab.incrementUnread();
-                        }
-                    }
-                } else if (config.isOpenTabOnIncomingPM() && type != ChatMessageType.PRIVATECHATOUT && type != ChatMessageType.FRIENDNOTIFICATION) {
-                    Pair<Tab, MessageContainer> pair = openTabForPrivateChat(targetName);
-                    if (pair != null) {
-                        pair.getRight().pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-                        routedToSpecificTab = true;
-                        if (messageContainer != pair.getRight() && canShowUnread && !suppressOtherTabUnread && !collapsed && pair.getLeft().getUnread() < 99) {
-                            pair.getLeft().incrementUnread();
-                        }
+            if (isPrivateTabOpen(targetName)) {
+                String tabKey = "private_" + targetName;
+                Tab pmTab = tabsByKey.get(tabKey);
+                MessageContainer pmContainer = privateContainers.get(targetName);
+                if (pmContainer != null) {
+                    pmContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);
+                    if (pmTab != null && messageContainer != pmContainer && pmTab.getUnread() < 99) {
+                        pmTab.incrementUnread();
                     }
                 }
-            }
-        } else {
-            // Non-private: route to mode-specific tab (Clan, Friends Chat, etc.)
-            if (mode != ChatMode.PUBLIC) {
-                MessageContainer modeContainer = messageContainers.get(mode.name());
-                Tab modeTab = tabsByKey.get(tabKey(mode));
-                if (modeContainer != null) {
-                    modeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-                    routedToSpecificTab = true;
-                    if (modeTab != null && messageContainer != modeContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && modeTab.getUnread() < 99) {
-                        modeTab.incrementUnread();
+            } else if (config.isOpenTabOnIncomingPM() && type != ChatMessageType.PRIVATECHATOUT && type != ChatMessageType.FRIENDNOTIFICATION) {
+                Pair<Tab, MessageContainer> pair = openTabForPrivateChat(targetName);
+                if (pair != null) {
+                    pair.getRight().pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);
+                    if (messageContainer != pair.getRight() && pair.getLeft().getUnread() < 99) {
+                        pair.getLeft().incrementUnread();
                     }
                 }
             }
         }
 
-        // Mark unread on All tab if:
-        // - Message passes through filters (will actually be visible in All tab)
-        // - Message didn't route to any other specific tab, OR is PUBLIC/SYSTEM type
-        // - Message is not a collapsed duplicate update
-        Tab allTab = tabsByKey.get(ALL_TAB_KEY);
-        boolean isAllTabOnlyMessage = filterType == ChannelFilterType.PUBLIC || filterType == ChannelFilterType.SYSTEM;
-        boolean shouldMarkAllUnread = messagePassesFilters && (!routedToSpecificTab || isAllTabOnlyMessage) && !collapsed;
-        if (allTab != null && messageContainer != allContainer && canShowUnread && shouldMarkAllUnread && allTab.getUnread() < 99) {
-            allTab.incrementUnread();
+        // Route to mode-specific tab (Public, Clan, Friends Chat, etc.)
+        MessageContainer modeContainer = messageContainers.get(mode.name());
+        Tab modeTab = tabsByKey.get(tabKey(mode));
+        if (modeContainer != null) {
+            modeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);
+            if (modeTab != null && messageContainer != modeContainer && modeTab.getUnread() < 99) {
+                modeTab.incrementUnread();
+            }
         }
     }
 
@@ -1980,15 +1528,6 @@ public class ChatOverlay extends OverlayPanel
             container.setPrivate(true);
             container.startUp(config.getMessageContainerConfig(), ChatMode.PRIVATE);
             privateContainers.put(targetName, container);
-
-            // Copy existing private messages for this target from the All container
-            if (allContainer != null) {
-                for (RichLine rl : allContainer.getLines()) {
-                    if (ChatUtil.isPrivateMessage(rl.getType()) && targetName.equals(rl.getTargetName())) {
-                        container.copyLine(rl);
-                    }
-                }
-            }
         }
         return container;
     }
@@ -2370,7 +1909,6 @@ public class ChatOverlay extends OverlayPanel
     private final class ChatMouse implements MouseListener, MouseWheelListener
     {
         private boolean clickThroughNotificationSent = false;
-        private boolean scrollDisabledNotificationSent = false;
 
         private boolean shouldBlockClickThrough(MouseEvent e) {
             boolean shouldBlock = !config.isAllowClickThrough()
@@ -2426,18 +1964,6 @@ public class ChatOverlay extends OverlayPanel
                 return e;
             }
 
-            // Warn once if scrolling is disabled but user tries to scroll in message area
-            if (!config.getMessageContainerConfig().isScrollable()
-                    && lastViewport != null
-                    && lastViewport.contains(e.getPoint())
-                    && !scrollDisabledNotificationSent) {
-                notificationService.pushHelperNotification(new ChatMessageBuilder()
-                    .append("Scrolling is disabled because ")
-                    .append(Color.ORANGE, "Scrollable")
-                    .append(" is turned off in the settings."));
-                scrollDisabledNotificationSent = true;
-            }
-
             return e;
         }
 
@@ -2456,52 +1982,15 @@ public class ChatOverlay extends OverlayPanel
             if (lastViewport == null)
                 return false;
 
-            // Handle filter dropdown clicks first (it's rendered on top)
-            if (filterDropdown != null && filterDropdown.isVisible()) {
-                java.awt.Point p = e.getPoint();
-                DropdownItem<ChannelFilterType> item = filterDropdown.itemAt(p);
-                if (item != null && e.getButton() == MouseEvent.BUTTON1) {
-                    // Toggle the filter
-                    item.setSelected(!item.isSelected());
-                    channelFilterState.setEnabled(item.getValue(), item.isSelected());
-                    e.consume();
-                    return true;
-                }
-                // If click is outside dropdown, close it
-                if (!filterDropdown.hitTest(p) && !filterButtonBounds.contains(p)) {
-                    filterDropdown.close();
-                    e.consume();
-                    return true;
-                }
-            }
-
             if (client.isMenuOpen()) {
                 return false;
             }
 
             if (!lastViewport.contains(e.getPoint())) {
-                // Close dropdown if clicking outside
-                if (filterDropdown != null && filterDropdown.isVisible()) {
-                    filterDropdown.close();
-                }
                 if (config.isClickOutsideToClose()) {
                     clientThread.invokeLater(() -> ClientUtil.simulateEscapeKey(client));
                 }
                 return false;
-            }
-
-            // Handle filter button click
-            if (shouldShowFilterButton() && filterButtonBounds.contains(e.getPoint())) {
-                if (e.getButton() == MouseEvent.BUTTON1) {
-                    if (filterDropdown == null || !filterDropdown.isVisible()) {
-                        initFilterDropdown();
-                        filterDropdown.open();
-                    } else {
-                        filterDropdown.close();
-                    }
-                    e.consume();
-                    return true;
-                }
             }
 
             if (tabsBarBounds.contains(e.getPoint())) {

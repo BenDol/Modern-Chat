@@ -228,27 +228,6 @@ public class ClientUtil
         }
     }
 
-    // Grand Exchange center coordinates and radius
-    private static final int GE_CENTER_X = 3165;
-    private static final int GE_CENTER_Y = 3472;
-    private static final int GE_RADIUS = 35;
-
-    public static boolean isAtGrandExchange(Client client) {
-        Player localPlayer = client.getLocalPlayer();
-        if (localPlayer == null) {
-            return false;
-        }
-
-        WorldPoint loc = localPlayer.getWorldLocation();
-        if (loc == null) {
-            return false;
-        }
-
-        int dx = loc.getX() - GE_CENTER_X;
-        int dy = loc.getY() - GE_CENTER_Y;
-        return (dx * dx + dy * dy) <= (GE_RADIUS * GE_RADIUS);
-    }
-
     public static void simulateKeyInput(Client client, int keyCode, char keyChar) {
         simulateKeyInput(client, keyCode, keyChar, 0);
     }
@@ -301,22 +280,9 @@ public class ClientUtil
         return null;
     }
 
-    public static void setChatboxWidgetInput(Widget widget, String input) {
-        String text = widget.getText();
-        int idx = text.indexOf(':');
-        if (idx != -1) {
-            String newText = text.substring(0, idx) + ": " + input;
-            widget.setText(newText);
-        }
-    }
-
     public static boolean isDialogOpen(Client client) {
         return isHidden(client, InterfaceID.Chatbox.MES_LAYER_HIDE)
             || isHidden(client, InterfaceID.Chatbox.CHATDISPLAY);
-    }
-
-    boolean isOptionsDialogOpen(Client client) {
-        return client.getWidget(InterfaceID.Chatmenu.OPTIONS) != null;
     }
 
     public static boolean isHidden(Client client, int component) {
