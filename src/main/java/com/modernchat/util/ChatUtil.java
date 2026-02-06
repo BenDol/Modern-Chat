@@ -13,6 +13,7 @@ import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.util.ColorUtil;
+import net.runelite.client.util.Text;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nullable;
@@ -33,6 +34,8 @@ import java.util.regex.Pattern;
 public class ChatUtil
 {
     public static final AtomicBoolean LEGACY_CHAT_HIDDEN = new AtomicBoolean(false);
+    public static final String MODERN_CHAT_TAG = "[ModernChat]";
+    public static final String COMMAND_MODE_MESSAGE = "Command Mode (Modern chat will be restored once you send or cancel the command)";
 
     public static boolean isPrivateMessage(ChatMessageType t) {
         return t == ChatMessageType.PRIVATECHAT
@@ -295,5 +298,13 @@ public class ChatUtil
 
     public static boolean isNpcMessage(ChatMessageType type) {
         return type == ChatMessageType.NPC_SAY || type == ChatMessageType.DIALOG;
+    }
+
+    public static boolean isModernChatMessage(String message) {
+        return message != null && Text.removeTags(message).startsWith(MODERN_CHAT_TAG);
+    }
+
+    public static boolean isIgnoredMessage(String line, ChatMessageType type) {
+        return line.endsWith(ChatUtil.COMMAND_MODE_MESSAGE) && ChatUtil.isModernChatMessage(line);
     }
 }

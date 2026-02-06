@@ -221,6 +221,11 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
             return;
         }
 
+		if (ChatUtil.isIgnoredMessage(line.getText(), line.getType())) {
+			log.debug("Ignoring message, type: {}, text: {}", line.getType(), line.getText());
+			return;
+		}
+
         log.debug("Chat message received: {}", line);
 		chatPeekOverlay.pushLine(line);
 	}

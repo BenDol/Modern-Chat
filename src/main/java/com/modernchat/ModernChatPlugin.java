@@ -41,12 +41,14 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
+import net.runelite.api.VarClientStr;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
@@ -327,6 +329,16 @@ public class ModernChatPlugin extends Plugin {
 	}
 
 	@Subscribe
+	public void onDialogOptionsOpenedEvent(DialogOptionsOpenedEvent e) {
+		clientThread.invokeLater(() -> {
+			if (chatProxy.isLegacyHidden()) {
+				chatProxy.ensureLegacyChatVisible();
+				chatProxy.setAutoHide(config.featureToggle_Enabled());
+			}
+		});
+	}
+
+	@Subscribe
 	public void onVarbitChanged(VarbitChanged e) {
 		if (e.getVarpId() == VarPlayerID.OPTION_PM) {
 			if (!ClientUtil.isOnline(client))
@@ -366,6 +378,18 @@ public class ModernChatPlugin extends Plugin {
 				clientThread.invokeAtTickEnd(() -> {
 					SwingUtilities.invokeLater(this::reloadKeyRemappingPlugin);
 				});
+			}
+		}
+	}
+
+	@Subscribe
+	public void onVarClientStrChanged(VarClientStrChanged e) {
+		if (e.getIndex() == VarClientStr.INPUT_TEXT) {
+			// When the player starts typing into a system prompt, ensure chat is shown
+			String s = client.getVarcStrValue(VarClientStr.INPUT_TEXT);
+			if (s != null && chatProxy.isLegacyHidden() && chatProxy.isLegacy()) {
+				chatProxy.ensureLegacyChatVisible();
+				chatProxy.setAutoHide(config.featureToggle_Enabled());
 			}
 		}
 	}
