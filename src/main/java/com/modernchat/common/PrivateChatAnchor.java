@@ -45,8 +45,8 @@ public class PrivateChatAnchor extends Anchor {
 
     @Override
     public Integer width(Widget widget, Widget target) {
-        return Math.max(300, target.getBounds().width);
-        //return Math.max(300, client.getCanvasWidth() - Math.max(0, target.getBounds().x + getOffsetX()));
+        //return Math.max(300, target.getBounds().width);
+        return Math.max(300, client.getCanvasWidth() - Math.max(0, target.getBounds().x + getOffsetX()));
     }
 
     @Override

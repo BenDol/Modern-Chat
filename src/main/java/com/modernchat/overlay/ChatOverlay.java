@@ -165,6 +165,7 @@ public class ChatOverlay extends OverlayPanel
     private int inputScrollPx = 0;
     private long lastBlinkMs = 0;
     private boolean caretOn = true;
+    private volatile boolean syncingInput = false;
 
     // Selection state
     private int selStart = 0;
@@ -298,7 +299,8 @@ public class ChatOverlay extends OverlayPanel
 
         refreshTabs();
 
-        clientThread.invoke(() -> setHidden(config.isStartHidden()));
+        ChatProxy chatProxy = chatProxyProvider.get();
+        clientThread.invoke(() -> setHidden(config.isStartHidden() || chatProxy.isUsingKeyRemappingPlugin()));
         clientThread.invokeAtTickEnd(() -> selectTab(config.getDefaultChatMode()));
     }
 
@@ -335,6 +337,7 @@ public class ChatOverlay extends OverlayPanel
 
         lastViewport = null;
         commandMode = false;
+        syncingInput = false;
 
         resizePanel.shutDown();
         overlayManager.remove(resizePanel);
@@ -1332,7 +1335,7 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onVarClientStrChanged(VarClientStrChanged e) {
-        if (e.getIndex() == VarClientStr.CHATBOX_TYPED_TEXT) {
+        if (e.getIndex() == VarClientStr.CHATBOX_TYPED_TEXT && !syncingInput) {
             // keep the legacy chat input in sync, if the text matches it will be ignored
             setInputText(ClientUtil.getChatInputText(client), false);
         }
@@ -1808,6 +1811,7 @@ public class ChatOverlay extends OverlayPanel
         boolean collapsed
     ) {
         ChatMode mode = ChatUtil.toChatMode(type);
+        ChatMode selectedMode = mode;
         String targetName = type == ChatMessageType.PRIVATECHATOUT || type == ChatMessageType.FRIENDNOTIFICATION
             ? receiverName
             : senderName;
@@ -2339,6 +2343,12 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private void syncChatInputLater() {
+        if (syncingInput) {
+            return;
+        }
+
+        syncingInput = true;
+
         clientThread.invokeLater(() -> {
             String input = getInputText();
             ClientUtil.setChatInputText(client, input);
@@ -2353,13 +2363,15 @@ public class ChatOverlay extends OverlayPanel
                     ClientUtil.setChatInputText(client,
                         widgetInput != null && widgetInput.endsWith(ClientUtil.PRESS_ENTER_TO_CHAT) ? "" : input);
 
-                    chatProxy.ensureLegacyChatVisible();
+                    showLegacyChat(true);
                     chatProxy.setAutoHide(mainConfig.featureToggle_Enabled());
 
                     notificationService.pushHelperNotification(new ChatMessageBuilder()
                         .append(ChatUtil.COMMAND_MODE_MESSAGE));
                 });
             }
+
+            syncingInput = false;
         });
     }
 
@@ -2527,9 +2539,11 @@ public class ChatOverlay extends OverlayPanel
                 if (filterDropdown != null && filterDropdown.isVisible()) {
                     filterDropdown.close();
                 }
-                if (config.isClickOutsideToClose()) {
+                ChatProxy chatProxy = chatProxyProvider.get();
+                if (config.isClickOutsideToClose() && mainConfig.featureToggle_Enabled() && !chatProxy.isUsingKeyRemappingPlugin()) {
                     setHidden(true);
                 }
+                unfocusInput();
                 return false;
             }
 

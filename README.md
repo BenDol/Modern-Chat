@@ -1,5 +1,7 @@
 # Modern Chat
 
+**Note:** The `Paste` feature was denied due to violating Jagex classification: https://github.com/runelite/plugin-hub/pull/8828#issuecomment-3200730451
+
 **Preview Video:**
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/a6H9e2_dk3s/0.jpg)](https://www.youtube.com/watch?v=a6H9e2_dk3s)
@@ -47,6 +49,7 @@ _Note: Previous / next keybinds can be configured in the settings_
 _Note: Private chats can be closed using **Escape** key or submitting an empty message_
 
 ---
+
 
 
 

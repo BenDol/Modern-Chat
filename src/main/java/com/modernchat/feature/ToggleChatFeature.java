@@ -109,7 +109,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		registerExtendedKeybind();
 
 		if (loggedIn) {
-			clientThread.invokeAtTickEnd(() -> setHidden(config.featureToggle_StartHidden()));
+			clientThread.invokeAtTickEnd(() -> setHidden(config.featureToggle_StartHidden() || chatProxy.isUsingKeyRemappingPlugin()));
 		}
 	}
 
@@ -208,7 +208,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		if (e.getGameState() == GameState.LOGGED_IN && !loggedIn) {
 			clientThread.invokeLater(() -> {
 				// If logging in while a prompt is open, avoid immediate hide
-				if (config.featureToggle_StartHidden()) {
+				if (config.featureToggle_StartHidden() || chatProxy.isUsingKeyRemappingPlugin()) {
 					scheduleDeferredHide();
 				} else {
 					setHidden(false);

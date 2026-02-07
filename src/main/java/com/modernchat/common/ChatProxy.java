@@ -30,6 +30,10 @@ public class ChatProxy
     @Setter
     private boolean autoHide = false;
 
+    @Getter
+    @Setter
+    private boolean usingKeyRemappingPlugin;
+
     public boolean isHidden() {
         if (modernChat.isEnabled())
             return modernChat.isHidden();
@@ -71,8 +75,12 @@ public class ChatProxy
     }
 
     public void clearInput(Runnable callback) {
+        clearInput(callback, true);
+    }
+
+    public void clearInput(Runnable callback, boolean sync) {
         if (modernChat.isEnabled()) {
-            modernChat.clearInputText(true);
+            modernChat.clearInputText(sync);
             callback.run();
         } else {
             ClientUtil.clearChatInput(client, clientThread, callback);

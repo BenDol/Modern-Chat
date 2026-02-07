@@ -36,6 +36,7 @@ import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.StringUtil;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -65,9 +66,9 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.PluginChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
@@ -133,7 +134,6 @@ public class ModernChatPlugin extends Plugin {
 	private Set<ChatFeature<?>> features;
 	private final AtomicBoolean chatVisible = new AtomicBoolean(false);
 	private final AtomicBoolean dialogOpen = new AtomicBoolean(false);
-	private final AtomicBoolean keyRemapperReloading = new AtomicBoolean(false);
 	private volatile Anchor pmAnchor = null;
 	private volatile Rectangle lastChatBounds;
 	private boolean loggedIn;
@@ -199,7 +199,7 @@ public class ModernChatPlugin extends Plugin {
 		lastChatBounds = null;
 
         // Reload KeyRemappingPlugin to ensure it picks up our key listeners
-		SwingUtilities.invokeLater(this::reloadKeyRemappingPlugin);
+		checkKeyRemappingPlugin(true);
 
 		if (!config.featureExample_Enabled()) {
 			toggleChatFeature.scheduleDeferredHide();
@@ -369,6 +369,12 @@ public class ModernChatPlugin extends Plugin {
 	}
 
 	@Subscribe
+	public void onPluginChanged(PluginChanged e) {
+		if (e.getPlugin().getClass().getSimpleName().equals("KeyRemappingPlugin"))
+			checkKeyRemappingPlugin(false);
+	}
+
+	@Subscribe
 	public void onConfigChanged(ConfigChanged e) {
 		if (!e.getGroup().equals(ModernChatConfig.GROUP))
 			return;
@@ -383,14 +389,6 @@ public class ModernChatPlugin extends Plugin {
 					.append("Please enable ")
 					.append(Color.ORANGE, "Split friends private chat")
 					.append(" in the OSRS settings for the 'Anchor Private Chat' feature."));
-			}
-		}
-		else if (key.equals(ModernChatConfigBase.Keys.featureToggle_Enabled)) {
-			boolean enabled = Boolean.parseBoolean(e.getNewValue());
-			if (enabled) {
-				clientThread.invokeAtTickEnd(() -> {
-					SwingUtilities.invokeLater(this::reloadKeyRemappingPlugin);
-				});
 			}
 		}
 	}
@@ -413,10 +411,12 @@ public class ModernChatPlugin extends Plugin {
 
 		switch (e.getScriptId()) {
 			case ScriptID.MESSAGE_LAYER_OPEN:
-				eventBus.post(new MessageLayerOpenedEvent(messageWidget, widgetBucket.isPmWidget(messageWidget)));
+				eventBus.post(new MessageLayerOpenedEvent(messageWidget,
+					widgetBucket.isPmWidget(messageWidget)));
 				break;
 			case ScriptID.MESSAGE_LAYER_CLOSE:
-				eventBus.post(new MessageLayerClosedEvent(messageWidget, widgetBucket.isPmWidget(messageWidget)));
+				eventBus.post(new MessageLayerClosedEvent(messageWidget,
+					widgetBucket.isPmWidget(messageWidget)));
 				break;
 		}
 	}
@@ -424,7 +424,8 @@ public class ModernChatPlugin extends Plugin {
 	@Subscribe
 	public void onClientTick(ClientTick e) {
 		Widget chatWidget = widgetBucket.getChatWidget();
-		boolean visible = chatWidget != null && !chatWidget.isHidden() && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());
+		boolean visible = chatWidget != null &&
+			!chatWidget.isHidden() && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());
 		if (chatVisible.get() != visible) {
 			chatVisible.set(visible);
 			eventBus.post(new LegacyChatVisibilityChangeEvent(chatWidget, chatVisible.get()));
@@ -632,31 +633,30 @@ public class ModernChatPlugin extends Plugin {
 		});
 	}
 
-	private void reloadKeyRemappingPlugin() {
-		// Prevent re-entry to avoid stack overflow
-		if (!keyRemapperReloading.compareAndSet(false, true)) {
-			return;
+	private void checkKeyRemappingPlugin(boolean notify) {
+		for (Plugin plugin : pluginManager.getPlugins()) {
+			if (plugin.getClass().getSimpleName().equals("KeyRemappingPlugin")
+				&& pluginManager.isPluginActive(plugin)
+				&& pluginManager.isPluginEnabled(plugin))
+			{
+				// ignore start hidden
+				// ignore click outside close
+				chatProxy.setUsingKeyRemappingPlugin(true);
+
+				if (notify) {
+					notificationService.pushHelperNotification(new ChatMessageBuilder()
+						.append(Color.YELLOW, "Plugin ")
+						.append(Color.ORANGE, "Key Remapping ")
+						.append(Color.YELLOW, "has known conflicts with key features. Ignoring the settings ")
+						.append(Color.ORANGE, "Click Outside Closes ")
+						.append(Color.YELLOW, "and ")
+						.append(Color.ORANGE, "Start Hidden ")
+						.append(Color.YELLOW, "to help with compatibility, but you may still have issues."));
+				}
+				return;
+			}
 		}
 
-		try {
-			for (Plugin plugin : pluginManager.getPlugins()) {
-				if (plugin.getClass().getSimpleName().equals("KeyRemappingPlugin")) {
-					try {
-						if (pluginManager.isPluginEnabled(plugin) && pluginManager.isPluginActive(plugin)) {
-							pluginManager.stopPlugin(plugin);
-							pluginManager.setPluginEnabled(plugin, false);
-							pluginManager.setPluginEnabled(plugin, true);
-							pluginManager.startPlugin(plugin);
-							log.debug("Reloaded KeyRemappingPlugin");
-						}
-					} catch (PluginInstantiationException e) {
-						log.error("Failed to reload KeyRemappingPlugin", e);
-					}
-					break;
-				}
-			}
-		} finally {
-			keyRemapperReloading.set(false);
-		}
+		chatProxy.setUsingKeyRemappingPlugin(false);
 	}
 }
