@@ -251,45 +251,6 @@ public class ClientUtil
         return (dx * dx + dy * dy) <= (GE_RADIUS * GE_RADIUS);
     }
 
-    public static void simulateKeyInput(Client client, int keyCode, char keyChar) {
-        simulateKeyInput(client, keyCode, keyChar, 0);
-    }
-
-    public static void simulateKeyInput(Client client, int keyCode, char keyChar, int modifiers) {
-        Canvas canvas = client.getCanvas();
-        if (canvas == null) {
-            return;
-        }
-
-        KeyEvent press = new KeyEvent(
-            canvas,
-            KeyEvent.KEY_PRESSED,
-            System.currentTimeMillis(),
-            modifiers,
-            keyCode,
-            keyChar
-        );
-        KeyEvent release = new KeyEvent(
-            canvas,
-            KeyEvent.KEY_RELEASED,
-            System.currentTimeMillis(),
-            modifiers,
-            keyCode,
-            keyChar
-        );
-
-        canvas.dispatchEvent(press);
-        canvas.dispatchEvent(release);
-    }
-
-    public static void simulateEscapeKey(Client client) {
-        simulateKeyInput(client, KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED);
-    }
-
-    public static void simulateSlashKey(Client client) {
-        simulateKeyInput(client, KeyEvent.VK_SLASH, KeyEvent.CHAR_UNDEFINED);
-    }
-
     public static boolean isChatLocked(Client client) {
         String input = getChatboxWidgetInput(client);
         return input != null && input.endsWith(PRESS_ENTER_TO_CHAT);

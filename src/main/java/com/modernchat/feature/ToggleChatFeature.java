@@ -355,9 +355,14 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		extendedInputService.registerBinding(EXTENDED_BINDING_ID, keybind, (v) -> {
 			Keybind primaryKey = config.featureToggle_ToggleKey();
 			if (primaryKey != null) {
-				// We're simulating the key input here to avoid issues with KeyRemappingPlugin.
-				// This way the KeyRemappingPlugin will also see the key event.
-				ClientUtil.simulateKeyInput(client, primaryKey.getKeyCode(), KeyEvent.CHAR_UNDEFINED, primaryKey.getModifiers());
+				keyPressed(new KeyEvent(
+					client.getCanvas(),
+					KeyEvent.KEY_PRESSED,
+					System.currentTimeMillis(),
+					primaryKey.getModifiers(),
+					primaryKey.getKeyCode(),
+					KeyEvent.CHAR_UNDEFINED
+				));
 			}
 		});
 	}
