@@ -71,8 +71,12 @@ public class ChatProxy
     }
 
     public void clearInput(Runnable callback) {
+        clearInput(callback, true);
+    }
+
+    public void clearInput(Runnable callback, boolean sync) {
         if (modernChat.isEnabled()) {
-            modernChat.clearInputText(true);
+            modernChat.clearInputText(sync);
             callback.run();
         } else {
             ClientUtil.clearChatInput(client, clientThread, callback);

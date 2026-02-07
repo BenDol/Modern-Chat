@@ -139,6 +139,7 @@ public class ChatOverlay extends OverlayPanel
     private int inputScrollPx = 0;
     private long lastBlinkMs = 0;
     private boolean caretOn = true;
+    private volatile boolean syncingInput = false;
 
     // Selection state
     private int selStart = 0;
@@ -234,8 +235,10 @@ public class ChatOverlay extends OverlayPanel
         resizePanel.setListener(this::setDesiredChatSize);
         resizePanel.startUp(() -> isResizable() && !isHidden() && !client.isMenuOpen());
 
+        MessageContainer publicContainer = messageContainerProvider.get();
         messageContainers.putAll(Map.of(
-            ChatMode.PUBLIC.name(), messageContainerProvider.get(),
+            ChatMode.PUBLIC.name(), publicContainer,
+            ChatMode.PRIVATE.name(), publicContainer,
             ChatMode.FRIENDS_CHAT.name(), messageContainerProvider.get(),
             ChatMode.CLAN_MAIN.name(), messageContainerProvider.get(),
             ChatMode.CLAN_GUEST.name(), messageContainerProvider.get()
@@ -273,6 +276,7 @@ public class ChatOverlay extends OverlayPanel
 
         lastViewport = null;
         commandMode = false;
+        syncingInput = false;
 
         resizePanel.shutDown();
         overlayManager.remove(resizePanel);
@@ -1051,7 +1055,7 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onVarClientStrChanged(VarClientStrChanged e) {
-        if (e.getIndex() == VarClientStr.CHATBOX_TYPED_TEXT) {
+        if (e.getIndex() == VarClientStr.CHATBOX_TYPED_TEXT && !syncingInput) {
             // keep the legacy chat input in sync, if the text matches it will be ignored
             setInputText(ClientUtil.getChatInputText(client), false);
         }
@@ -1872,6 +1876,12 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private void syncChatInputLater() {
+        if (syncingInput) {
+            return;
+        }
+
+        syncingInput = true;
+
         clientThread.invokeLater(() -> {
             String input = getInputText();
             ClientUtil.setChatInputText(client, input);
@@ -1893,6 +1903,8 @@ public class ChatOverlay extends OverlayPanel
                         .append(ChatUtil.COMMAND_MODE_MESSAGE));
                 });
             }
+
+            syncingInput = false;
         });
     }
 
