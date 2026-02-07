@@ -1886,7 +1886,7 @@ public class ChatOverlay extends OverlayPanel
                     ClientUtil.setChatInputText(client,
                         widgetInput != null && widgetInput.endsWith(ClientUtil.PRESS_ENTER_TO_CHAT) ? "" : input);
 
-                    chatProxy.ensureLegacyChatVisible();
+                    showLegacyChat(true);
                     chatProxy.setAutoHide(mainConfig.featureToggle_Enabled());
 
                     notificationService.pushHelperNotification(new ChatMessageBuilder()
@@ -2024,7 +2024,7 @@ public class ChatOverlay extends OverlayPanel
             }
 
             if (!lastViewport.contains(e.getPoint())) {
-                if (config.isClickOutsideToClose()) {
+                if (config.isClickOutsideToClose() && mainConfig.featureToggle_Enabled()) {
                     setHidden(true);
                 }
                 return false;
