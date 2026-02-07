@@ -30,6 +30,10 @@ public class ChatProxy
     @Setter
     private boolean autoHide = false;
 
+    @Getter
+    @Setter
+    private boolean usingKeyRemappingPlugin;
+
     public boolean isHidden() {
         if (modernChat.isEnabled())
             return modernChat.isHidden();

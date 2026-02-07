@@ -48,7 +48,6 @@ public class PrivateChatService implements ChatService, KeyListener {
     // Queue to execute scripts after the frame (avoids reentrancy)
     @Getter
     private String pmTarget = null;
-    private String lastPmTarget = null;
     private String pendingPmTarget = null;
     private String pendingPrefill = null;
 

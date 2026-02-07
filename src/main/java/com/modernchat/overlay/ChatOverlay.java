@@ -249,7 +249,8 @@ public class ChatOverlay extends OverlayPanel
 
         refreshTabs();
 
-        clientThread.invoke(() -> setHidden(config.isStartHidden()));
+        ChatProxy chatProxy = chatProxyProvider.get();
+        clientThread.invoke(() -> setHidden(config.isStartHidden() || chatProxy.isUsingKeyRemappingPlugin()));
         clientThread.invokeAtTickEnd(() -> selectTab(config.getDefaultChatMode()));
     }
 
@@ -2037,7 +2038,8 @@ public class ChatOverlay extends OverlayPanel
             }
 
             if (!lastViewport.contains(e.getPoint())) {
-                if (config.isClickOutsideToClose() && mainConfig.featureToggle_Enabled()) {
+                ChatProxy chatProxy = chatProxyProvider.get();
+                if (config.isClickOutsideToClose() && mainConfig.featureToggle_Enabled() && !chatProxy.isUsingKeyRemappingPlugin()) {
                     setHidden(true);
                 }
                 unfocusInput();

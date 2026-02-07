@@ -5,6 +5,7 @@ import com.modernchat.ModernChatConfig;
 import com.modernchat.ModernChatConfigBase;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
+import com.modernchat.common.ChatProxy;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.MessageLine;
 import com.modernchat.common.NotificationService;
@@ -134,6 +135,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private MessageService messageService;
     @Inject private NotificationService notificationService;
     @Inject private ChatOverlay overlay;
+    @Inject private ChatProxy chatProxy;
 
     private final ModernChatConfig mainConfig;
 
@@ -416,7 +418,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
             clientThread.invokeAtTickEnd(() -> overlay.selectDefaultTab());
 
-            if (mainConfig.featureToggle_StartHidden())
+            if (mainConfig.featureToggle_StartHidden() || chatProxy.isUsingKeyRemappingPlugin())
                 clientThread.invokeAtTickEnd(() -> overlay.setHidden(true));
 
             loggedIn = true;

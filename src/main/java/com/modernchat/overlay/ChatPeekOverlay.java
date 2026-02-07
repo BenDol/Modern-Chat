@@ -16,7 +16,6 @@ public class ChatPeekOverlay extends MessageContainer
     @Inject private ModernChatConfig mainConfig;
     @Inject private Provider<ChatOverlay> chatOverlayProvider;
 
-
     public ChatPeekOverlay() {
         setCanShowDecider((c) -> {
             return !isHidden() && (chatProxy == null ||
