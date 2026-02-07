@@ -2024,8 +2024,12 @@ public class ChatOverlay extends OverlayPanel
             }
 
             if (!lastViewport.contains(e.getPoint())) {
-                if (config.isClickOutsideToClose() && mainConfig.featureToggle_Enabled()) {
-                    setHidden(true);
+                if (config.isClickOutsideToClose()) {
+                    if (mainConfig.featureToggle_Enabled()) {
+                        setHidden(true);
+                    } else {
+                        unfocusInput();
+                    }
                 }
                 return false;
             }
