@@ -235,10 +235,8 @@ public class ChatOverlay extends OverlayPanel
         resizePanel.setListener(this::setDesiredChatSize);
         resizePanel.startUp(() -> isResizable() && !isHidden() && !client.isMenuOpen());
 
-        MessageContainer publicContainer = messageContainerProvider.get();
         messageContainers.putAll(Map.of(
-            ChatMode.PUBLIC.name(), publicContainer,
-            ChatMode.PRIVATE.name(), publicContainer,
+            ChatMode.PUBLIC.name(), messageContainerProvider.get(),
             ChatMode.FRIENDS_CHAT.name(), messageContainerProvider.get(),
             ChatMode.CLAN_MAIN.name(), messageContainerProvider.get(),
             ChatMode.CLAN_GUEST.name(), messageContainerProvider.get()
@@ -1423,6 +1421,7 @@ public class ChatOverlay extends OverlayPanel
         String prefix
     ) {
         ChatMode mode = ChatUtil.toChatMode(type);
+        ChatMode selectedMode = mode;
         String targetName = type == ChatMessageType.PRIVATECHATOUT || type == ChatMessageType.FRIENDNOTIFICATION
             ? receiverName
             : senderName;
@@ -1433,6 +1432,8 @@ public class ChatOverlay extends OverlayPanel
                 log.warn("Attempted to add private message without a receiver name");
                 return;
             }
+
+            selectedMode = ChatMode.PUBLIC;
 
             // Route to private tab if exists or should be created
             if (isPrivateTabOpen(targetName)) {
@@ -1457,8 +1458,8 @@ public class ChatOverlay extends OverlayPanel
         }
 
         // Route to mode-specific tab (Public, Clan, Friends Chat, etc.)
-        MessageContainer modeContainer = messageContainers.get(mode.name());
-        Tab modeTab = tabsByKey.get(tabKey(mode));
+        MessageContainer modeContainer = messageContainers.get(selectedMode.name());
+        Tab modeTab = tabsByKey.get(tabKey(selectedMode));
         if (modeContainer != null) {
             modeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix);
             if (modeTab != null && messageContainer != modeContainer && modeTab.getUnread() < 99) {
