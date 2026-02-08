@@ -20,6 +20,7 @@ import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatPeekOverlay;
 import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
+import com.modernchat.service.MessageFilterService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -89,6 +90,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private ChatOverlay chatOverlay;
 	@Inject private ConfigManager configManager;
 	@Inject private ChannelFilterState channelFilterState;
+	@Inject private MessageFilterService messageFilterService;
 
 	private final ModernChatConfig mainConfig;
 
@@ -242,8 +244,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Subscribe(priority = -3) // run after ChatMessageManager
 	public void onChatMessage(ChatMessage e) {
-		// Invoke chat filter check to let other plugins filter (and get collapsed message text)
-		String filteredMessage = ChatUtil.invokeChatFilterCheck(client, eventBus, e);
+		// Run message through filter service (replicates ChatFilterPlugin logic internally)
+		String filteredMessage = messageFilterService.filterMessage(e);
 		if (filteredMessage == null) {
 			return; // Message blocked by chat filter plugin
 		}

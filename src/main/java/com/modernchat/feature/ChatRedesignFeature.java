@@ -23,6 +23,7 @@ import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatOverlayConfig;
 import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
+import com.modernchat.service.MessageFilterService;
 import com.modernchat.service.MessageService;
 import com.modernchat.util.ChatUtil;
 import lombok.Getter;
@@ -142,6 +143,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private OverlayManager overlayManager;
     @Inject private WidgetBucket widgetBucket;
     @Inject private MessageService messageService;
+    @Inject private MessageFilterService messageFilterService;
     @Inject private NotificationService notificationService;
     @Inject private ChatOverlay overlay;
     @Inject private ChannelFilterState channelFilterState;
@@ -506,8 +508,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe(priority = -3) // run after ChatMessageManager
     public void onChatMessage(ChatMessage e) {
-        // Invoke chat filter check to let other plugins filter
-        String filteredMessage = ChatUtil.invokeChatFilterCheck(client, eventBus, e);
+        // Run message through filter service (replicates ChatFilterPlugin logic internally)
+        String filteredMessage = messageFilterService.filterMessage(e);
         if (filteredMessage == null) {
             log.debug("Message blocked by chat filter plugin");
             return;

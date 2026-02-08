@@ -54,9 +54,17 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     String toggleChatSection = "toggleChatSection";
 
     @ConfigSection(
+        name = "Filters",
+        description = "Apply chat filters from other plugins to Modern Chat",
+        position = 4,
+        closedByDefault = true
+    )
+    String filtersSection = "filtersSection";
+
+    @ConfigSection(
         name = "Peek Overlay",
         description = "Show a peek overlay when chat is hidden",
-        position = 4,
+        position = 5,
         closedByDefault = true
     )
     String peekOverlaySection = "peekOverlaySection";
@@ -64,7 +72,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigSection(
         name = "Chat Commands",
         description = "Custom chat commands for quick actions",
-        position = 5,
+        position = 6,
         closedByDefault = true
     )
     String commandsSection = "commandsSection";
@@ -72,7 +80,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigSection(
         name = "Notifications",
         description = "Notification settings for chat events",
-        position = 6,
+        position = 7,
         closedByDefault = true
     )
     String notificationsSection = "notificationsSection";
@@ -80,7 +88,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigSection(
         name = "Message History",
         description = "Cycle through your message history",
-        position = 7,
+        position = 8,
         closedByDefault = true
     )
     String messageHistorySection = "messageHistorySection";
@@ -933,7 +941,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_AnchorPrivateChat,
         name = "Anchor Private Chat",
         description = "Anchor the split private chat window to the top of the chatbox",
-        position = 0,
+        position = 1,
         section = generalSection
     )
     @Override
@@ -945,7 +953,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_AnchorPrivateChatOffsetX,
         name = "Anchor Offset X",
         description = "Horizontal offset for the private chat anchor",
-        position = 1,
+        position = 3,
         section = generalSection
     )
     @Range(min = -500, max = 500)
@@ -959,7 +967,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_AnchorPrivateChatOffsetY,
         name = "Anchor Offset Y",
         description = "Vertical offset for the private chat anchor",
-        position = 2,
+        position = 4,
         section = generalSection
     )
     @Range(min = -500, max = 500)
@@ -973,7 +981,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_HelperNotifications,
         name = "Helper Notifications",
         description = "Show notifications for helper messages in the chat",
-        position = 3,
+        position = 5,
         section = generalSection
     )
     @Override
@@ -986,7 +994,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_PublicChatColor,
         name = "Public Chat Color",
         description = "Color for public chat messages in the peek overlay",
-        position = 4,
+        position = 6,
         section = generalSection
     )
     @Override
@@ -999,7 +1007,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_FriendsChatColor,
         name = "Friends Chat Color",
         description = "Color for friends chat messages in the peek overlay",
-        position = 5,
+        position = 7,
         section = generalSection
     )
     @Override
@@ -1012,7 +1020,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_ClanChatColor,
         name = "Clan Chat Color",
         description = "Color for clan chat messages in the peek overlay",
-        position = 6,
+        position = 8,
         section = generalSection
     )
     @Override
@@ -1025,7 +1033,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_PrivateChatColor,
         name = "Private Chat Color",
         description = "Color for private chat messages in the peek overlay",
-        position = 7,
+        position = 9,
         section = generalSection
     )
     @Override
@@ -1038,7 +1046,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_SystemChatColor,
         name = "System Chat Color",
         description = "Color for system chat messages in the peek overlay",
-        position = 8,
+        position = 10,
         section = generalSection
     )
     @Override
@@ -1051,7 +1059,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_WelcomeChatColor,
         name = "Welcome Chat Color",
         description = "Color for welcome chat messages in the peek overlay",
-        position = 9,
+        position = 11,
         section = generalSection
     )
     @Override
@@ -1064,7 +1072,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_TradeChatColor,
         name = "Trade Chat Color",
         description = "Color for trade chat messages in the peek overlay",
-        position = 10,
+        position = 12,
         section = generalSection
     )
     @Override
@@ -1156,6 +1164,44 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default boolean featureToggle_LockCameraWhenVisible() {
         return false;
+    }
+
+    /* ------------ Filters ------------ */
+
+    @ConfigItem(
+        keyName = Keys.filters_Enabled,
+        name = "Enable Filters",
+        description = "Apply chat filters from other plugins to Modern Chat",
+        position = 0,
+        section = filtersSection
+    )
+    @Override
+    default boolean filters_Enabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = Keys.filters_ChatFilterEnabled,
+        name = "Chat Filter",
+        description = "Apply the Chat Filter plugin's word/regex filtering and duplicate collapse",
+        position = 1,
+        section = filtersSection
+    )
+    @Override
+    default boolean filters_ChatFilterEnabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = Keys.filters_AreaMuteEnabled,
+        name = "Area Mute",
+        description = "Apply the Area Mute plugin's region-based message blocking",
+        position = 2,
+        section = filtersSection
+    )
+    @Override
+    default boolean filters_AreaMuteEnabled() {
+        return true;
     }
 
     /* ------------ Feature: Peek Overlay ------------ */

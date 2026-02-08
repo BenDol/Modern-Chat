@@ -125,6 +125,11 @@ public interface ModernChatConfigBase extends
         String featureRedesign_MessageContainer_ScrollbarTrackColor = "featureRedesign_MessageContainer_ScrollbarTrackColor";
         String featureRedesign_MessageContainer_ScrollbarThumbColor = "featureRedesign_MessageContainer_ScrollbarThumbColor";
 
+        // Filters
+        String filters_Enabled = "filters_Enabled";
+        String filters_ChatFilterEnabled = "filters_ChatFilterEnabled";
+        String filters_AreaMuteEnabled = "filters_AreaMuteEnabled";
+
         // General
         String general_AnchorPrivateChat = "general_AnchorPrivateChat";
         String general_AnchorPrivateChatOffsetX = "general_AnchorPrivateChatOffsetX";
@@ -287,6 +292,11 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_TIMESTAMP_COLOR(Keys.featureRedesign_TimestampColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TimestampColor),
         FEATURE_REDESIGN_TYPE_PREFIX_COLOR(Keys.featureRedesign_TypePrefixColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TypePrefixColor),
 
+        // ---- Filters ----
+        FILTERS_ENABLED(Keys.filters_Enabled, Kind.BOOL, ModernChatConfigBase::filters_Enabled),
+        FILTERS_CHAT_FILTER_ENABLED(Keys.filters_ChatFilterEnabled, Kind.BOOL, ModernChatConfigBase::filters_ChatFilterEnabled),
+        FILTERS_AREA_MUTE_ENABLED(Keys.filters_AreaMuteEnabled, Kind.BOOL, ModernChatConfigBase::filters_AreaMuteEnabled),
+
         // ---- General ----
         GENERAL_ANCHOR_PM(Keys.general_AnchorPrivateChat, Kind.BOOL, ModernChatConfigBase::general_AnchorPrivateChat),
         GENERAL_ANCHOR_PM_OFFSET_X(Keys.general_AnchorPrivateChatOffsetX, Kind.INT, ModernChatConfigBase::general_AnchorPrivateChatOffsetX),
@@ -390,6 +400,9 @@ public interface ModernChatConfigBase extends
         }
     }
 
+    boolean filters_Enabled();
+    boolean filters_ChatFilterEnabled();
+    boolean filters_AreaMuteEnabled();
     boolean general_AnchorPrivateChat();
     int general_AnchorPrivateChatOffsetX();
     int general_AnchorPrivateChatOffsetY();
@@ -547,6 +560,11 @@ public interface ModernChatConfigBase extends
         @Override public Color featureRedesign_MessageContainer_ScrollbarThumbColor() { return getColor(Keys.featureRedesign_MessageContainer_ScrollbarThumbColor, DEFAULTS.featureRedesign_MessageContainer_ScrollbarThumbColor()); }
         @Override public Color featureRedesign_TimestampColor() { return getColor(Keys.featureRedesign_TimestampColor, DEFAULTS.featureRedesign_TimestampColor()); }
         @Override public Color featureRedesign_TypePrefixColor() { return getColor(Keys.featureRedesign_TypePrefixColor, DEFAULTS.featureRedesign_TypePrefixColor()); }
+
+        // Filters
+        @Override public boolean filters_Enabled() { return getBool(Keys.filters_Enabled, DEFAULTS.filters_Enabled()); }
+        @Override public boolean filters_ChatFilterEnabled() { return getBool(Keys.filters_ChatFilterEnabled, DEFAULTS.filters_ChatFilterEnabled()); }
+        @Override public boolean filters_AreaMuteEnabled() { return getBool(Keys.filters_AreaMuteEnabled, DEFAULTS.filters_AreaMuteEnabled()); }
 
         // General colors & options
         @Override public boolean general_AnchorPrivateChat() { return getBool(Keys.general_AnchorPrivateChat, DEFAULTS.general_AnchorPrivateChat()); }

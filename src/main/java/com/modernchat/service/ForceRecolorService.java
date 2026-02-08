@@ -230,9 +230,7 @@ public class ForceRecolorService implements ChatService {
                 }
             }
 
-            if (!text.isEmpty()) {
-                groupToPatterns.computeIfAbsent(group, k -> new ArrayList<>()).add(Pattern.quote(text));
-            }
+            groupToPatterns.computeIfAbsent(group, k -> new ArrayList<>()).add(Pattern.quote(text));
         }
 
         // Build regex with word boundaries for each group

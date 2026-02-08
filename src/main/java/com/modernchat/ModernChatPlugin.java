@@ -13,6 +13,8 @@ import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
 import com.modernchat.event.NotificationEvent;
+import com.modernchat.service.filter.AreaMutePluginFilter;
+import com.modernchat.service.filter.ChatFilterPluginFilter;
 import com.modernchat.feature.ChatFeature;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
@@ -20,11 +22,11 @@ import com.modernchat.feature.NotificationChatFeature;
 import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
-import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.service.ExtendedInputService;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ForceRecolorService;
+import com.modernchat.service.MessageFilterService;
 import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageService;
 import com.modernchat.service.PrivateChatService;
@@ -36,7 +38,6 @@ import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.StringUtil;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -76,7 +77,6 @@ import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
-import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
@@ -116,6 +116,7 @@ public class ModernChatPlugin extends Plugin {
     @Inject private SpamFilterService spamFilterService;
 	@Inject private ExtendedInputService extendedInputService;
 	@Inject private ForceRecolorService forceRecolorService;
+	@Inject private MessageFilterService messageFilterService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
 	@Inject private PluginManager pluginManager;
@@ -158,6 +159,7 @@ public class ModernChatPlugin extends Plugin {
 		imageService.startUp();
 		extendedInputService.startUp();
 		forceRecolorService.startUp();
+		messageFilterService.startUp();
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/modernchat/images/icon.png");
 		if (icon == null) {
@@ -235,6 +237,7 @@ public class ModernChatPlugin extends Plugin {
 		imageService.shutDown();
 		extendedInputService.shutDown();
 		forceRecolorService.shutDown();
+		messageFilterService.shutDown();
 
 		if (features != null) {
 			features.forEach((feature) -> {

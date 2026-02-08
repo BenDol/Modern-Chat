@@ -7,17 +7,14 @@ import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
-import com.modernchat.event.DialogOptionsOpenedEvent;
 import com.modernchat.service.ExtendedInputService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.VarClientStr;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
@@ -151,7 +148,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 				case java.awt.event.KeyEvent.VK_UP:
 				case java.awt.event.KeyEvent.VK_DOWN:
 					e.consume(); // don’t let the client see the key
-					break;
+					return;
 			}
 		}
 
@@ -162,9 +159,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			e.consume();
 			return;
 		}
-
-		if (e.isConsumed())
-			return;
 
 		Keybind kb = config.featureToggle_ToggleKey();
 		if (kb == null || kb.getKeyCode() != e.getKeyCode() || kb.getModifiers() != e.getModifiersEx()) {
