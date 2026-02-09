@@ -707,6 +707,32 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.featureRedesign_ReportButtonColor,
+        name = "Report Button Color",
+        description = "Background color for the report / session timer button",
+        position = 31,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_ReportButtonColor() {
+        return new Color(180, 40, 40, 0);
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_ReportButtonTextColor,
+        name = "Report Button Text Color",
+        description = "Text color for the report / session timer button",
+        position = 32,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_ReportButtonTextColor() {
+        return Color.GRAY;
+    }
+
+    @ConfigItem(
         keyName = Keys.featureRedesign_MessageContainer_OffsetX,
         name = "Message Offset X",
         description = "Horizontal offset for the message container",
@@ -989,12 +1015,36 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return true;
     }
 
+    @ConfigItem(
+        keyName = Keys.general_ShowReportButton,
+        name = "Show Report Button",
+        description = "Show the report button in the chat input box",
+        position = 6,
+        section = generalSection
+    )
+    @Override
+    default boolean general_ShowReportButton() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = Keys.general_ShowSessionTimer,
+        name = "Session Timer",
+        description = "Replace the report button text with a session timer (HH:mm:ss)",
+        position = 7,
+        section = generalSection
+    )
+    @Override
+    default boolean general_ShowSessionTimer() {
+        return true;
+    }
+
     @Alpha
     @ConfigItem(
         keyName = Keys.general_PublicChatColor,
         name = "Public Chat Color",
         description = "Color for public chat messages in the peek overlay",
-        position = 6,
+        position = 8,
         section = generalSection
     )
     @Override
@@ -1007,7 +1057,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_FriendsChatColor,
         name = "Friends Chat Color",
         description = "Color for friends chat messages in the peek overlay",
-        position = 7,
+        position = 9,
         section = generalSection
     )
     @Override
@@ -1020,7 +1070,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_ClanChatColor,
         name = "Clan Chat Color",
         description = "Color for clan chat messages in the peek overlay",
-        position = 8,
+        position = 10,
         section = generalSection
     )
     @Override
@@ -1033,7 +1083,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_PrivateChatColor,
         name = "Private Chat Color",
         description = "Color for private chat messages in the peek overlay",
-        position = 9,
+        position = 11,
         section = generalSection
     )
     @Override
@@ -1046,7 +1096,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_SystemChatColor,
         name = "System Chat Color",
         description = "Color for system chat messages in the peek overlay",
-        position = 10,
+        position = 12,
         section = generalSection
     )
     @Override
@@ -1059,7 +1109,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_WelcomeChatColor,
         name = "Welcome Chat Color",
         description = "Color for welcome chat messages in the peek overlay",
-        position = 11,
+        position = 13,
         section = generalSection
     )
     @Override
@@ -1072,7 +1122,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_TradeChatColor,
         name = "Trade Chat Color",
         description = "Color for trade chat messages in the peek overlay",
-        position = 12,
+        position = 14,
         section = generalSection
     )
     @Override

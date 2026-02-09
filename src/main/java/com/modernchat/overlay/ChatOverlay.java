@@ -38,6 +38,7 @@ import com.modernchat.util.ClientUtil;
 import com.modernchat.util.MathUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -57,6 +58,7 @@ import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
@@ -95,6 +97,8 @@ import java.awt.image.BufferedImage;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -228,6 +232,10 @@ public class ChatOverlay extends OverlayPanel
     private int filterInputInnerRight = 0; // Tracks reduced input width when filter button is shown
     private long filterFlashUntilMs = 0; // Timestamp until which the filter indicator should flash
     private static final long FILTER_FLASH_DURATION_MS = 5_000; // 5 seconds
+
+    // Report button / session timer
+    private final Rectangle reportButtonBounds = new Rectangle();
+    @Setter private volatile Instant loginTime = null;
 
     public ChatOverlay() {
     }
@@ -732,6 +740,29 @@ public class ChatOverlay extends OverlayPanel
         } else {
             filterButtonBounds.setBounds(0, 0, 0, 0);
         }
+
+        // Draw report button left of the filter button (or right edge if no filter)
+        if (mainConfig.general_ShowReportButton()) {
+            String reportText = getReportButtonText();
+            int reportTextW = fm.stringWidth(reportText);
+            int timerW = fm.stringWidth("0:00:00");
+            int minTextW = Math.max(reportTextW, timerW);
+            int reportBtnH = inputHeight - 8;
+            int reportBtnW = minTextW + 6;
+            int reportBtnX = inputInnerRight - reportBtnW;
+            int reportBtnY = inputY + (inputHeight - reportBtnH) / 2;
+
+            g.setColor(config.getReportButtonColor());
+            g.fillRoundRect(reportBtnX, reportBtnY, reportBtnW, reportBtnH, 4, 4);
+            g.setColor(config.getReportButtonTextColor());
+            int reportBaseline = reportBtnY + (reportBtnH - fm.getHeight()) / 2 + fm.getAscent();
+            int textX = reportBtnX + (reportBtnW - reportTextW) / 2;
+            g.drawString(reportText, textX, reportBaseline);
+            reportButtonBounds.setBounds(reportBtnX, reportBtnY, reportBtnW, reportBtnH);
+            inputInnerRight = reportBtnX - 4;
+        } else {
+            reportButtonBounds.setBounds(0, 0, 0, 0);
+        }
         filterInputInnerRight = inputInnerRight;
 
         // Prefix
@@ -799,6 +830,31 @@ public class ChatOverlay extends OverlayPanel
     private boolean shouldShowFilterButton() {
         // Show filter button only if the current container has filtering enabled
         return messageContainer != null && messageContainer.isApplyChannelFilters();
+    }
+
+    private String getReportButtonText() {
+        if (mainConfig.general_ShowSessionTimer() && loginTime != null) {
+            Duration d = Duration.between(loginTime, Instant.now());
+            long h = d.toHours();
+            long m = d.toMinutesPart();
+            long s = d.toSecondsPart();
+            if (h > 0) return String.format("%d:%02d:%02d", h, m, s);
+            if (m > 0) return String.format("%d:%02d", m, s);
+            return String.format("%ds", s);
+        }
+        return "Report";
+    }
+
+    private void openReportAbuse() {
+        Widget reportWidget = client.getWidget(InterfaceID.Chatbox.REPORTABUSE);
+        if (reportWidget == null) return;
+        client.getMenu().createMenuEntry(0)
+            .setOption("Report")
+            .setTarget("")
+            .setType(MenuAction.CC_OP)
+            .setParam0(-1)
+            .setParam1(reportWidget.getId())
+            .setIdentifier(1);
     }
 
     private void drawFilterButton(Graphics2D g, int x, int y, int size) {
@@ -2099,7 +2155,7 @@ public class ChatOverlay extends OverlayPanel
 
         desiredChatWidth = newW;
         desiredChatHeight = newH;
-        resizeChatbox(desiredChatWidth, desiredChatHeight);
+        clientThread.invoke(() -> resizeChatbox(desiredChatWidth, desiredChatHeight));
     }
 
     private void resizeChatbox(int width, int height) {
@@ -2583,6 +2639,15 @@ public class ChatOverlay extends OverlayPanel
                     } else {
                         filterDropdown.close();
                     }
+                    e.consume();
+                    return true;
+                }
+            }
+
+            // Handle report button click
+            if (mainConfig.general_ShowReportButton() && reportButtonBounds.contains(e.getPoint())) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    clientThread.invoke(ChatOverlay.this::openReportAbuse);
                     e.consume();
                     return true;
                 }

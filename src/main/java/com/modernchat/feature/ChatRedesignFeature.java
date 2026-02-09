@@ -109,6 +109,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         Color featureRedesign_TabCloseButtonColor();
         Color featureRedesign_TabCloseButtonTextColor();
         Color featureRedesign_FilterButtonColor();
+        Color featureRedesign_ReportButtonColor();
+        Color featureRedesign_ReportButtonTextColor();
 
         // MessageContainerConfig
         boolean featureRedesign_MessageContainer_PrefixChatType();
@@ -209,6 +211,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color featureRedesign_TabCloseButtonColor() { return cfg.featureRedesign_TabCloseButtonColor(); }
             @Override public Color featureRedesign_TabCloseButtonTextColor() { return cfg.featureRedesign_TabCloseButtonTextColor(); }
             @Override public Color featureRedesign_FilterButtonColor() { return cfg.featureRedesign_FilterButtonColor(); }
+            @Override public Color featureRedesign_ReportButtonColor() { return cfg.featureRedesign_ReportButtonColor(); }
+            @Override public Color featureRedesign_ReportButtonTextColor() { return cfg.featureRedesign_ReportButtonTextColor(); }
             @Override public ChatMode featureRedesign_DefaultChatMode() { return cfg.featureRedesign_DefaultChatMode(); }
             @Override public boolean featureRedesign_MessageContainer_PrefixChatType() { return cfg.featureRedesign_MessageContainer_PrefixChatType(); }
             @Override public boolean featureRedesign_MessageContainer_ShowTimestamp() { return cfg.featureRedesign_MessageContainer_ShowTimestamp(); }
@@ -281,6 +285,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color getTabCloseButtonColor() { return cfg.featureRedesign_TabCloseButtonColor(); }
             @Override public Color getTabCloseButtonTextColor() { return cfg.featureRedesign_TabCloseButtonTextColor(); }
             @Override public Color getFilterButtonColor() { return cfg.featureRedesign_FilterButtonColor(); }
+            @Override public Color getReportButtonColor() { return cfg.featureRedesign_ReportButtonColor(); }
+            @Override public Color getReportButtonTextColor() { return cfg.featureRedesign_ReportButtonTextColor(); }
 
             @Override public MessageContainerConfig getMessageContainerConfig() { return containerConfig; }
 

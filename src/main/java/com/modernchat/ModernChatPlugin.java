@@ -20,6 +20,7 @@ import com.modernchat.event.NotificationEvent;
 import com.modernchat.feature.ChatFeature;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
+import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.feature.NotificationChatFeature;
 import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
@@ -83,6 +84,7 @@ import javax.inject.Inject;
 import java.awt.Color;
 import java.awt.event.KeyEvent;
 import java.awt.Rectangle;
+import java.time.Instant;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -127,6 +129,7 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private KeyRemappingService keyRemappingService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
+	@Inject private ChatOverlay chatOverlay;
 
 	//@Inject private ExampleChatFeature exampleChatFeature;
 	@Inject private ToggleChatFeature toggleChatFeature;
@@ -509,6 +512,8 @@ public class ModernChatPlugin extends Plugin {
 		lastChatBounds = null;
 
 		if (e.getGameState() == GameState.LOGGED_IN && !loggedIn) {
+			chatOverlay.setLoginTime(Instant.now());
+
 			if (!config.featureExample_Enabled()) {
 				Player localPlayer = client.getLocalPlayer();
 				if (localPlayer != null) {
@@ -517,6 +522,11 @@ public class ModernChatPlugin extends Plugin {
 			}
 
 			loggedIn = true;
+		}
+
+		if (e.getGameState() == GameState.LOGIN_SCREEN || e.getGameState() == GameState.HOPPING) {
+			chatOverlay.setLoginTime(null);
+			loggedIn = false;
 		}
 	}
 

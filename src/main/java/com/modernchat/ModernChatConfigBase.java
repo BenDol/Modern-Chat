@@ -107,6 +107,8 @@ public interface ModernChatConfigBase extends
         String featureRedesign_TabCloseButtonColor = "featureRedesign_TabCloseButtonColor";
         String featureRedesign_TabCloseButtonTextColor = "featureRedesign_TabCloseButtonTextColor";
         String featureRedesign_FilterButtonColor = "featureRedesign_FilterButtonColor";
+        String featureRedesign_ReportButtonColor = "featureRedesign_ReportButtonColor";
+        String featureRedesign_ReportButtonTextColor = "featureRedesign_ReportButtonTextColor";
 
         // Message container geometry/colors
         String featureRedesign_MessageContainer_OffsetX = "featureRedesign_MessageContainer_OffsetX";
@@ -135,6 +137,8 @@ public interface ModernChatConfigBase extends
         String general_AnchorPrivateChatOffsetX = "general_AnchorPrivateChatOffsetX";
         String general_AnchorPrivateChatOffsetY = "general_AnchorPrivateChatOffsetY";
         String general_HelperNotifications = "general_HelperNotifications";
+        String general_ShowReportButton = "general_ShowReportButton";
+        String general_ShowSessionTimer = "general_ShowSessionTimer";
         String general_PublicChatColor = "general_PublicChatColor";
         String general_FriendsChatColor = "general_FriendsChatColor";
         String general_ClanChatColor = "general_ClanChatColor";
@@ -270,6 +274,8 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_TAB_CLOSE_BTN_COLOR(Keys.featureRedesign_TabCloseButtonColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TabCloseButtonColor),
         FEATURE_REDESIGN_TAB_CLOSE_BTN_TEXT_COLOR(Keys.featureRedesign_TabCloseButtonTextColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TabCloseButtonTextColor),
         FEATURE_REDESIGN_FILTER_BTN_COLOR(Keys.featureRedesign_FilterButtonColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_FilterButtonColor),
+        FEATURE_REDESIGN_REPORT_BTN_COLOR(Keys.featureRedesign_ReportButtonColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_ReportButtonColor),
+        FEATURE_REDESIGN_REPORT_BTN_TEXT_COLOR(Keys.featureRedesign_ReportButtonTextColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_ReportButtonTextColor),
 
         // ---- Message container geometry ----
         FEATURE_REDESIGN_MSG_OFFSET_X(Keys.featureRedesign_MessageContainer_OffsetX, Kind.INT, ModernChatConfigBase::featureRedesign_MessageContainer_OffsetX),
@@ -302,6 +308,8 @@ public interface ModernChatConfigBase extends
         GENERAL_ANCHOR_PM_OFFSET_X(Keys.general_AnchorPrivateChatOffsetX, Kind.INT, ModernChatConfigBase::general_AnchorPrivateChatOffsetX),
         GENERAL_ANCHOR_PM_OFFSET_Y(Keys.general_AnchorPrivateChatOffsetY, Kind.INT, ModernChatConfigBase::general_AnchorPrivateChatOffsetY),
         GENERAL_HELPER_NOTIFICATIONS(Keys.general_HelperNotifications, Kind.BOOL, ModernChatConfigBase::general_HelperNotifications),
+        GENERAL_SHOW_REPORT_BUTTON(Keys.general_ShowReportButton, Kind.BOOL, ModernChatConfigBase::general_ShowReportButton),
+        GENERAL_SHOW_SESSION_TIMER(Keys.general_ShowSessionTimer, Kind.BOOL, ModernChatConfigBase::general_ShowSessionTimer),
         GENERAL_PUBLIC_COLOR(Keys.general_PublicChatColor, Kind.COLOR, ModernChatConfigBase::general_PublicChatColor),
         GENERAL_FRIENDS_COLOR(Keys.general_FriendsChatColor, Kind.COLOR, ModernChatConfigBase::general_FriendsChatColor),
         GENERAL_CLAN_COLOR(Keys.general_ClanChatColor, Kind.COLOR, ModernChatConfigBase::general_ClanChatColor),
@@ -407,6 +415,8 @@ public interface ModernChatConfigBase extends
     int general_AnchorPrivateChatOffsetX();
     int general_AnchorPrivateChatOffsetY();
     boolean general_HelperNotifications();
+    boolean general_ShowReportButton();
+    boolean general_ShowSessionTimer();
     Color general_PublicChatColor();
     Color general_FriendsChatColor();
     Color general_ClanChatColor();
@@ -539,6 +549,8 @@ public interface ModernChatConfigBase extends
         @Override public Color featureRedesign_TabCloseButtonColor() { return getColor(Keys.featureRedesign_TabCloseButtonColor, DEFAULTS.featureRedesign_TabCloseButtonColor()); }
         @Override public Color featureRedesign_TabCloseButtonTextColor() { return getColor(Keys.featureRedesign_TabCloseButtonTextColor, DEFAULTS.featureRedesign_TabCloseButtonTextColor()); }
         @Override public Color featureRedesign_FilterButtonColor() { return getColor(Keys.featureRedesign_FilterButtonColor, DEFAULTS.featureRedesign_FilterButtonColor()); }
+        @Override public Color featureRedesign_ReportButtonColor() { return getColor(Keys.featureRedesign_ReportButtonColor, DEFAULTS.featureRedesign_ReportButtonColor()); }
+        @Override public Color featureRedesign_ReportButtonTextColor() { return getColor(Keys.featureRedesign_ReportButtonTextColor, DEFAULTS.featureRedesign_ReportButtonTextColor()); }
 
         // Message container geometry
         @Override public int featureRedesign_MessageContainer_OffsetX() { return getInt(Keys.featureRedesign_MessageContainer_OffsetX, DEFAULTS.featureRedesign_MessageContainer_OffsetX()); }
@@ -571,6 +583,8 @@ public interface ModernChatConfigBase extends
         @Override public int general_AnchorPrivateChatOffsetX() { return getInt(Keys.general_AnchorPrivateChatOffsetX, DEFAULTS.general_AnchorPrivateChatOffsetX()); }
         @Override public int general_AnchorPrivateChatOffsetY() { return getInt(Keys.general_AnchorPrivateChatOffsetY, DEFAULTS.general_AnchorPrivateChatOffsetY()); }
         @Override public boolean general_HelperNotifications() { return getBool(Keys.general_HelperNotifications, DEFAULTS.general_HelperNotifications()); }
+        @Override public boolean general_ShowReportButton() { return getBool(Keys.general_ShowReportButton, DEFAULTS.general_ShowReportButton()); }
+        @Override public boolean general_ShowSessionTimer() { return getBool(Keys.general_ShowSessionTimer, DEFAULTS.general_ShowSessionTimer()); }
         @Override public Color general_PublicChatColor() { return getColor(Keys.general_PublicChatColor, DEFAULTS.general_PublicChatColor()); }
         @Override public Color general_FriendsChatColor() { return getColor(Keys.general_FriendsChatColor, DEFAULTS.general_FriendsChatColor()); }
         @Override public Color general_ClanChatColor() { return getColor(Keys.general_ClanChatColor, DEFAULTS.general_ClanChatColor()); }

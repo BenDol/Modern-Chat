@@ -98,6 +98,10 @@ public interface ChatOverlayConfig
 
     Color getFilterButtonColor();
 
+    Color getReportButtonColor();
+
+    Color getReportButtonTextColor();
+
     // Channel filter methods - filters are stored as a bitmask integer per ChatMode
     // A set bit means the filter type is DISABLED (hidden)
     // Pass null for chatMode to use a global/default filter set
@@ -360,6 +364,16 @@ public interface ChatOverlayConfig
 
         @Override
         public Color getFilterButtonColor() {
+            return Color.WHITE;
+        }
+
+        @Override
+        public Color getReportButtonColor() {
+            return new Color(180, 40, 40);
+        }
+
+        @Override
+        public Color getReportButtonTextColor() {
             return Color.WHITE;
         }
 
