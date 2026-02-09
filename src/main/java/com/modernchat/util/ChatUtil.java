@@ -10,9 +10,9 @@ import net.runelite.api.MessageNode;
 import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.widgets.Widget;
+import lombok.Value;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
-import org.apache.commons.lang3.tuple.Pair;
 
 import javax.annotation.Nullable;
 import java.awt.Color;
@@ -34,6 +34,21 @@ public class ChatUtil
     public static final AtomicBoolean LEGACY_CHAT_HIDDEN = new AtomicBoolean(false);
     public static final String MODERN_CHAT_TAG = "[ModernChat]";
     public static final String COMMAND_MODE_MESSAGE = "Command Mode (Modern chat will be restored once you send or cancel the command)";
+
+    private static final Pattern IMG_TAG_PATTERN = Pattern.compile("<img=(\\d+)>");
+
+    @Value
+    public static class SenderReceiver {
+        String senderName;
+        String receiverName;
+        int senderIconId; // -1 if none
+    }
+
+    public static int extractIconId(@Nullable String name) {
+        if (name == null || name.isEmpty()) return -1;
+        Matcher m = IMG_TAG_PATTERN.matcher(name);
+        return m.find() ? Integer.parseInt(m.group(1)) : -1;
+    }
 
     public static boolean isPrivateMessage(ChatMessageType t) {
         return t == ChatMessageType.PRIVATECHAT
@@ -143,32 +158,44 @@ public class ChatUtil
             || type == ChatMessageType.FRIENDSCHATNOTIFICATION;
     }
 
-    public static Pair<String, String> getSenderAndReceiver(ChatMessage msg, String localPlayerName) {
+    public static SenderReceiver getSenderAndReceiver(ChatMessage msg, String localPlayerName) {
         String receiverName = null;
         String senderName = msg.getSender();
         String name = msg.getName();
         ChatMessageType type = msg.getType();
 
+        // Extract icon ID from the raw name *before* stripping tags
+        int senderIconId = -1;
+
         if (type == ChatMessageType.PRIVATECHATOUT) {
-            receiverName = name;
+            // For outgoing PMs, the "name" is the receiver - no sender icon
+            receiverName = name != null ? Text.removeTags(name) : null;
             senderName = "You";
         }
         else if (type == ChatMessageType.PRIVATECHAT) {
+            // For incoming PMs, the "name" is the sender - extract their icon
+            senderIconId = extractIconId(name);
             receiverName = localPlayerName;
-            senderName = name;
+            senderName = name != null ? Text.removeTags(name) : null;
         }
         else if (ChatUtil.isClanMessage(type) || ChatUtil.isFriendsChatMessage(type)) {
-            senderName = name;
+            senderIconId = extractIconId(name);
+            senderName = name != null ? Text.removeTags(name) : null;
         }
         else if (senderName == null) {
-            senderName = name;
+            senderIconId = extractIconId(name);
+            senderName = name != null ? Text.removeTags(name) : null;
+        }
+        else {
+            senderIconId = extractIconId(senderName);
+            senderName = Text.removeTags(senderName);
         }
 
         if (receiverName == null) {
             receiverName = localPlayerName;
         }
 
-        return Pair.of(senderName, receiverName);
+        return new SenderReceiver(senderName, receiverName, senderIconId);
     }
 
     public static String getCustomPrefix(ChatMessage msg) {
@@ -244,15 +271,16 @@ public class ChatUtil
         // Use local system time so timestamps reflect the player's clock, not the server's
         long timestamp = System.currentTimeMillis();
 
-        Pair<String, String> senderReceiver = ChatUtil.getSenderAndReceiver(e, localPlayerName);
+        SenderReceiver senderReceiver = ChatUtil.getSenderAndReceiver(e, localPlayerName);
 
         ChatMessageType type = e.getType();
         String originalMsg = e.getMessage();
         // Use filtered message if provided, otherwise use original
         String msg = filteredMessage != null ? filteredMessage : originalMsg;
         String[] params = msg.split("\\|", 3);
-        String receiverName = senderReceiver.getRight();
-        String senderName = senderReceiver.getLeft();
+        String receiverName = senderReceiver.getReceiverName();
+        String senderName = senderReceiver.getSenderName();
+        int senderIconId = senderReceiver.getSenderIconId();
         String prefix = ChatUtil.getCustomPrefix(e);
 
         if (type == ChatMessageType.DIALOG) {
@@ -288,7 +316,7 @@ public class ChatUtil
             && COLLAPSE_PATTERN.matcher(filteredMessage).find()
             && !originalMsg.equals(filteredMessage); // only if filtered differs from original
 
-        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed);
+        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed, senderIconId);
     }
 
     public static String getPrefix(ChatMessageType type) {

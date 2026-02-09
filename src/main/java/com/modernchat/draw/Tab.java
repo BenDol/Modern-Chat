@@ -17,6 +17,7 @@ public final class Tab {
     boolean hidden;
     boolean readOnly;
     boolean muted = false;
+    int iconId = -1;
 
     public Tab(String key, String title, boolean closeable) {
         this(key, title, closeable, false);

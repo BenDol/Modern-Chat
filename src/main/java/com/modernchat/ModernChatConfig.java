@@ -315,6 +315,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return true;
     }
 
+    @ConfigItem(
+        keyName = Keys.featureRedesign_ShowTabIcons,
+        name = "Show Tab Icons",
+        description = "Show player icons (ironman, moderator, etc.) in private message tab titles",
+        position = 17,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ShowTabIcons() {
+        return true;
+    }
+
     /* ------------ Modern Chat Style ------------ */
 
     @ConfigItem(

@@ -94,6 +94,8 @@ public interface ChatOverlayConfig
 
     boolean isTradeTabEnabled();
 
+    boolean isShowTabIcons();
+
     MessageContainerConfig getMessageContainerConfig();
 
     Color getFilterButtonColor();
@@ -354,6 +356,11 @@ public interface ChatOverlayConfig
 
         @Override
         public boolean isTradeTabEnabled() {
+            return true;
+        }
+
+        @Override
+        public boolean isShowTabIcons() {
             return true;
         }
 

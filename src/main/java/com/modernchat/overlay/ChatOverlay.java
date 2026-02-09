@@ -89,6 +89,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.Toolkit;
@@ -504,16 +505,24 @@ public class ChatOverlay extends OverlayPanel
         final Font notifFont = notifSize > 0f ? tabFont.deriveFont(notifSize) : tabFont;
         final FontMetrics nfm = g.getFontMetrics(notifFont);
 
+        final boolean showTabIcons = config.isShowTabIcons();
+
         int total = 4; // initial left gap
         for (Tab t : tabOrder) {
             final String label = t.getTitle();
             final int textW = fm.stringWidth(label);
 
+            int iconW = 0;
+            if (showTabIcons && t.getIconId() >= 0) {
+                Image icon = imageService.getModIcon(t.getIconId());
+                if (icon != null) iconW = icon.getWidth(null) + 2;
+            }
+
             final int closeH = fm.getHeight() - 2;
             final int closeW = t.isCloseable() ? closeH : 0;
 
             int i = t.isCloseable() ? (6 + closeW) : 0;
-            final int wNoBadge = padX + textW + i + padX;
+            final int wNoBadge = padX + iconW + textW + i + padX;
 
             int badgeW = 0;
             final boolean showBadge = t.getUnread() > 0 && config.isShowNotificationBadge();
@@ -523,7 +532,7 @@ public class ChatOverlay extends OverlayPanel
                 badgeW = computeBadgeWidth(nfm, unreadStr, thinTab);
             }
 
-            final int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0) + i + padX;
+            final int w = padX + iconW + textW + (badgeW > 0 ? (2 + badgeW) : 0) + i + padX;
 
             total += w + 4; // + gap between tabs
         }
@@ -550,11 +559,18 @@ public class ChatOverlay extends OverlayPanel
             final String label = t.getTitle();
             final int textW = fm.stringWidth(label);
 
+            int iconW = 0;
+            Image tabIcon = null;
+            if (showTabIcons && t.getIconId() >= 0) {
+                tabIcon = imageService.getModIcon(t.getIconId());
+                if (tabIcon != null) iconW = tabIcon.getWidth(null) + 2;
+            }
+
             final int closeH = fm.getHeight() - 2;
             final int closeW = t.isCloseable() ? closeH : 0;
 
             int i = t.isCloseable() ? (6 + closeW) : 0;
-            final int wNoBadge = padX + textW + i + padX;
+            final int wNoBadge = padX + iconW + textW + i + padX;
 
             int badgeW = 0;
             final boolean showBadge = t.getUnread() > 0 && config.isShowNotificationBadge();
@@ -564,7 +580,7 @@ public class ChatOverlay extends OverlayPanel
                 badgeW = computeBadgeWidth(nfm, unreadStr, thinTab);
             }
 
-            final int w = padX + textW + (badgeW > 0 ? (2 + badgeW) : 0)
+            final int w = padX + iconW + textW + (badgeW > 0 ? (2 + badgeW) : 0)
                 + i + padX;
 
             if (draggingTab && dragTab != null && t != dragTab && filteredIdx == dragTargetIndex) {
@@ -594,10 +610,18 @@ public class ChatOverlay extends OverlayPanel
                 g.drawRoundRect(bounds.x + 1, bounds.y + 1, bounds.width - 2, bounds.height - 2, r - 1, r - 1);
             }
 
-            // Label (with subtle shadow)
+            // Icon (before label text)
             g.setFont(tabFont);
             final int textBase = y + padY + fm.getAscent();
-            final int tx = bounds.x + padX;
+            int tx = bounds.x + padX;
+            if (tabIcon != null) {
+                int iconH = tabIcon.getHeight(null);
+                int iconY = y + (h - iconH) / 2;
+                g.drawImage(tabIcon, tx, iconY, null);
+                tx += iconW;
+            }
+
+            // Label (with subtle shadow)
             g.setColor(new Color(0, 0, 0, 180));
             g.drawString(label, tx + 1, textBase + 1);
 
@@ -1000,7 +1024,9 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private Tab createPrivateTab(String key, String targetName) {
-        return new Tab(key, targetName, true);
+        Tab tab = new Tab(key, targetName, true);
+        tab.setIconId(2); // TODO: TEMP TEST — force ironman icon on every PM tab
+        return tab;
     }
 
     private void selectMessageContainer(ChatMode chatMode) {
@@ -1864,7 +1890,8 @@ public class ChatOverlay extends OverlayPanel
             line.getReceiverName(),
             line.getPrefix(),
             line.getDuplicateKey(),
-            line.isCollapsed());
+            line.isCollapsed(),
+            line.getSenderIconId());
     }
 
     public void addMessage(
@@ -1875,7 +1902,7 @@ public class ChatOverlay extends OverlayPanel
         String receiverName,
         String prefix
     ) {
-        addMessage(line, type, timestamp, senderName, receiverName, prefix, null, false);
+        addMessage(line, type, timestamp, senderName, receiverName, prefix, null, false, -1);
     }
 
     public void addMessage(
@@ -1886,7 +1913,8 @@ public class ChatOverlay extends OverlayPanel
         String receiverName,
         String prefix,
         String duplicateKey,
-        boolean collapsed
+        boolean collapsed,
+        int senderIconId
     ) {
         ChatMode mode = ChatUtil.toChatMode(type);
         ChatMode selectedMode = mode;
@@ -1961,6 +1989,10 @@ public class ChatOverlay extends OverlayPanel
                     if (pmContainer != null) {
                         pmContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
                         routedToSpecificTab = true;
+                        // Update tab icon from incoming PM sender
+                        if (pmTab != null && senderIconId >= 0 && type != ChatMessageType.PRIVATECHATOUT) {
+                            pmTab.setIconId(senderIconId);
+                        }
                         if (pmTab != null && messageContainer != pmContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && pmTab.getUnread() < 99) {
                             pmTab.incrementUnread();
                         }
@@ -1968,6 +2000,10 @@ public class ChatOverlay extends OverlayPanel
                 } else if (config.isOpenTabOnIncomingPM() && type != ChatMessageType.PRIVATECHATOUT && type != ChatMessageType.FRIENDNOTIFICATION) {
                     Pair<Tab, MessageContainer> pair = openTabForPrivateChat(targetName);
                     if (pair != null) {
+                        // Set tab icon from incoming PM sender
+                        if (senderIconId >= 0) {
+                            pair.getLeft().setIconId(senderIconId);
+                        }
                         pair.getRight().pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
                         routedToSpecificTab = true;
                         if (messageContainer != pair.getRight() && canShowUnread && !suppressOtherTabUnread && !collapsed && pair.getLeft().getUnread() < 99) {
@@ -2481,8 +2517,8 @@ public class ChatOverlay extends OverlayPanel
         ChatMessageType type = msg.getType();
 
         if (ChatUtil.isPrivateMessage(type)) {
-            Pair<String, String> senderReceiver = ChatUtil.getSenderAndReceiver(msg, getLocalPlayerName());
-            String senderName = senderReceiver.getLeft();
+            ChatUtil.SenderReceiver senderReceiver = ChatUtil.getSenderAndReceiver(msg, getLocalPlayerName());
+            String senderName = senderReceiver.getSenderName();
 
             if (StringUtil.isNullOrEmpty(senderName)) {
                 log.warn("Private message with null or empty sender/receiver name: {}", msg.getMessage());
