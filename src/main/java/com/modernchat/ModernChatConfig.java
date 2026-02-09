@@ -1121,26 +1121,26 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
-        keyName = Keys.general_ShowReportButton,
+        keyName = Keys.featureRedesign_ShowReportButton,
         name = "Show Report Button",
         description = "Show the report button in the chat input box",
-        position = 6,
-        section = generalSection
+        position = 18,
+        section = modernChatSection
     )
     @Override
-    default boolean general_ShowReportButton() {
+    default boolean featureRedesign_ShowReportButton() {
         return true;
     }
 
     @ConfigItem(
-        keyName = Keys.general_ShowSessionTimer,
+        keyName = Keys.featureRedesign_ShowSessionTimer,
         name = "Session Timer",
-        description = "Replace the report button text with a session timer (HH:mm:ss)",
-        position = 7,
-        section = generalSection
+        description = "Show a session timer in the chat input box (replaces report button text when report button is enabled)",
+        position = 19,
+        section = modernChatSection
     )
     @Override
-    default boolean general_ShowSessionTimer() {
+    default boolean featureRedesign_ShowSessionTimer() {
         return true;
     }
 

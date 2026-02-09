@@ -762,7 +762,9 @@ public class ChatOverlay extends OverlayPanel
         }
 
         // Draw report button left of the filter button (or right edge if no filter)
-        if (mainConfig.general_ShowReportButton()) {
+        boolean showReportBtn = mainConfig.featureRedesign_ShowReportButton();
+        boolean showTimerOnly = !showReportBtn && mainConfig.featureRedesign_ShowSessionTimer() && loginTime != null;
+        if (showReportBtn || showTimerOnly) {
             int reportFontSize = config.getReportButtonFontSize();
             FontMetrics rfm;
             java.awt.Font oldFont = null;
@@ -783,13 +785,18 @@ public class ChatOverlay extends OverlayPanel
             int reportBtnX = inputInnerRight - reportBtnW;
             int reportBtnY = inputY + (inputHeight - reportBtnH) / 2;
 
-            g.setColor(config.getReportButtonColor());
-            g.fillRoundRect(reportBtnX, reportBtnY, reportBtnW, reportBtnH, 4, 4);
+            if (showReportBtn) {
+                g.setColor(config.getReportButtonColor());
+                g.fillRoundRect(reportBtnX, reportBtnY, reportBtnW, reportBtnH, 4, 4);
+                reportButtonBounds.setBounds(reportBtnX, reportBtnY, reportBtnW, reportBtnH);
+            } else {
+                reportButtonBounds.setBounds(0, 0, 0, 0);
+            }
+
             g.setColor(config.getReportButtonTextColor());
             int reportBaseline = reportBtnY + (reportBtnH - rfm.getHeight()) / 2 + rfm.getAscent();
             int textX = reportBtnX + (reportBtnW - reportTextW) / 2;
             g.drawString(reportText, textX, reportBaseline);
-            reportButtonBounds.setBounds(reportBtnX, reportBtnY, reportBtnW, reportBtnH);
             inputInnerRight = reportBtnX - 4;
 
             if (oldFont != null) {
@@ -862,7 +869,7 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private String getReportButtonText() {
-        if (mainConfig.general_ShowSessionTimer() && loginTime != null) {
+        if (mainConfig.featureRedesign_ShowSessionTimer() && loginTime != null) {
             Duration d = Duration.between(loginTime, Instant.now());
             long h = d.toHours();
             long m = d.toMinutesPart();
@@ -1031,7 +1038,6 @@ public class ChatOverlay extends OverlayPanel
 
     private Tab createPrivateTab(String key, String targetName) {
         Tab tab = new Tab(key, targetName, true);
-        tab.setIconId(2); // TODO: TEMP TEST — force ironman icon on every PM tab
         return tab;
     }
 
@@ -2692,7 +2698,7 @@ public class ChatOverlay extends OverlayPanel
             }
 
             // Handle report button click
-            if (mainConfig.general_ShowReportButton() && reportButtonBounds.contains(e.getPoint())) {
+            if (mainConfig.featureRedesign_ShowReportButton() && reportButtonBounds.contains(e.getPoint())) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     clientThread.invoke(ChatOverlay.this::openReportAbuse);
                     e.consume();
