@@ -110,6 +110,12 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         Color featureRedesign_TabCloseButtonColor();
         Color featureRedesign_TabCloseButtonTextColor();
         Color featureRedesign_FilterButtonColor();
+        Color featureRedesign_FilterPopupBackgroundColor();
+        Color featureRedesign_FilterPopupBorderColor();
+        Color featureRedesign_FilterPopupTextColor();
+        Color featureRedesign_FilterPopupCheckboxColor();
+        Color featureRedesign_FilterPopupCheckmarkColor();
+        int featureRedesign_ReportButtonFontSize();
         Color featureRedesign_ReportButtonColor();
         Color featureRedesign_ReportButtonTextColor();
 
@@ -131,6 +137,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         FontStyle featureRedesign_MessageContainer_LineFontStyle();
         int featureRedesign_MessageContainer_LineFontSize();
         int featureRedesign_MessageContainer_TextShadow();
+        int featureRedesign_MessageContainer_TextOutline();
         Color featureRedesign_MessageContainer_BackdropColor();
         Color featureRedesign_MessageContainer_BorderColor();
         Color featureRedesign_MessageContainer_ShadowColor();
@@ -213,6 +220,12 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color featureRedesign_TabCloseButtonColor() { return cfg.featureRedesign_TabCloseButtonColor(); }
             @Override public Color featureRedesign_TabCloseButtonTextColor() { return cfg.featureRedesign_TabCloseButtonTextColor(); }
             @Override public Color featureRedesign_FilterButtonColor() { return cfg.featureRedesign_FilterButtonColor(); }
+            @Override public Color featureRedesign_FilterPopupBackgroundColor() { return cfg.featureRedesign_FilterPopupBackgroundColor(); }
+            @Override public Color featureRedesign_FilterPopupBorderColor() { return cfg.featureRedesign_FilterPopupBorderColor(); }
+            @Override public Color featureRedesign_FilterPopupTextColor() { return cfg.featureRedesign_FilterPopupTextColor(); }
+            @Override public Color featureRedesign_FilterPopupCheckboxColor() { return cfg.featureRedesign_FilterPopupCheckboxColor(); }
+            @Override public Color featureRedesign_FilterPopupCheckmarkColor() { return cfg.featureRedesign_FilterPopupCheckmarkColor(); }
+            @Override public int featureRedesign_ReportButtonFontSize() { return cfg.featureRedesign_ReportButtonFontSize(); }
             @Override public Color featureRedesign_ReportButtonColor() { return cfg.featureRedesign_ReportButtonColor(); }
             @Override public Color featureRedesign_ReportButtonTextColor() { return cfg.featureRedesign_ReportButtonTextColor(); }
             @Override public ChatMode featureRedesign_DefaultChatMode() { return cfg.featureRedesign_DefaultChatMode(); }
@@ -233,6 +246,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public FontStyle featureRedesign_MessageContainer_LineFontStyle() { return cfg.featureRedesign_MessageContainer_LineFontStyle(); }
             @Override public int featureRedesign_MessageContainer_LineFontSize() { return cfg.featureRedesign_MessageContainer_LineFontSize(); }
             @Override public int featureRedesign_MessageContainer_TextShadow() { return cfg.featureRedesign_MessageContainer_TextShadow(); }
+            @Override public int featureRedesign_MessageContainer_TextOutline() { return cfg.featureRedesign_MessageContainer_TextOutline(); }
             @Override public Color featureRedesign_MessageContainer_BackdropColor() { return cfg.featureRedesign_MessageContainer_BackdropColor(); }
             @Override public Color featureRedesign_MessageContainer_BorderColor() { return cfg.featureRedesign_MessageContainer_BorderColor(); }
             @Override public Color featureRedesign_MessageContainer_ShadowColor() { return cfg.featureRedesign_MessageContainer_ShadowColor(); }
@@ -288,6 +302,12 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public Color getTabCloseButtonColor() { return cfg.featureRedesign_TabCloseButtonColor(); }
             @Override public Color getTabCloseButtonTextColor() { return cfg.featureRedesign_TabCloseButtonTextColor(); }
             @Override public Color getFilterButtonColor() { return cfg.featureRedesign_FilterButtonColor(); }
+            @Override public Color getFilterPopupBackgroundColor() { return cfg.featureRedesign_FilterPopupBackgroundColor(); }
+            @Override public Color getFilterPopupBorderColor() { return cfg.featureRedesign_FilterPopupBorderColor(); }
+            @Override public Color getFilterPopupTextColor() { return cfg.featureRedesign_FilterPopupTextColor(); }
+            @Override public Color getFilterPopupCheckboxColor() { return cfg.featureRedesign_FilterPopupCheckboxColor(); }
+            @Override public Color getFilterPopupCheckmarkColor() { return cfg.featureRedesign_FilterPopupCheckmarkColor(); }
+            @Override public int getReportButtonFontSize() { return cfg.featureRedesign_ReportButtonFontSize(); }
             @Override public Color getReportButtonColor() { return cfg.featureRedesign_ReportButtonColor(); }
             @Override public Color getReportButtonTextColor() { return cfg.featureRedesign_ReportButtonTextColor(); }
 
@@ -338,6 +358,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 @Override public FontStyle getLineFontStyle() { return cfg.featureRedesign_MessageContainer_LineFontStyle(); }
                 @Override public int getLineFontSize() { return cfg.featureRedesign_MessageContainer_LineFontSize(); }
                 @Override public int getTextShadow() { return cfg.featureRedesign_MessageContainer_TextShadow(); }
+                @Override public int getTextOutline() { return cfg.featureRedesign_MessageContainer_TextOutline(); }
                 @Override public Color getBackdropColor() { return cfg.featureRedesign_MessageContainer_BackdropColor(); }
                 @Override public Color getBorderColor() { return cfg.featureRedesign_MessageContainer_BorderColor(); }
                 @Override public Color getShadowColor() { return cfg.featureRedesign_MessageContainer_ShadowColor(); }

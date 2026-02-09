@@ -68,6 +68,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		FontStyle featurePeek_FontStyle();
 		int featurePeek_FontSize();
 		int featurePeek_TextShadow();
+		int featurePeek_TextOutline();
 		int featurePeek_Padding();
 		int featurePeek_OffsetX();
 		int featurePeek_OffsetY();
@@ -113,6 +114,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public FontStyle featurePeek_FontStyle() { return config.featurePeek_FontStyle(); }
 			@Override public int featurePeek_FontSize() { return config.featurePeek_FontSize(); }
 			@Override public int featurePeek_TextShadow() { return config.featurePeek_TextShadow(); }
+			@Override public int featurePeek_TextOutline() { return config.featurePeek_TextOutline(); }
 			@Override public int featurePeek_Padding() { return config.featurePeek_Padding(); }
 			@Override public int featurePeek_OffsetX() { return config.featurePeek_OffsetX(); }
 			@Override public int featurePeek_OffsetY() { return config.featurePeek_OffsetY(); }
@@ -158,6 +160,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public FontStyle getLineFontStyle() { return cfg.featurePeek_FontStyle(); }
 			@Override public int getLineFontSize() { return cfg.featurePeek_FontSize(); }
 			@Override public int getTextShadow() { return cfg.featurePeek_TextShadow(); }
+			@Override public int getTextOutline() { return cfg.featurePeek_TextOutline(); }
 			@Override public Color getBackdropColor() { return cfg.featurePeek_BackgroundColor(); }
 			@Override public Color getBorderColor() { return cfg.featurePeek_BorderColor(); }
 			@Override public Color getShadowColor() { return super.getShadowColor(); }

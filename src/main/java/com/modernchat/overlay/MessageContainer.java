@@ -22,6 +22,7 @@ import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.MathUtil;
 import com.modernchat.util.StringUtil;
+import com.modernchat.util.TextDrawUtil;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.ChatMessageType;
@@ -271,13 +272,6 @@ public class MessageContainer extends Overlay
                         if (dx == left && (segText == null || segText.isBlank()))
                             continue;
 
-                        // Normal text
-                        int shadowOffset = config.getTextShadow();
-                        if (shadowOffset > 0) {
-                            g.setColor(config.getShadowColor());
-                            g.drawString(segText, dx + shadowOffset, y + shadowOffset);
-                        }
-
                         // Determine color: use config override if not transparent, else segment color
                         Color segColor = seg.getColor();
                         if (seg instanceof TimestampSegment) {
@@ -292,8 +286,10 @@ public class MessageContainer extends Overlay
                             }
                         }
 
-                        g.setColor(segColor);
-                        g.drawString(segText, dx, y);
+                        // Draw text with shadow or outline
+                        TextDrawUtil.drawTextWithShadow(g, segText, dx, y,
+                            segColor, config.getShadowColor(),
+                            config.getTextShadow(), config.getTextOutline());
 
                         dx += fm.stringWidth(segText);
                         if (dx > right)

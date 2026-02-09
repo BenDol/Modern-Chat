@@ -46,6 +46,8 @@ public interface MessageContainerConfig extends ChatColors
 
     int getTextShadow();
 
+    default int getTextOutline() { return 0; }
+
     Color getBackdropColor();
 
     Color getBorderColor();

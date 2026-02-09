@@ -100,6 +100,18 @@ public interface ChatOverlayConfig
 
     Color getFilterButtonColor();
 
+    Color getFilterPopupBackgroundColor();
+
+    Color getFilterPopupBorderColor();
+
+    Color getFilterPopupTextColor();
+
+    Color getFilterPopupCheckboxColor();
+
+    Color getFilterPopupCheckmarkColor();
+
+    int getReportButtonFontSize();
+
     Color getReportButtonColor();
 
     Color getReportButtonTextColor();
@@ -372,6 +384,36 @@ public interface ChatOverlayConfig
         @Override
         public Color getFilterButtonColor() {
             return Color.WHITE;
+        }
+
+        @Override
+        public Color getFilterPopupBackgroundColor() {
+            return new Color(35, 35, 35, 240);
+        }
+
+        @Override
+        public Color getFilterPopupBorderColor() {
+            return new Color(80, 80, 80);
+        }
+
+        @Override
+        public Color getFilterPopupTextColor() {
+            return Color.WHITE;
+        }
+
+        @Override
+        public Color getFilterPopupCheckboxColor() {
+            return new Color(40, 40, 40);
+        }
+
+        @Override
+        public Color getFilterPopupCheckmarkColor() {
+            return new Color(100, 200, 100);
+        }
+
+        @Override
+        public int getReportButtonFontSize() {
+            return -1;
         }
 
         @Override

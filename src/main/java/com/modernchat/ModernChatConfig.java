@@ -719,6 +719,85 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.featureRedesign_FilterPopupBackgroundColor,
+        name = "Filter Popup Background",
+        description = "Background color for the filter popup",
+        position = 31,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_FilterPopupBackgroundColor() {
+        return new Color(35, 35, 35, 240);
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_FilterPopupBorderColor,
+        name = "Filter Popup Border",
+        description = "Border color for the filter popup",
+        position = 32,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_FilterPopupBorderColor() {
+        return new Color(80, 80, 80);
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_FilterPopupTextColor,
+        name = "Filter Popup Text",
+        description = "Text color for filter popup labels",
+        position = 33,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_FilterPopupTextColor() {
+        return Color.WHITE;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_FilterPopupCheckboxColor,
+        name = "Filter Popup Checkbox",
+        description = "Background color for filter popup checkboxes",
+        position = 34,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_FilterPopupCheckboxColor() {
+        return new Color(40, 40, 40);
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_FilterPopupCheckmarkColor,
+        name = "Filter Popup Checkmark",
+        description = "Checkmark color for filter popup checkboxes",
+        position = 35,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_FilterPopupCheckmarkColor() {
+        return new Color(100, 200, 100);
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_ReportButtonFontSize,
+        name = "Report Button Font Size",
+        description = "Font size for the report / session timer button text (-1 = use input font size)",
+        position = 36,
+        section = modernChatStyleSection
+    )
+    @Range(min = -1, max = 48)
+    @Units(Units.PIXELS)
+    @Override
+    default int featureRedesign_ReportButtonFontSize() {
+        return -1;
+    }
+
+    @ConfigItem(
         keyName = Keys.featureRedesign_ReportButtonColor,
         name = "Report Button Color",
         description = "Background color for the report / session timer button",
@@ -872,6 +951,20 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default int featureRedesign_MessageContainer_TextShadow() {
         return 1;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_MessageContainer_TextOutline,
+        name = "Message Text Outline",
+        description = "Outline thickness for message text (0 = off, uses drop shadow instead)",
+        position = 40,
+        section = modernChatStyleSection
+    )
+    @Range(max = 10)
+    @Units(Units.PIXELS)
+    @Override
+    default int featureRedesign_MessageContainer_TextOutline() {
+        return 0;
     }
 
     @ConfigItem(
@@ -1403,6 +1496,20 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default int featurePeek_TextShadow() {
         return 1;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_TextOutline,
+        name = "Text Outline",
+        description = "Outline thickness for peek overlay text (0 = off, uses drop shadow instead)",
+        position = 11,
+        section = peekOverlaySection
+    )
+    @Range(max = 10)
+    @Units(Units.PIXELS)
+    @Override
+    default int featurePeek_TextOutline() {
+        return 0;
     }
 
     @ConfigItem(

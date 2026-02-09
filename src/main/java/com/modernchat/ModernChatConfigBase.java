@@ -108,6 +108,12 @@ public interface ModernChatConfigBase extends
         String featureRedesign_TabCloseButtonColor = "featureRedesign_TabCloseButtonColor";
         String featureRedesign_TabCloseButtonTextColor = "featureRedesign_TabCloseButtonTextColor";
         String featureRedesign_FilterButtonColor = "featureRedesign_FilterButtonColor";
+        String featureRedesign_FilterPopupBackgroundColor = "featureRedesign_FilterPopupBackgroundColor";
+        String featureRedesign_FilterPopupBorderColor = "featureRedesign_FilterPopupBorderColor";
+        String featureRedesign_FilterPopupTextColor = "featureRedesign_FilterPopupTextColor";
+        String featureRedesign_FilterPopupCheckboxColor = "featureRedesign_FilterPopupCheckboxColor";
+        String featureRedesign_FilterPopupCheckmarkColor = "featureRedesign_FilterPopupCheckmarkColor";
+        String featureRedesign_ReportButtonFontSize = "featureRedesign_ReportButtonFontSize";
         String featureRedesign_ReportButtonColor = "featureRedesign_ReportButtonColor";
         String featureRedesign_ReportButtonTextColor = "featureRedesign_ReportButtonTextColor";
 
@@ -122,6 +128,7 @@ public interface ModernChatConfigBase extends
         String featureRedesign_MessageContainer_LineSpacing = "featureRedesign_MessageContainer_LineSpacing";
         String featureRedesign_MessageContainer_ScrollStep = "featureRedesign_MessageContainer_ScrollStep";
         String featureRedesign_MessageContainer_TextShadow = "featureRedesign_MessageContainer_TextShadow";
+        String featureRedesign_MessageContainer_TextOutline = "featureRedesign_MessageContainer_TextOutline";
         String featureRedesign_MessageContainer_BackdropColor = "featureRedesign_MessageContainer_BackdropColor";
         String featureRedesign_MessageContainer_BorderColor = "featureRedesign_MessageContainer_BorderColor";
         String featureRedesign_MessageContainer_ShadowColor = "featureRedesign_MessageContainer_ShadowColor";
@@ -169,6 +176,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_FontStyle = "featurePeek_FontStyle";
         String featurePeek_FontSize  = "featurePeek_FontSize";
         String featurePeek_TextShadow = "featurePeek_TextShadow";
+        String featurePeek_TextOutline = "featurePeek_TextOutline";
         String featurePeek_OffsetX = "featurePeek_OffsetX";
         String featurePeek_OffsetY = "featurePeek_OffsetY";
         String featurePeek_Padding = "featurePeek_Padding";
@@ -276,6 +284,12 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_TAB_CLOSE_BTN_COLOR(Keys.featureRedesign_TabCloseButtonColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TabCloseButtonColor),
         FEATURE_REDESIGN_TAB_CLOSE_BTN_TEXT_COLOR(Keys.featureRedesign_TabCloseButtonTextColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TabCloseButtonTextColor),
         FEATURE_REDESIGN_FILTER_BTN_COLOR(Keys.featureRedesign_FilterButtonColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_FilterButtonColor),
+        FEATURE_REDESIGN_FILTER_POPUP_BG_COLOR(Keys.featureRedesign_FilterPopupBackgroundColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_FilterPopupBackgroundColor),
+        FEATURE_REDESIGN_FILTER_POPUP_BORDER_COLOR(Keys.featureRedesign_FilterPopupBorderColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_FilterPopupBorderColor),
+        FEATURE_REDESIGN_FILTER_POPUP_TEXT_COLOR(Keys.featureRedesign_FilterPopupTextColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_FilterPopupTextColor),
+        FEATURE_REDESIGN_FILTER_POPUP_CHECKBOX_COLOR(Keys.featureRedesign_FilterPopupCheckboxColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_FilterPopupCheckboxColor),
+        FEATURE_REDESIGN_FILTER_POPUP_CHECKMARK_COLOR(Keys.featureRedesign_FilterPopupCheckmarkColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_FilterPopupCheckmarkColor),
+        FEATURE_REDESIGN_REPORT_BTN_FONT_SIZE(Keys.featureRedesign_ReportButtonFontSize, Kind.INT, ModernChatConfigBase::featureRedesign_ReportButtonFontSize),
         FEATURE_REDESIGN_REPORT_BTN_COLOR(Keys.featureRedesign_ReportButtonColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_ReportButtonColor),
         FEATURE_REDESIGN_REPORT_BTN_TEXT_COLOR(Keys.featureRedesign_ReportButtonTextColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_ReportButtonTextColor),
 
@@ -290,6 +304,7 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_MSG_LINE_SPACING(Keys.featureRedesign_MessageContainer_LineSpacing, Kind.INT, ModernChatConfigBase::featureRedesign_MessageContainer_LineSpacing),
         FEATURE_REDESIGN_MSG_SCROLL_STEP(Keys.featureRedesign_MessageContainer_ScrollStep, Kind.INT, ModernChatConfigBase::featureRedesign_MessageContainer_ScrollStep),
         FEATURE_REDESIGN_MSG_TEXT_SHADOW(Keys.featureRedesign_MessageContainer_TextShadow, Kind.INT, ModernChatConfigBase::featureRedesign_MessageContainer_TextShadow),
+        FEATURE_REDESIGN_MSG_TEXT_OUTLINE(Keys.featureRedesign_MessageContainer_TextOutline, Kind.INT, ModernChatConfigBase::featureRedesign_MessageContainer_TextOutline),
 
         // ---- Message container colors ----
         FEATURE_REDESIGN_MSG_BACKDROP_COLOR(Keys.featureRedesign_MessageContainer_BackdropColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_MessageContainer_BackdropColor),
@@ -341,6 +356,7 @@ public interface ModernChatConfigBase extends
         PEEK_FONT_STYLE(Keys.featurePeek_FontStyle, FontStyle.class, ModernChatConfigBase::featurePeek_FontStyle),
         PEEK_FONT_SIZE(Keys.featurePeek_FontSize, Kind.INT, ModernChatConfigBase::featurePeek_FontSize),
         PEEK_TEXT_SHADOW(Keys.featurePeek_TextShadow, Kind.INT, ModernChatConfigBase::featurePeek_TextShadow),
+        PEEK_TEXT_OUTLINE(Keys.featurePeek_TextOutline, Kind.INT, ModernChatConfigBase::featurePeek_TextOutline),
         PEEK_OFFSET_X(Keys.featurePeek_OffsetX, Kind.INT, ModernChatConfigBase::featurePeek_OffsetX),
         PEEK_OFFSET_Y(Keys.featurePeek_OffsetY, Kind.INT, ModernChatConfigBase::featurePeek_OffsetY),
         PEEK_PADDING(Keys.featurePeek_Padding, Kind.INT, ModernChatConfigBase::featurePeek_Padding),
@@ -552,6 +568,12 @@ public interface ModernChatConfigBase extends
         @Override public Color featureRedesign_TabCloseButtonColor() { return getColor(Keys.featureRedesign_TabCloseButtonColor, DEFAULTS.featureRedesign_TabCloseButtonColor()); }
         @Override public Color featureRedesign_TabCloseButtonTextColor() { return getColor(Keys.featureRedesign_TabCloseButtonTextColor, DEFAULTS.featureRedesign_TabCloseButtonTextColor()); }
         @Override public Color featureRedesign_FilterButtonColor() { return getColor(Keys.featureRedesign_FilterButtonColor, DEFAULTS.featureRedesign_FilterButtonColor()); }
+        @Override public Color featureRedesign_FilterPopupBackgroundColor() { return getColor(Keys.featureRedesign_FilterPopupBackgroundColor, DEFAULTS.featureRedesign_FilterPopupBackgroundColor()); }
+        @Override public Color featureRedesign_FilterPopupBorderColor() { return getColor(Keys.featureRedesign_FilterPopupBorderColor, DEFAULTS.featureRedesign_FilterPopupBorderColor()); }
+        @Override public Color featureRedesign_FilterPopupTextColor() { return getColor(Keys.featureRedesign_FilterPopupTextColor, DEFAULTS.featureRedesign_FilterPopupTextColor()); }
+        @Override public Color featureRedesign_FilterPopupCheckboxColor() { return getColor(Keys.featureRedesign_FilterPopupCheckboxColor, DEFAULTS.featureRedesign_FilterPopupCheckboxColor()); }
+        @Override public Color featureRedesign_FilterPopupCheckmarkColor() { return getColor(Keys.featureRedesign_FilterPopupCheckmarkColor, DEFAULTS.featureRedesign_FilterPopupCheckmarkColor()); }
+        @Override public int featureRedesign_ReportButtonFontSize() { return getInt(Keys.featureRedesign_ReportButtonFontSize, DEFAULTS.featureRedesign_ReportButtonFontSize()); }
         @Override public Color featureRedesign_ReportButtonColor() { return getColor(Keys.featureRedesign_ReportButtonColor, DEFAULTS.featureRedesign_ReportButtonColor()); }
         @Override public Color featureRedesign_ReportButtonTextColor() { return getColor(Keys.featureRedesign_ReportButtonTextColor, DEFAULTS.featureRedesign_ReportButtonTextColor()); }
 
@@ -566,6 +588,7 @@ public interface ModernChatConfigBase extends
         @Override public int featureRedesign_MessageContainer_LineSpacing() { return getInt(Keys.featureRedesign_MessageContainer_LineSpacing, DEFAULTS.featureRedesign_MessageContainer_LineSpacing()); }
         @Override public int featureRedesign_MessageContainer_ScrollStep() { return getInt(Keys.featureRedesign_MessageContainer_ScrollStep, DEFAULTS.featureRedesign_MessageContainer_ScrollStep()); }
         @Override public int featureRedesign_MessageContainer_TextShadow() { return getInt(Keys.featureRedesign_MessageContainer_TextShadow, DEFAULTS.featureRedesign_MessageContainer_TextShadow()); }
+        @Override public int featureRedesign_MessageContainer_TextOutline() { return getInt(Keys.featureRedesign_MessageContainer_TextOutline, DEFAULTS.featureRedesign_MessageContainer_TextOutline()); }
 
         // Message container colors
         @Override public Color featureRedesign_MessageContainer_BackdropColor() { return getColor(Keys.featureRedesign_MessageContainer_BackdropColor, DEFAULTS.featureRedesign_MessageContainer_BackdropColor()); }
@@ -617,6 +640,7 @@ public interface ModernChatConfigBase extends
         @Override public FontStyle featurePeek_FontStyle() { return getEnum(Keys.featurePeek_FontStyle, DEFAULTS.featurePeek_FontStyle(), FontStyle.class); }
         @Override public int featurePeek_FontSize() { return getInt(Keys.featurePeek_FontSize, DEFAULTS.featurePeek_FontSize()); }
         @Override public int featurePeek_TextShadow() { return getInt(Keys.featurePeek_TextShadow, DEFAULTS.featurePeek_TextShadow()); }
+        @Override public int featurePeek_TextOutline() { return getInt(Keys.featurePeek_TextOutline, DEFAULTS.featurePeek_TextOutline()); }
         @Override public int featurePeek_OffsetX() { return getInt(Keys.featurePeek_OffsetX, DEFAULTS.featurePeek_OffsetX()); }
         @Override public int featurePeek_OffsetY() { return getInt(Keys.featurePeek_OffsetY, DEFAULTS.featurePeek_OffsetY()); }
         @Override public int featurePeek_Padding() { return getInt(Keys.featurePeek_Padding, DEFAULTS.featurePeek_Padding()); }

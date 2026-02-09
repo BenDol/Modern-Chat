@@ -39,7 +39,7 @@ public class Dropdown<T> {
 
     public void draw(Graphics2D g, FontMetrics fm, int anchorX, int anchorY,
                      int anchorWidth, int anchorHeight, int screenTop, int screenBottom,
-                     Color bgColor, Color borderColor, Color textColor, Color checkColor) {
+                     Color bgColor, Color borderColor, Color textColor, Color checkboxColor, Color checkColor) {
         if (!visible || items.isEmpty()) {
             return;
         }
@@ -77,10 +77,10 @@ public class Dropdown<T> {
             int checkboxX = item.getBounds().x + CHECKBOX_PADDING;
             int checkboxY = itemY + (ITEM_HEIGHT - CHECKBOX_SIZE) / 2;
 
-            g.setColor(new Color(40, 40, 40));
+            g.setColor(checkboxColor);
             g.fillRoundRect(checkboxX, checkboxY, CHECKBOX_SIZE, CHECKBOX_SIZE, 3, 3);
 
-            g.setColor(new Color(100, 100, 100));
+            g.setColor(borderColor);
             g.drawRoundRect(checkboxX, checkboxY, CHECKBOX_SIZE, CHECKBOX_SIZE, 3, 3);
 
             // Checkmark

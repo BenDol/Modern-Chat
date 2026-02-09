@@ -37,6 +37,7 @@ import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.MathUtil;
 import com.modernchat.util.StringUtil;
+import com.modernchat.util.TextDrawUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -622,9 +623,6 @@ public class ChatOverlay extends OverlayPanel
             }
 
             // Label (with subtle shadow)
-            g.setColor(new Color(0, 0, 0, 180));
-            g.drawString(label, tx + 1, textBase + 1);
-
             Color labelColor = config.getTabTextColor();
             if (!selected && t.getUnread() > 0) {
                 long now = System.currentTimeMillis();
@@ -632,8 +630,8 @@ public class ChatOverlay extends OverlayPanel
                 float phase = flashPhase(now, UNREAD_FLASH_PERIOD_MS, offset);
                 labelColor = lerpColor(config.getTabUnreadPulseFromColor(), config.getTabUnreadPulseToColor(), phase);
             }
-            g.setColor(labelColor);
-            g.drawString(label, tx, textBase);
+            TextDrawUtil.drawTextWithShadow(g, label, tx, textBase,
+                labelColor, new Color(0, 0, 0, 180), 1, 0);
 
             int advanceX = tx + textW;
 
@@ -697,10 +695,8 @@ public class ChatOverlay extends OverlayPanel
             final int tx = drawX + padX;
             final int textBase = y + padY + fm.getAscent();
             g.setFont(tabFont);
-            g.setColor(new Color(0, 0, 0, 200));
-            g.drawString(label, tx + 1, textBase + 1);
-            g.setColor(Color.WHITE);
-            g.drawString(label, tx, textBase);
+            TextDrawUtil.drawTextWithShadow(g, label, tx, textBase,
+                Color.WHITE, new Color(0, 0, 0, 200), 1, 0);
 
             // badge for dragged tab
             if (dragTab.getUnread() > 0) {
@@ -767,9 +763,20 @@ public class ChatOverlay extends OverlayPanel
 
         // Draw report button left of the filter button (or right edge if no filter)
         if (mainConfig.general_ShowReportButton()) {
+            int reportFontSize = config.getReportButtonFontSize();
+            FontMetrics rfm;
+            java.awt.Font oldFont = null;
+            if (reportFontSize > 0) {
+                oldFont = g.getFont();
+                g.setFont(oldFont.deriveFont((float) reportFontSize));
+                rfm = g.getFontMetrics();
+            } else {
+                rfm = fm;
+            }
+
             String reportText = getReportButtonText();
-            int reportTextW = fm.stringWidth(reportText);
-            int timerW = fm.stringWidth("0:00:00");
+            int reportTextW = rfm.stringWidth(reportText);
+            int timerW = rfm.stringWidth("0:00:00");
             int minTextW = Math.max(reportTextW, timerW);
             int reportBtnH = inputHeight - 8;
             int reportBtnW = minTextW + 6;
@@ -779,11 +786,15 @@ public class ChatOverlay extends OverlayPanel
             g.setColor(config.getReportButtonColor());
             g.fillRoundRect(reportBtnX, reportBtnY, reportBtnW, reportBtnH, 4, 4);
             g.setColor(config.getReportButtonTextColor());
-            int reportBaseline = reportBtnY + (reportBtnH - fm.getHeight()) / 2 + fm.getAscent();
+            int reportBaseline = reportBtnY + (reportBtnH - rfm.getHeight()) / 2 + rfm.getAscent();
             int textX = reportBtnX + (reportBtnW - reportTextW) / 2;
             g.drawString(reportText, textX, reportBaseline);
             reportButtonBounds.setBounds(reportBtnX, reportBtnY, reportBtnW, reportBtnH);
             inputInnerRight = reportBtnX - 4;
+
+            if (oldFont != null) {
+                g.setFont(oldFont);
+            }
         } else {
             reportButtonBounds.setBounds(0, 0, 0, 0);
         }
@@ -827,18 +838,12 @@ public class ChatOverlay extends OverlayPanel
             }
         }
 
-        // Shadow
-        g.setColor(config.getInputShadowColor());
-        g.drawString(prefix, inputInnerLeft + 1, baseline + 1);
-        g.drawString(visibleInputText(fm, inputInnerRight - (inputInnerLeft + prefixW), inputScrollPx),
-            inputInnerLeft + prefixW + 1, baseline + 1);
-
-        // Text
-        g.setColor(getInputPrefixColor());
-        g.drawString(prefix, inputInnerLeft, baseline);
-        g.setColor(config.getInputTextColor());
-        g.drawString(visibleInputText(fm, inputInnerRight - (inputInnerLeft + prefixW), inputScrollPx),
-            inputInnerLeft + prefixW, baseline);
+        // Prefix + input text (with shadow)
+        String inputText = visibleInputText(fm, inputInnerRight - (inputInnerLeft + prefixW), inputScrollPx);
+        TextDrawUtil.drawTextWithShadow(g, prefix, inputInnerLeft, baseline,
+            getInputPrefixColor(), config.getInputShadowColor(), 1, 0);
+        TextDrawUtil.drawTextWithShadow(g, inputText, inputInnerLeft + prefixW, baseline,
+            config.getInputTextColor(), config.getInputShadowColor(), 1, 0);
 
         // Caret
         long now = System.currentTimeMillis();
@@ -942,10 +947,11 @@ public class ChatOverlay extends OverlayPanel
             filterButtonBounds.x, filterButtonBounds.y,
             filterButtonBounds.width, filterButtonBounds.height,
             viewport.y, viewport.y + viewport.height,
-            new Color(35, 35, 35, 240),
-            new Color(80, 80, 80),
-            Color.WHITE,
-            new Color(100, 200, 100));
+            config.getFilterPopupBackgroundColor(),
+            config.getFilterPopupBorderColor(),
+            config.getFilterPopupTextColor(),
+            config.getFilterPopupCheckboxColor(),
+            config.getFilterPopupCheckmarkColor());
     }
 
     private void initFilterDropdown() {
@@ -1917,7 +1923,6 @@ public class ChatOverlay extends OverlayPanel
         int senderIconId
     ) {
         ChatMode mode = ChatUtil.toChatMode(type);
-        ChatMode selectedMode = mode;
         String targetName = type == ChatMessageType.PRIVATECHATOUT || type == ChatMessageType.FRIENDNOTIFICATION
             ? receiverName
             : senderName;
@@ -2386,6 +2391,12 @@ public class ChatOverlay extends OverlayPanel
         for (MessageContainer container : messageContainers.values()) {
             container.dirty();
         }
+        for (MessageContainer container : privateContainers.values()) {
+            container.dirty();
+        }
+        if (allContainer != null) allContainer.dirty();
+        if (gameContainer != null) gameContainer.dirty();
+        if (tradeContainer != null) tradeContainer.dirty();
     }
 
     private boolean hasSelection() { return selStart != selEnd; }
