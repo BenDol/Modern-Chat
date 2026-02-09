@@ -1,6 +1,9 @@
 package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.event.FeatureChangedEvent;
+import com.modernchat.event.FeatureStartedEvent;
+import com.modernchat.event.FeatureStoppedEvent;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -68,12 +71,15 @@ public abstract class AbstractChatFeature<T extends ChatFeatureConfig> implement
                 boolean enabling = Boolean.parseBoolean(e.getNewValue());
                 if (!enabling && currentlyEnabled) {
                     shutDown();
+                    eventBus.post(new FeatureStoppedEvent(AbstractChatFeature.this));
                 } else if (enabling && !currentlyEnabled) {
                     startUp();
+                    eventBus.post(new FeatureStartedEvent(AbstractChatFeature.this));
                 }
             }
 
             onFeatureConfigChanged(e);
+            eventBus.post(new FeatureChangedEvent(AbstractChatFeature.this));
         }
     }
 }

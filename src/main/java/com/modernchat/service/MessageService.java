@@ -119,45 +119,11 @@ public class MessageService implements ChatService
         final int modeValue = selectedMode.getValue();
         final int clanTypeValue = clanType.getValue();
 
-        // Post chatboxInput ScriptCallbackEvent for other plugins to intercept
-        // ChatInputManager.handleInput() reads: objectStack[n-1]=text, intStack[n-2]=chatType, intStack[n-1]=clanTarget
-        final boolean[] consumed = {false};
-
         clientThread.invoke(() -> {
-            Object[] objectStack = client.getObjectStack();
-            int[] intStack = client.getIntStack();
-            int origObjectStackSize = client.getObjectStackSize();
-            int origIntStackSize = client.getIntStackSize();
-
-            objectStack[origObjectStackSize] = text;
-            intStack[origIntStackSize] = modeValue;
-            intStack[origIntStackSize + 1] = clanTypeValue;
-            client.setObjectStackSize(origObjectStackSize + 1);
-            client.setIntStackSize(origIntStackSize + 2);
-
-            log.debug("Posting ScriptCallbackEvent for chatboxInput: {}", text);
-            ScriptCallbackEvent chatboxEvent = new ScriptCallbackEvent();
-            chatboxEvent.setEventName("chatboxInput");
-            eventBus.post(chatboxEvent);
-
-            // Check if consumed (ChatInputManager sets objectStack[n-1] = "" if consumed)
-            consumed[0] = "".equals(objectStack[origObjectStackSize]);
-
-            // Restore stack sizes
-            client.setObjectStackSize(origObjectStackSize);
-            client.setIntStackSize(origIntStackSize);
-
-            if (!consumed[0]) {
-                client.setVarcStrValue(VarClientID.CHATINPUT, text);
-                client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
-                eventBus.post(new ChatMessageSentEvent(text, modeValue, clanTypeValue));
-            }
+            client.setVarcStrValue(VarClientID.CHATINPUT, text);
+            client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
+            eventBus.post(new ChatMessageSentEvent(text, modeValue, clanTypeValue));
         });
-
-        if (consumed[0]) {
-            log.debug("Message consumed by another plugin: {}", text);
-            return;
-        }
 
         lastSendTimestamp = System.currentTimeMillis();
     }

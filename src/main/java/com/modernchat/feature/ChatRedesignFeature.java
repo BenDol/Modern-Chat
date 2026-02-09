@@ -491,7 +491,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
             clientThread.invokeAtTickEnd(() -> overlay.selectDefaultTab());
 
-            if (mainConfig.featureToggle_StartHidden() || chatProxy.isUsingKeyRemappingPlugin())
+            if (mainConfig.featureToggle_StartHidden())
                 clientThread.invokeAtTickEnd(() -> overlay.setHidden(true));
 
             loggedIn = true;

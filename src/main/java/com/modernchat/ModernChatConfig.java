@@ -54,20 +54,20 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     String toggleChatSection = "toggleChatSection";
 
     @ConfigSection(
-        name = "Filters",
-        description = "Apply chat filters from other plugins to Modern Chat",
+        name = "Peek Overlay",
+        description = "Show a peek overlay when chat is hidden",
         position = 4,
         closedByDefault = true
     )
-    String filtersSection = "filtersSection";
+    String peekOverlaySection = "peekOverlaySection";
 
     @ConfigSection(
-        name = "Peek Overlay",
-        description = "Show a peek overlay when chat is hidden",
+        name = "Filters",
+        description = "Apply chat filters from other plugins to Modern Chat",
         position = 5,
         closedByDefault = true
     )
-    String peekOverlaySection = "peekOverlaySection";
+    String filtersSection = "filtersSection";
 
     @ConfigSection(
         name = "Chat Commands",

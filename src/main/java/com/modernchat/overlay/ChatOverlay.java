@@ -127,8 +127,8 @@ public class ChatOverlay extends OverlayPanel
     @Inject private ModernChatConfig mainConfig;
 
     private ChatOverlayConfig config;
-    private final ChatMouse mouse = new ChatMouse();
-    private final InputKeys keys = new InputKeys();
+    @Getter private final ChatMouse mouse = new ChatMouse();
+    @Getter private final InputKeys keys = new InputKeys();
 
     @Getter private final Map<String, Integer> suggestedOrder = new ConcurrentHashMap<>();
     @Getter private final List<Tab> tabOrder = new LinkedList<>();
@@ -300,7 +300,7 @@ public class ChatOverlay extends OverlayPanel
         refreshTabs();
 
         ChatProxy chatProxy = chatProxyProvider.get();
-        clientThread.invoke(() -> setHidden(config.isStartHidden() || chatProxy.isUsingKeyRemappingPlugin()));
+        clientThread.invoke(() -> setHidden(config.isStartHidden()));
         clientThread.invokeAtTickEnd(() -> selectTab(config.getDefaultChatMode()));
     }
 
@@ -1319,9 +1319,9 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onChatToggleEvent(ChatToggleEvent e) {
-        if (e.isHidden() != hidden) {
+        /*if (e.isHidden() != hidden) {
             setHidden(e.isHidden());
-        }
+        }*/
     }
 
     @Subscribe
@@ -1733,6 +1733,29 @@ public class ChatOverlay extends OverlayPanel
         caret = 0;
         inputScrollPx = 0;
         clearSelection(); // ensure selection cleared after send
+    }
+
+    public boolean submitInput(KeyEvent e) {
+        if (!inputFocused) {
+            focusInput();
+            if (!mainConfig.featureToggle_Enabled()) {
+                eventBus.post(new ChatToggleEvent(false));
+            }
+            e.consume();
+            return false;
+        }
+
+        commitInput();
+
+        if (!mainConfig.featureToggle_Enabled() || !mainConfig.featureToggle_AutoHideOnSend()) {
+            unfocusInput();
+            if (!mainConfig.featureToggle_Enabled()) {
+                eventBus.post(new ChatToggleEvent(true));
+            }
+            e.consume();
+        }
+
+        return true;
     }
 
     public @Nullable String getCurrentTarget() {
@@ -2539,11 +2562,16 @@ public class ChatOverlay extends OverlayPanel
                 if (filterDropdown != null && filterDropdown.isVisible()) {
                     filterDropdown.close();
                 }
-                ChatProxy chatProxy = chatProxyProvider.get();
-                if (config.isClickOutsideToClose() && mainConfig.featureToggle_Enabled() && !chatProxy.isUsingKeyRemappingPlugin()) {
+                if (config.isClickOutsideToClose() && mainConfig.featureToggle_Enabled()) {
                     setHidden(true);
+                    eventBus.post(new ChatToggleEvent(true));
+                } else {
+                    boolean wasFocused = inputFocused;
+                    unfocusInput();
+                    if (wasFocused) {
+                        eventBus.post(new ChatToggleEvent(true));
+                    }
                 }
-                unfocusInput();
                 return false;
             }
 
@@ -2848,18 +2876,7 @@ public class ChatOverlay extends OverlayPanel
                     break;
                 }
                 case KeyEvent.VK_ENTER: {
-                    if (!inputFocused) {
-                        focusInput();
-                        e.consume();
-                        break;
-                    }
-
-                    commitInput();
-
-                    if (!mainConfig.featureToggle_Enabled() || !mainConfig.featureToggle_AutoHideOnSend()) {
-                        unfocusInput();
-                        e.consume();
-                    }
+                    submitInput(e);
                     break;
                 }
                 case KeyEvent.VK_ESCAPE:
@@ -2868,6 +2885,7 @@ public class ChatOverlay extends OverlayPanel
                     if (!mainConfig.featureToggle_Enabled()) {
                         if (inputFocused) {
                             unfocusInput();
+                            eventBus.post(new ChatToggleEvent(true));
                         }
                         e.consume();
                     }

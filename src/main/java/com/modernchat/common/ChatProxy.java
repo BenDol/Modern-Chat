@@ -1,6 +1,7 @@
 package com.modernchat.common;
 
 import com.modernchat.overlay.ChatOverlay;
+import com.modernchat.service.MessageService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import lombok.Getter;
@@ -16,6 +17,7 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.awt.Rectangle;
+import java.awt.event.KeyEvent;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Singleton
@@ -25,14 +27,11 @@ public class ChatProxy
     @Inject private ChatOverlay modernChat;
     @Inject private Client client;
     @Inject private ClientThread clientThread;
+    @Inject private MessageService messageService;
 
     @Getter
     @Setter
     private boolean autoHide = false;
-
-    @Getter
-    @Setter
-    private boolean usingKeyRemappingPlugin;
 
     public boolean isHidden() {
         if (modernChat.isEnabled())
@@ -156,5 +155,14 @@ public class ChatProxy
 
     public boolean isLegacy() {
         return modernChat == null || !modernChat.isEnabled() || modernChat.isLegacyShowing();
+    }
+
+    public boolean submitInput(KeyEvent keyEvent) {
+        if (modernChat.isEnabled()) {
+            return modernChat.submitInput(keyEvent);
+        } else {
+            //messageService.sendMessage(client, keyEvent);
+        }
+        return false;
     }
 }

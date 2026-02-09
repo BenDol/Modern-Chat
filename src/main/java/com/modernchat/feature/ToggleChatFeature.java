@@ -1,13 +1,11 @@
 package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
-import com.modernchat.ModernChatConfigBase;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
-import com.modernchat.service.ExtendedInputService;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +18,6 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
@@ -57,7 +54,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	private static final int DEFER_HIDE_DELAY_TICKS = 0;   // initial wait before first check
 	private static final int DEFER_HIDE_TIMEOUT_TICKS = 5; // give up if input never clears
-	private static final String EXTENDED_BINDING_ID = "toggleChat";
 	public static Rectangle LAST_CHAT_BOUNDS = null;
 
 	@Inject private Client client;
@@ -66,7 +62,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	@Inject private MouseManager mouseManager;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
-	@Inject private ExtendedInputService extendedInputService;
 
 	private boolean loggedIn = false;
 
@@ -103,10 +98,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		super.startUp();
 
 		keyManager.registerKeyListener(this);
-		registerExtendedKeybind();
 
 		if (loggedIn) {
-			clientThread.invokeAtTickEnd(() -> setHidden(config.featureToggle_StartHidden() || chatProxy.isUsingKeyRemappingPlugin()));
+			clientThread.invokeAtTickEnd(() -> setHidden(config.featureToggle_StartHidden()));
 		}
 	}
 
@@ -115,7 +109,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		super.shutDown(fullShutdown);
 
 		keyManager.unregisterKeyListener(this);
-		unregisterExtendedKeybind();
 
 		clientThread.invoke(() -> setHidden(false));
 	}
@@ -128,7 +121,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		// so that it can be overridden.
 		keyManager.unregisterKeyListener(this);
 		keyManager.registerKeyListener(this);
-		registerExtendedKeybind();
 	}
 
 	@Override
@@ -194,7 +186,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			setHidden(hidden);
 		});
 
-		e.consume();
+		//e.consume();
 	}
 
 	@Subscribe
@@ -202,7 +194,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		if (e.getGameState() == GameState.LOGGED_IN && !loggedIn) {
 			clientThread.invokeLater(() -> {
 				// If logging in while a prompt is open, avoid immediate hide
-				if (config.featureToggle_StartHidden() || chatProxy.isUsingKeyRemappingPlugin()) {
+				if (config.featureToggle_StartHidden()) {
 					scheduleDeferredHide();
 				} else {
 					setHidden(false);
@@ -336,32 +328,4 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
         return !t.endsWith(": *") && !t.endsWith(ClientUtil.PRESS_ENTER_TO_CHAT);
     }
 
-	@Override
-	public void onFeatureConfigChanged(ConfigChanged e) {
-		if (ModernChatConfigBase.Keys.featureToggle_ExtendedToggleKey.equals(e.getKey())) {
-			unregisterExtendedKeybind();
-			registerExtendedKeybind();
-		}
-	}
-
-	private void registerExtendedKeybind() {
-		ExtendedKeybind keybind = config.featureToggle_ExtendedToggleKey();
-		extendedInputService.registerBinding(EXTENDED_BINDING_ID, keybind, (v) -> {
-			Keybind primaryKey = config.featureToggle_ToggleKey();
-			if (primaryKey != null) {
-				keyPressed(new KeyEvent(
-					client.getCanvas(),
-					KeyEvent.KEY_PRESSED,
-					System.currentTimeMillis(),
-					primaryKey.getModifiers(),
-					primaryKey.getKeyCode(),
-					KeyEvent.CHAR_UNDEFINED
-				));
-			}
-		});
-	}
-
-	private void unregisterExtendedKeybind() {
-		extendedInputService.unregisterBinding(EXTENDED_BINDING_ID);
-	}
 }

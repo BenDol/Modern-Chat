@@ -1,20 +1,22 @@
 package com.modernchat;
 
 import com.google.inject.Provides;
+import com.modernchat.compat.remapper.KeyRemappingService;
 import com.modernchat.common.Anchor;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatProxy;
+import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.NotificationService;
 import com.modernchat.common.PrivateChatAnchor;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.DialogOptionsOpenedEvent;
+import com.modernchat.event.FeatureStartedEvent;
+import com.modernchat.event.FeatureStoppedEvent;
 import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
 import com.modernchat.event.NotificationEvent;
-import com.modernchat.service.filter.AreaMutePluginFilter;
-import com.modernchat.service.filter.ChatFilterPluginFilter;
 import com.modernchat.feature.ChatFeature;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.MessageHistoryChatFeature;
@@ -26,8 +28,8 @@ import com.modernchat.service.ExtendedInputService;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ForceRecolorService;
-import com.modernchat.service.MessageFilterService;
 import com.modernchat.service.ImageService;
+import com.modernchat.service.MessageFilterService;
 import com.modernchat.service.MessageService;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.service.ProfileService;
@@ -36,6 +38,7 @@ import com.modernchat.service.SpamFilterService;
 import com.modernchat.service.TutorialService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
+import com.modernchat.util.ConfigUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -64,13 +67,13 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
@@ -78,6 +81,7 @@ import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import java.awt.Color;
+import java.awt.event.KeyEvent;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -93,9 +97,12 @@ import static com.modernchat.common.NotifyType.MESSAGE_RECEIVED;
 @PluginDescriptor(
 	name = "Modern Chat",
 	description = "A chat plugin for RuneLite that modernizes the chat experience with additional features.",
-	tags = {"chat", "modern", "quality of life"}
+	tags = {"chat", "modern", "quality of life"}/*,
+	conflicts = "Key Remapping"*/
 )
 public class ModernChatPlugin extends Plugin {
+
+	private static final String EXTENDED_BINDING_ID = "toggleChat";
 
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
@@ -117,9 +124,9 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private ExtendedInputService extendedInputService;
 	@Inject private ForceRecolorService forceRecolorService;
 	@Inject private MessageFilterService messageFilterService;
+	@Inject private KeyRemappingService keyRemappingService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
-	@Inject private PluginManager pluginManager;
 
 	//@Inject private ExampleChatFeature exampleChatFeature;
 	@Inject private ToggleChatFeature toggleChatFeature;
@@ -158,6 +165,7 @@ public class ModernChatPlugin extends Plugin {
 		soundService.startUp();
 		imageService.startUp();
 		extendedInputService.startUp();
+		registerExtendedKeybind();
 		forceRecolorService.startUp();
 		messageFilterService.startUp();
 
@@ -200,8 +208,8 @@ public class ModernChatPlugin extends Plugin {
 		// Force an initial re-anchor if enabled once widgets are available
 		lastChatBounds = null;
 
-        // Reload KeyRemappingPlugin to ensure it picks up our key listeners
-		checkKeyRemappingPlugin(true);
+		keyRemappingService.startUp();
+		keyRemappingService.checkConflictingPlugin();
 
 		if (!config.featureExample_Enabled()) {
 			toggleChatFeature.scheduleDeferredHide();
@@ -235,9 +243,11 @@ public class ModernChatPlugin extends Plugin {
 		soundService.shutDown();
 		tutorialService.shutDown();
 		imageService.shutDown();
+		unregisterExtendedKeybind();
 		extendedInputService.shutDown();
 		forceRecolorService.shutDown();
 		messageFilterService.shutDown();
+		keyRemappingService.shutDown();
 
 		if (features != null) {
 			features.forEach((feature) -> {
@@ -373,8 +383,8 @@ public class ModernChatPlugin extends Plugin {
 
 	@Subscribe
 	public void onPluginChanged(PluginChanged e) {
-		if (e.getPlugin().getClass().getSimpleName().equals("KeyRemappingPlugin"))
-			checkKeyRemappingPlugin(false);
+		if ("Key Remapping".equals(e.getPlugin().getName()))
+			keyRemappingService.checkConflictingPlugin();
 	}
 
 	@Subscribe
@@ -386,6 +396,13 @@ public class ModernChatPlugin extends Plugin {
 		if (key == null)
 			return;
 
+		if (ModernChatConfigBase.Keys.featureToggle_ExtendedToggleKey.equals(key) ||
+			ModernChatConfigBase.Keys.featureToggle_ToggleKey.equals(key))
+		{
+			unregisterExtendedKeybind();
+			registerExtendedKeybind();
+		}
+
 		if (key.endsWith("AnchorPrivateChat")) {
 			if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
 				notificationService.pushHelperNotification(new ChatMessageBuilder()
@@ -394,6 +411,18 @@ public class ModernChatPlugin extends Plugin {
 					.append(" in the OSRS settings for the 'Anchor Private Chat' feature."));
 			}
 		}
+	}
+
+	@Subscribe
+	public void onFeatureStartedEvent(FeatureStartedEvent e) {
+		keyRemappingService.shutDown();
+		keyRemappingService.startUp();
+	}
+
+	@Subscribe
+	public void onFeatureStoppedEvent(FeatureStoppedEvent e) {
+		keyRemappingService.shutDown();
+		keyRemappingService.startUp();
 	}
 
 	@Subscribe
@@ -607,6 +636,40 @@ public class ModernChatPlugin extends Plugin {
 		);
 	}
 
+	private void registerExtendedKeybind() {
+		ExtendedKeybind keybind = ConfigUtil.getEnum(
+			configManager, ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featureToggle_ExtendedToggleKey,
+			ExtendedKeybind.NONE, ExtendedKeybind.class);
+		Keybind primaryKey = ConfigUtil.getKeybind(
+			configManager, ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featureToggle_ToggleKey,
+			new Keybind(KeyEvent.VK_ENTER, 0));
+
+		extendedInputService.registerBinding(EXTENDED_BINDING_ID, keybind, (v) -> {
+			if (primaryKey != null) {
+				if (chatProxy.submitInput(new KeyEvent(
+					client.getCanvas(),
+					KeyEvent.KEY_PRESSED,
+					System.currentTimeMillis(),
+					primaryKey.getModifiers(),
+					primaryKey.getKeyCode(),
+					KeyEvent.CHAR_UNDEFINED
+				))) {
+					if (config.featureToggle_Enabled()) {
+						chatProxy.setHidden(true);
+					}
+				} else {
+					if (config.featureToggle_Enabled()) {
+						chatProxy.setHidden(false);
+					}
+				}
+			}
+		});
+	}
+
+	private void unregisterExtendedKeybind() {
+		extendedInputService.unregisterBinding(EXTENDED_BINDING_ID);
+	}
+
 	private void showInstallMessage() {
 		clientThread.invokeLater(() -> {
 			toggleChatFeature.scheduleDeferredHide();
@@ -636,30 +699,4 @@ public class ModernChatPlugin extends Plugin {
 		});
 	}
 
-	private void checkKeyRemappingPlugin(boolean notify) {
-		for (Plugin plugin : pluginManager.getPlugins()) {
-			if (plugin.getClass().getSimpleName().equals("KeyRemappingPlugin")
-				&& pluginManager.isPluginActive(plugin)
-				&& pluginManager.isPluginEnabled(plugin))
-			{
-				// ignore start hidden
-				// ignore click outside close
-				chatProxy.setUsingKeyRemappingPlugin(true);
-
-				if (notify) {
-					notificationService.pushHelperNotification(new ChatMessageBuilder()
-						.append(Color.YELLOW, "Plugin ")
-						.append(Color.ORANGE, "Key Remapping ")
-						.append(Color.YELLOW, "has known conflicts with key features. Ignoring the settings ")
-						.append(Color.ORANGE, "Click Outside Closes ")
-						.append(Color.YELLOW, "and ")
-						.append(Color.ORANGE, "Start Hidden ")
-						.append(Color.YELLOW, "to help with compatibility, but you may still have issues."));
-				}
-				return;
-			}
-		}
-
-		chatProxy.setUsingKeyRemappingPlugin(false);
-	}
 }
