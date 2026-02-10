@@ -5,16 +5,13 @@ import com.modernchat.common.ChatProxy;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
-import com.modernchat.event.DialogOptionsOpenedEvent;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.VarClientStr;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
@@ -189,7 +186,8 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			setHidden(hidden);
 		});
 
-		e.consume();
+		if (!chatProxy.isLegacy())
+			e.consume();
 	}
 
 	@Subscribe
