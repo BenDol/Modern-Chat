@@ -9,6 +9,7 @@ import com.modernchat.common.MessageLine;
 import com.modernchat.common.NotificationService;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Padding;
+import com.modernchat.draw.RichLine;
 import com.modernchat.draw.RowHit;
 import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
@@ -1111,7 +1112,7 @@ public class ChatOverlay extends OverlayPanel
 
         RowHit hit = messageContainer != null ? messageContainer.rowAt(mouse) : null;
         if (hit != null) {
-            final String rowText = buildPlainRowText(hit.getVLine());
+            final String rowText = buildPlainRowText(hit.getLine());
 
             rootMenu.createMenuEntry(1)
                 .setOption("Copy line")
@@ -1555,9 +1556,9 @@ public class ChatOverlay extends OverlayPanel
         return container;
     }
 
-    private String buildPlainRowText(VisualLine vl) {
+    private String buildPlainRowText(RichLine rl) {
         StringBuilder sb = new StringBuilder();
-        for (TextSegment ts : vl.getSegs()) sb.append(ts.getText());
+        for (TextSegment ts : rl.getSegs()) sb.append(ts.getText());
         return sb.toString();
     }
 
