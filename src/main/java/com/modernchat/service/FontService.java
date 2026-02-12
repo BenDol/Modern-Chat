@@ -91,7 +91,23 @@ public class FontService implements ChatService
         defaultFontsMap = null;
     }
 
-    public Font getFont(FontStyle style) {
+    private Font getRunescapeFont(FontStyle style) {
+        switch (style) {
+            case RUNE_SMALL:
+                return FontManager.getRunescapeSmallFont();
+            case RUNE_BOLD:
+                return FontManager.getRunescapeBoldFont();
+            default:
+                return FontManager.getRunescapeFont();
+        }
+    }
+
+    public @Nullable Font getFont(FontStyle style) {
+        if (defaultFontsMap == null) {
+            log.error("FontService has not started yet, returning default font for style: {}", style);
+            return getRunescapeFont(style);
+        }
+
         LazyLoad<Font> fontLoader = defaultFontsMap.get(style);
         if (fontLoader == null) {
             return null;
@@ -100,6 +116,11 @@ public class FontService implements ChatService
     }
 
     public @Nullable Font getFont(FontStyle style, int size) {
+        if (defaultFontsMap == null) {
+            log.error("FontService has not started yet, returning default font for style: {}", style);
+            return getRunescapeFont(style);
+        }
+
         LazyLoad<Font> fontLoader = defaultFontsMap.get(style);
         if (fontLoader == null) {
             return null;
@@ -108,7 +129,12 @@ public class FontService implements ChatService
         return font != null ? font.deriveFont((float) size) : null;
     }
 
-    public Font getFont(FontStyle style, int size, int styleFlags) {
+    public @Nullable Font getFont(FontStyle style, int size, int styleFlags) {
+        if (defaultFontsMap == null) {
+            log.error("FontService has not started yet, returning default font for style: {}", style);
+            return getRunescapeFont(style);
+        }
+
         LazyLoad<Font> fontLoader = defaultFontsMap.get(style);
         if (fontLoader == null) {
             return null;

@@ -58,6 +58,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.input.MouseWheelListener;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -385,6 +386,10 @@ public class ChatOverlay extends OverlayPanel
         }
         if (font == null) {
             font = fontService.getFont(fontStyle != null ? fontStyle : FontStyle.RUNE);
+        }
+        if (font == null) {
+            log.error("Font not found, using default Runescape font");
+            return FontManager.getRunescapeFont();
         }
         return font;
     }

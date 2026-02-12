@@ -23,12 +23,14 @@ import com.modernchat.util.MathUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.input.MouseWheelListener;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -55,6 +57,7 @@ import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+@Slf4j
 public class MessageContainer extends Overlay
 {
     private static final int DEFAULT_MAX_LINES = 20;
@@ -331,8 +334,13 @@ public class MessageContainer extends Overlay
             lineFontStyle = config.getLineFontStyle();
             lineFont = null;
         }
-        if (lineFont == null)
+        if (lineFont == null) {
             lineFont = fontService.getFont(lineFontStyle != null ? lineFontStyle : FontStyle.RUNE);
+        }
+        if (lineFont == null) {
+            log.error("Line font not found, using default Runescape font");
+            return FontManager.getRunescapeFont();
+        }
         return lineFont;
     }
 
