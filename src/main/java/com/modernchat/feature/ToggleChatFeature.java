@@ -6,6 +6,7 @@ import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
+import com.modernchat.event.FeatureStartedEvent;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.GeometryUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -123,6 +124,16 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		keyManager.registerKeyListener(this);
 	}
 
+	@Subscribe
+	public void onFeatureStartedEvent(FeatureStartedEvent e) {
+		if (e.getFeature().getClass().equals(ChatRedesignFeature.class)) {
+			// We need to make sure our key listener is registered after the chat redesign's,
+			// so that we don't take priority and consume first.
+			keyManager.unregisterKeyListener(this);
+			keyManager.registerKeyListener(this);
+		}
+	}
+
 	@Override
 	public void keyTyped(KeyEvent e) {
 	}
@@ -146,7 +157,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 		// Handle Escape before isConsumed check - KeyRemapping consumes Escape
 		// when exiting typing mode, but we still need to hide our chat
-		if (config.featureToggle_EscapeHides() && e.getKeyCode() == KeyEvent.VK_ESCAPE && !ClientUtil.isSystemWidgetActive(client)) {
+		if (config.featureToggle_EscapeHides() && e.getKeyCode() == KeyEvent.VK_ESCAPE && !chatProxy.isSystemWidgetActive()) {
 			clientThread.invoke(this::hide);
 			e.consume();
 			return;

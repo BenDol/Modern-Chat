@@ -29,6 +29,8 @@ public class ChatProxy
     @Inject private ClientThread clientThread;
     @Inject private MessageService messageService;
 
+    private final AtomicBoolean systemWidgetActive = new AtomicBoolean(false);
+
     @Getter
     @Setter
     private boolean autoHide = false;
@@ -164,5 +166,20 @@ public class ChatProxy
             //messageService.sendMessage(client, keyEvent);
         }
         return false;
+    }
+
+    /**
+     * Thread-safe snapshot of {@link ClientUtil#isSystemWidgetActive(Client)}.
+     * Updated every client tick via {@code refreshSystemWidgetActive()}.
+     */
+    public boolean isSystemWidgetActive() {
+        return systemWidgetActive.get();
+    }
+
+    /**
+     * Must be called on the client thread (e.g. from onClientTick).
+     */
+    public void refreshSystemWidgetActive() {
+        systemWidgetActive.set(ClientUtil.isSystemWidgetActive(client));
     }
 }

@@ -456,8 +456,10 @@ public class ModernChatPlugin extends Plugin {
 		}
 	}
 
-	@Subscribe
+	@Subscribe(priority = 1)
 	public void onClientTick(ClientTick e) {
+		chatProxy.refreshSystemWidgetActive();
+
 		Widget chatWidget = widgetBucket.getChatWidget();
 		boolean visible = chatWidget != null &&
 			!chatWidget.isHidden() && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());
@@ -467,7 +469,7 @@ public class ModernChatPlugin extends Plugin {
 		}
 	}
 
-	@Subscribe
+	@Subscribe(priority = 1)
 	public void onPostClientTick(PostClientTick e) {
 		// Poll once per tick but do nothing unless bounds changed
 		maybeReanchor(false);
