@@ -285,7 +285,7 @@ public class ClientUtil
             || isHidden(client, InterfaceID.Chatbox.CHATDISPLAY);
     }
 
-    boolean isOptionsDialogOpen(Client client) {
+    public static boolean isOptionsDialogOpen(Client client) {
         return client.getWidget(InterfaceID.Chatmenu.OPTIONS) != null;
     }
 

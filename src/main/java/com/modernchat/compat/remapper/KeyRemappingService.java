@@ -12,6 +12,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
 import net.runelite.api.events.ScriptCallbackEvent;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.ModifierlessKeybind;
@@ -243,5 +246,41 @@ public class KeyRemappingService implements ChatService {
             new ModifierlessKeybind(KeyEvent.VK_CONTROL, InputEvent.CTRL_DOWN_MASK));
 
         log.debug("KeyRemapping config refreshed: cameraRemap={}, fkeyRemap={}", cameraRemap, fkeyRemap);
+    }
+
+    boolean isDialogOpen() {
+        // Most chat dialogs with numerical input are added without the chatbox or its key listener being removed,
+        // so chatboxFocused() is true. The chatbox onkey script uses the following logic to ignore key presses,
+        // so we will use it too to not remap F-keys.
+        return ClientUtil.isDialogOpen(client)
+            // We want to block F-key remapping in the bank pin interface too, so it does not interfere with the
+            // Keyboard Bankpin feature of the Bank plugin
+            || !ClientUtil.isHidden(client, InterfaceID.BankpinKeypad.UNIVERSE);
+    }
+
+    public boolean isOptionsDialogOpen() {
+        return ClientUtil.isOptionsDialogOpen(client);
+    }
+
+    boolean chatboxFocused() {
+        Widget chatboxParent = client.getWidget(InterfaceID.Chatbox.UNIVERSE);
+        if (chatboxParent == null || chatboxParent.getOnKeyListener() == null) {
+            return false;
+        }
+
+        // If the search box on the world map is open and focused, ~keypress_permit blocks the keypress
+        Widget worldMapSearch = client.getWidget(InterfaceID.Worldmap.MAPLIST_DISPLAY);
+        if (worldMapSearch != null && client.getVarcIntValue(VarClientID.WORLDMAP_SEARCHING) == 1) {
+            return false;
+        }
+
+        // The report interface blocks input due to 162:54 being hidden, however player/npc dialog and
+        // options do this too, and so we can't disable remapping just due to 162:54 being hidden.
+        Widget report = client.getWidget(InterfaceID.Reportabuse.UNIVERSE);
+        if (report != null) {
+            return false;
+        }
+
+        return client.getFocusedInputFieldWidget() == null;
     }
 }

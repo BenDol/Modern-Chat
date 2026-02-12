@@ -128,12 +128,16 @@ public class ResizePanel extends Overlay
 
     public void shutDown() {
         mouseManager.unregisterMouseListener(mouseHandler);
-        setCanvasCursor(Cursor.DEFAULT_CURSOR);
+        resetCursor();
     }
 
     public void clearOverrides() {
         widthOverride = -1;
         heightOverride = -1;
+    }
+    
+    public void resetCursor() {
+        setCanvasCursor(Cursor.DEFAULT_CURSOR);
     }
 
     /**

@@ -1759,10 +1759,12 @@ public class ChatOverlay extends OverlayPanel
         if (commandMode && !hidden)
             commandMode = false;
 
-        if (hidden)
+        if (hidden) {
             unfocusInput();
-        else
+            resizePanel.resetCursor();
+        } else {
             focusInput();
+        }
 
         eventBus.post(new ModernChatVisibilityChangeEvent(!this.hidden));
     }

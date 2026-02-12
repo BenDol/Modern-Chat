@@ -1,5 +1,6 @@
 package com.modernchat.compat.remapper;
 
+import com.modernchat.util.ClientUtil;
 import net.runelite.client.config.ModifierlessKeybind;
 import net.runelite.client.input.KeyListener;
 
@@ -22,6 +23,10 @@ public class KeyRemappingKeyListener implements KeyListener {
     public void keyPressed(KeyEvent e) {
         if (!service.isEnabled())
             return;
+
+        if (!service.chatboxFocused()) {
+            return;
+        }
 
         boolean typing = service.isTyping();
 
@@ -60,7 +65,7 @@ public class KeyRemappingKeyListener implements KeyListener {
         }
 
         // F-key remapping
-        if (service.isFkeyRemap()) {
+        if (service.isFkeyRemap() && !service.isDialogOpen()) {
             int remapped = matchFKey(e);
             if (remapped != -1) {
                 blockedChars.add(e.getKeyChar());
@@ -131,11 +136,15 @@ public class KeyRemappingKeyListener implements KeyListener {
             return KeyEvent.VK_F11;
         if (matches(e, service.getF12()))
             return KeyEvent.VK_F12;
+        return -1;
+    }
+
+    private int matchOtherKey(KeyEvent e) {
         if (matches(e, service.getEsc()))
             return KeyEvent.VK_ESCAPE;
-        if (matches(e, service.getSpace()))
+        if (service.isDialogOpen() && !service.isOptionsDialogOpen() && matches(e, service.getSpace()))
             return KeyEvent.VK_SPACE;
-        if (matches(e, service.getControl()))
+        if (!service.isOptionsDialogOpen() && matches(e, service.getControl()))
             return KeyEvent.VK_CONTROL;
         return -1;
     }

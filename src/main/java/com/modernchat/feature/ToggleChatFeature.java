@@ -146,7 +146,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 		// Handle Escape before isConsumed check - KeyRemapping consumes Escape
 		// when exiting typing mode, but we still need to hide our chat
-		if (config.featureToggle_EscapeHides() && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+		if (config.featureToggle_EscapeHides() && e.getKeyCode() == KeyEvent.VK_ESCAPE && !ClientUtil.isSystemWidgetActive(client)) {
 			clientThread.invoke(this::hide);
 			e.consume();
 			return;
