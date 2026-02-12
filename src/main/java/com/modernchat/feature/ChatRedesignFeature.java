@@ -77,9 +77,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         boolean featureRedesign_AutoSelectPrivateTab();
         boolean featureRedesign_Resizeable();
         boolean featureRedesign_ShowNpc();
-        boolean featureRedesign_ClassicMode();
-        boolean featureRedesign_ClassicMode_AllowPmTabs();
-        boolean featureRedesign_ClassicMode_ShowUnread();
+        boolean featureRedesign_AutoClosePrivateTab();
         boolean featureRedesign_GameTabEnabled();
         boolean featureRedesign_TradeTabEnabled();
         boolean featureRedesign_ShowTabIcons();
@@ -188,9 +186,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean featureRedesign_AutoSelectPrivateTab() { return cfg.featureRedesign_AutoSelectPrivateTab(); }
             @Override public boolean featureRedesign_Resizeable() { return cfg.featureRedesign_Resizeable(); }
             @Override public boolean featureRedesign_ShowNpc() { return cfg.featureRedesign_ShowNpc(); }
-            @Override public boolean featureRedesign_ClassicMode() { return cfg.featureRedesign_ClassicMode(); }
-            @Override public boolean featureRedesign_ClassicMode_AllowPmTabs() { return cfg.featureRedesign_ClassicMode_AllowPmTabs(); }
-            @Override public boolean featureRedesign_ClassicMode_ShowUnread() { return cfg.featureRedesign_ClassicMode_ShowUnread(); }
+            @Override public boolean featureRedesign_AutoClosePrivateTab() { return cfg.featureRedesign_AutoClosePrivateTab(); }
             @Override public boolean featureRedesign_GameTabEnabled() { return cfg.featureRedesign_GameTabEnabled(); }
             @Override public boolean featureRedesign_TradeTabEnabled() { return cfg.featureRedesign_TradeTabEnabled(); }
             @Override public boolean featureRedesign_ShowTabIcons() { return cfg.featureRedesign_ShowTabIcons(); }
@@ -272,9 +268,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean isOpenTabOnIncomingPM() { return cfg.featureRedesign_OpenTabOnIncomingPM(); }
             @Override public boolean isClickOutsideToClose() { return cfg.featureRedesign_ClickOutsideToClose(); }
             @Override public ChatMode getDefaultChatMode() { return cfg.featureRedesign_DefaultChatMode(); }
-            @Override public boolean isClassicMode() { return cfg.featureRedesign_ClassicMode(); }
-            @Override public boolean isClassicModeAllowPmTabs() { return cfg.featureRedesign_ClassicMode_AllowPmTabs(); }
-            @Override public boolean isClassicModeShowUnread() { return cfg.featureRedesign_ClassicMode_ShowUnread(); }
+            @Override public boolean isAutoClosePrivateTab() { return cfg.featureRedesign_AutoClosePrivateTab(); }
             @Override public boolean isGameTabEnabled() { return cfg.featureRedesign_GameTabEnabled(); }
             @Override public boolean isTradeTabEnabled() { return cfg.featureRedesign_TradeTabEnabled(); }
             @Override public boolean isShowTabIcons() { return cfg.featureRedesign_ShowTabIcons(); }
@@ -349,6 +343,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 @Override public boolean isShowTimestamp() { return cfg.featureRedesign_MessageContainer_ShowTimestamp(); }
                 @Override public boolean isScrollable() { return cfg.featureRedesign_MessageContainer_Scrollable(); }
                 @Override public boolean isDrawScrollbar() { return cfg.featureRedesign_MessageContainer_DrawScrollbar(); }
+                @Override public boolean isShowNpcMessages() { return cfg.featureRedesign_ShowNpc(); }
                 @Override public Point getOffset() { return new Point(cfg.featureRedesign_MessageContainer_OffsetX(), cfg.featureRedesign_MessageContainer_OffsetY()); }
                 @Override public Margin getMargin() { return new Margin(cfg.featureRedesign_MessageContainer_Margin()); }
                 @Override public Padding getPadding() { return new Padding(cfg.featureRedesign_MessageContainer_PaddingTop(), cfg.featureRedesign_MessageContainer_PaddingBottom(), cfg.featureRedesign_MessageContainer_PaddingLeft(), cfg.featureRedesign_MessageContainer_PaddingRight()); }
@@ -449,9 +444,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         overlay.dirty();
 
         // Refresh tabs when tab settings change
-        if (key.equals(ModernChatConfigBase.Keys.featureRedesign_ClassicMode)
-         || key.equals(ModernChatConfigBase.Keys.featureRedesign_ClassicMode_AllowPmTabs)
-         || key.equals(ModernChatConfigBase.Keys.featureRedesign_ClassicMode_ShowUnread)
+        if (key.equals(ModernChatConfigBase.Keys.featureRedesign_AutoClosePrivateTab)
          || key.equals(ModernChatConfigBase.Keys.featureRedesign_GameTabEnabled)
          || key.equals(ModernChatConfigBase.Keys.featureRedesign_TradeTabEnabled))
         {
@@ -544,9 +537,6 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             log.debug("Message blocked by chat filter plugin");
             return;
         }
-
-        if (ChatUtil.isNpcMessage(e) && !config.featureRedesign_ShowNpc())
-            return;
 
         // Use the filtered message text
         MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);

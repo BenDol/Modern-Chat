@@ -207,6 +207,10 @@ public class MessageContainer extends Overlay
                     continue;
                 }
 
+                if (!config.isShowNpcMessages() && ChatUtil.isNpcMessage(rl.getType())) {
+                    continue;
+                }
+
                 // Channel filter check - only apply to containers with filters enabled (All tab)
                 if (applyChannelFilters && channelFilterState != null && !channelFilterState.shouldShowMessage(rl.getType())) {
                     continue;

@@ -17,7 +17,6 @@ import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Keybind;
-import net.runelite.client.config.Range;
 
 import java.awt.Color;
 import java.awt.event.KeyEvent;
@@ -66,9 +65,7 @@ public interface ModernChatConfigBase extends
         String featureRedesign_AllowClickThrough = "featureRedesign_AllowClickThrough";
         String featureRedesign_AutoSelectPrivateTab = "featureRedesign_AutoSelectPrivateTab";
         String featureRedesign_ShowNpc = "featureRedesign_ShowNpc";
-        String featureRedesign_ClassicMode = "featureRedesign_ClassicMode";
-        String featureRedesign_ClassicMode_AllowPmTabs = "featureRedesign_ClassicMode_AllowPmTabs";
-        String featureRedesign_ClassicMode_ShowUnread = "featureRedesign_ClassicMode_ShowUnread";
+        String featureRedesign_AutoClosePrivateTab = "featureRedesign_AutoClosePrivateTab";
         String featureRedesign_GameTabEnabled = "featureRedesign_GameTabEnabled";
         String featureRedesign_TradeTabEnabled = "featureRedesign_TradeTabEnabled";
         String featureRedesign_ShowTabIcons = "featureRedesign_ShowTabIcons";
@@ -171,6 +168,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_HideSplitPrivateMessages = "featurePeek_HideSplitPrivateMessages";
         String featurePeek_ShowTimestamp = "featurePeek_ShowTimestamp";
         String featurePeek_PrefixChatTypes = "featurePeek_PrefixChatTypes";
+        String featurePeek_ShowNpcMessages = "featurePeek_ShowNpcMessages";
         String featurePeek_BackgroundColor = "featurePeek_BackgroundColor";
         String featurePeek_BorderColor = "featurePeek_BorderColor";
         String featurePeek_FontStyle = "featurePeek_FontStyle";
@@ -242,9 +240,7 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_ALLOW_CLICK_THROUGH(Keys.featureRedesign_AllowClickThrough, Kind.BOOL, ModernChatConfigBase::featureRedesign_AllowClickThrough),
         FEATURE_REDESIGN_AUTO_SELECT_PRIVATE_TAB(Keys.featureRedesign_AutoSelectPrivateTab, Kind.BOOL, ModernChatConfigBase::featureRedesign_AutoSelectPrivateTab),
         FEATURE_REDESIGN_SHOW_NPC(Keys.featureRedesign_ShowNpc, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowNpc),
-        FEATURE_REDESIGN_CLASSIC_MODE(Keys.featureRedesign_ClassicMode, Kind.BOOL, ModernChatConfigBase::featureRedesign_ClassicMode),
-        FEATURE_REDESIGN_CLASSIC_MODE_ALLOW_PM_TABS(Keys.featureRedesign_ClassicMode_AllowPmTabs, Kind.BOOL, ModernChatConfigBase::featureRedesign_ClassicMode_AllowPmTabs),
-        FEATURE_REDESIGN_CLASSIC_MODE_SHOW_UNREAD(Keys.featureRedesign_ClassicMode_ShowUnread, Kind.BOOL, ModernChatConfigBase::featureRedesign_ClassicMode_ShowUnread),
+        FEATURE_REDESIGN_AUTO_CLOSE_PM(Keys.featureRedesign_AutoClosePrivateTab, Kind.BOOL, ModernChatConfigBase::featureRedesign_AutoClosePrivateTab),
         FEATURE_REDESIGN_GAME_TAB_ENABLED(Keys.featureRedesign_GameTabEnabled, Kind.BOOL, ModernChatConfigBase::featureRedesign_GameTabEnabled),
         FEATURE_REDESIGN_TRADE_TAB_ENABLED(Keys.featureRedesign_TradeTabEnabled, Kind.BOOL, ModernChatConfigBase::featureRedesign_TradeTabEnabled),
         FEATURE_REDESIGN_SHOW_TAB_ICONS(Keys.featureRedesign_ShowTabIcons, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowTabIcons),
@@ -351,6 +347,7 @@ public interface ModernChatConfigBase extends
         PEEK_HIDE_SPLIT_PM(Keys.featurePeek_HideSplitPrivateMessages, Kind.BOOL, ModernChatConfigBase::featurePeek_HideSplitPrivateMessages),
         PEEK_SHOW_TIMESTAMP(Keys.featurePeek_ShowTimestamp, Kind.BOOL, ModernChatConfigBase::featurePeek_ShowTimestamp),
         PEEK_PREFIX_TYPES(Keys.featurePeek_PrefixChatTypes, Kind.BOOL, ModernChatConfigBase::featurePeek_PrefixChatTypes),
+        PEEK_SHOW_NPC(Keys.featurePeek_ShowNpcMessages, Kind.BOOL, ModernChatConfigBase::featurePeek_ShowNpcMessages),
         PEEK_BG_COLOR(Keys.featurePeek_BackgroundColor, Kind.COLOR, ModernChatConfigBase::featurePeek_BackgroundColor),
         PEEK_BORDER_COLOR(Keys.featurePeek_BorderColor, Kind.COLOR, ModernChatConfigBase::featurePeek_BorderColor),
         PEEK_FONT_STYLE(Keys.featurePeek_FontStyle, FontStyle.class, ModernChatConfigBase::featurePeek_FontStyle),
@@ -526,9 +523,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureRedesign_AllowClickThrough() { return getBool(Keys.featureRedesign_AllowClickThrough, DEFAULTS.featureRedesign_AllowClickThrough()); }
         @Override public boolean featureRedesign_AutoSelectPrivateTab() { return getBool(Keys.featureRedesign_AutoSelectPrivateTab, DEFAULTS.featureRedesign_AutoSelectPrivateTab()); }
         @Override public boolean featureRedesign_ShowNpc() { return getBool(Keys.featureRedesign_ShowNpc, DEFAULTS.featureRedesign_ShowNpc()); }
-        @Override public boolean featureRedesign_ClassicMode() { return getBool(Keys.featureRedesign_ClassicMode, DEFAULTS.featureRedesign_ClassicMode()); }
-        @Override public boolean featureRedesign_ClassicMode_AllowPmTabs() { return getBool(Keys.featureRedesign_ClassicMode_AllowPmTabs, DEFAULTS.featureRedesign_ClassicMode_AllowPmTabs()); }
-        @Override public boolean featureRedesign_ClassicMode_ShowUnread() { return getBool(Keys.featureRedesign_ClassicMode_ShowUnread, DEFAULTS.featureRedesign_ClassicMode_ShowUnread()); }
+        @Override public boolean featureRedesign_AutoClosePrivateTab() { return getBool(Keys.featureRedesign_AutoClosePrivateTab, DEFAULTS.featureRedesign_AutoClosePrivateTab()); }
         @Override public boolean featureRedesign_GameTabEnabled() { return getBool(Keys.featureRedesign_GameTabEnabled, DEFAULTS.featureRedesign_GameTabEnabled()); }
         @Override public boolean featureRedesign_TradeTabEnabled() { return getBool(Keys.featureRedesign_TradeTabEnabled, DEFAULTS.featureRedesign_TradeTabEnabled()); }
         @Override public boolean featureRedesign_ShowTabIcons() { return getBool(Keys.featureRedesign_ShowTabIcons, DEFAULTS.featureRedesign_ShowTabIcons()); }
@@ -635,6 +630,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featurePeek_HideSplitPrivateMessages() { return getBool(Keys.featurePeek_HideSplitPrivateMessages, DEFAULTS.featurePeek_HideSplitPrivateMessages()); }
         @Override public boolean featurePeek_ShowTimestamp() { return getBool(Keys.featurePeek_ShowTimestamp, DEFAULTS.featurePeek_ShowTimestamp()); }
         @Override public boolean featurePeek_PrefixChatTypes() { return getBool(Keys.featurePeek_PrefixChatTypes, DEFAULTS.featurePeek_PrefixChatTypes()); }
+        @Override public boolean featurePeek_ShowNpcMessages() { return getBool(Keys.featurePeek_ShowNpcMessages, DEFAULTS.featurePeek_ShowNpcMessages()); }
         @Override public Color featurePeek_BackgroundColor() { return getColor(Keys.featurePeek_BackgroundColor, DEFAULTS.featurePeek_BackgroundColor()); }
         @Override public Color featurePeek_BorderColor() { return getColor(Keys.featurePeek_BorderColor, DEFAULTS.featurePeek_BorderColor()); }
         @Override public FontStyle featurePeek_FontStyle() { return getEnum(Keys.featurePeek_FontStyle, DEFAULTS.featurePeek_FontStyle(), FontStyle.class); }

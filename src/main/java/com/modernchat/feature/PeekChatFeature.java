@@ -75,12 +75,12 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		int featurePeek_MarginRight();
 		int featurePeek_MarginBottom();
 		boolean featurePeek_PrefixChatTypes();
+		boolean featurePeek_ShowNpcMessages();
 		boolean featurePeek_FadeEnabled();
 		int featurePeek_FadeDelay();
 		int featurePeek_FadeDuration();
 		String featurePeek_SourceTabKey();
 		boolean featurePeek_SuppressFadeAtGE();
-		boolean featureRedesign_ShowNpc();
 	}
 
 	@Inject private Client client;
@@ -127,7 +127,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public int featurePeek_FadeDuration() { return config.featurePeek_FadeDuration(); }
 			@Override public String featurePeek_SourceTabKey() { return config.featurePeek_SourceTabKey(); }
 			@Override public boolean featurePeek_SuppressFadeAtGE() { return config.featurePeek_SuppressFadeAtGE(); }
-			@Override public boolean featureRedesign_ShowNpc() { return config.featureRedesign_ShowNpc(); }
+			@Override public boolean featurePeek_ShowNpcMessages() { return config.featurePeek_ShowNpcMessages(); }
 
 			public Color featurePeek_FriendsChatColor() { return config.general_FriendsChatColor(); }
 			public Color featurePeek_ClanChatColor() { return config.general_ClanChatColor(); }
@@ -147,6 +147,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean isScrollable() { return false; } // Peek chat does not support scrolling
 			@Override public boolean isDrawScrollbar() { return false; }
 			@Override public boolean isShowPrivateMessages() { return cfg.featurePeek_ShowPrivateMessages(); }
+			@Override public boolean isShowNpcMessages() { return cfg.featurePeek_ShowNpcMessages(); }
 			@Override public boolean isFollowChatBox() { return cfg.featurePeek_FollowChatBox(); }
 			@Override public boolean isFadeEnabled() { return cfg.featurePeek_FadeEnabled(); }
 			@Override public int getFadeDelay() { return cfg.featurePeek_FadeDelay(); }
@@ -257,11 +258,6 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages
-        }
-
-        // Respect the ShowNpc config
-        if (ChatUtil.isNpcMessage(line.getType()) && !config.featureRedesign_ShowNpc()) {
-            return;
         }
 
         if (!shouldShowMessageForPeekSource(line)) {

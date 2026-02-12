@@ -1070,8 +1070,7 @@ public class ChatOverlay extends OverlayPanel
     public void refreshTabs() {
         tabsScrollPx = 0;
 
-        boolean isClassicMode = config.isClassicMode();
-        boolean allowPmTabs = config.isClassicModeAllowPmTabs();
+        boolean isAutoClosePm = config.isAutoClosePrivateTab();
 
         int i = -1;
         Map<ChatMode, Integer> orderMap = new HashMap<>();
@@ -1113,15 +1112,6 @@ public class ChatOverlay extends OverlayPanel
                 addTab(new Tab(tabKey, tabName, false), index != -1
                     ? index
                     : suggestedOrder.getOrDefault(mode.name(), -1));
-            }
-        }
-
-        // In classic mode without PM tabs allowed, remove private tabs
-        if (isClassicMode && !allowPmTabs) {
-            for (Tab tab : new LinkedList<>(tabOrder)) {
-                if (tab.isPrivate()) {
-                    removeTab(tab, true);
-                }
             }
         }
 
@@ -1602,7 +1592,7 @@ public class ChatOverlay extends OverlayPanel
     public void onChatPrivateMessageSentEvent(ChatPrivateMessageSentEvent e) {
         // In single chat mode with PM tabs disabled, close the PM tab after sending
         // This allows the user to send a PM and return to the All chat view
-        if (!config.isClassicMode() || config.isClassicModeAllowPmTabs()) {
+        if (!config.isAutoClosePrivateTab()) {
             return;
         }
 
@@ -1940,11 +1930,6 @@ public class ChatOverlay extends OverlayPanel
             ? receiverName
             : senderName;
 
-        boolean isClassicMode = config.isClassicMode();
-        boolean allowPmTabs = config.isClassicModeAllowPmTabs();
-        boolean showUnreadInClassic = config.isClassicModeShowUnread();
-        boolean canShowUnread = !isClassicMode || showUnreadInClassic;
-
         // Check if message passes through filters (for unread badge suppression)
         ChannelFilterType filterType = channelFilterState.mapMessageTypeToFilter(type);
         boolean messagePassesFilters = filterType == null || channelFilterState.isEnabled(filterType);
@@ -1967,7 +1952,7 @@ public class ChatOverlay extends OverlayPanel
             gameContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
             routedToSpecificTab = true;
             Tab gameTab = tabsByKey.get(GAME_TAB_KEY);
-            if (gameTab != null && messageContainer != gameContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && gameTab.getUnread() < 99) {
+            if (gameTab != null && messageContainer != gameContainer && !suppressOtherTabUnread && !collapsed && gameTab.getUnread() < 99) {
                 gameTab.incrementUnread();
             }
         }
@@ -1977,7 +1962,7 @@ public class ChatOverlay extends OverlayPanel
             tradeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
             routedToSpecificTab = true;
             Tab tradeTab = tabsByKey.get(TRADE_TAB_KEY);
-            if (tradeTab != null && messageContainer != tradeContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && tradeTab.getUnread() < 99) {
+            if (tradeTab != null && messageContainer != tradeContainer && !suppressOtherTabUnread && !collapsed && tradeTab.getUnread() < 99) {
                 tradeTab.incrementUnread();
             }
         }
@@ -1999,47 +1984,32 @@ public class ChatOverlay extends OverlayPanel
             }
 
             // Route to private tab if exists or should be created
-            if (!isClassicMode || allowPmTabs) {
-                if (isPrivateTabOpen(targetName)) {
-                    String tabKey = "private_" + targetName;
-                    Tab pmTab = tabsByKey.get(tabKey);
-                    MessageContainer pmContainer = privateContainers.get(targetName);
-                    if (pmContainer != null) {
-                        pmContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-                        routedToSpecificTab = true;
-                        // Update tab icon from incoming PM sender
-                        if (pmTab != null && senderIconId >= 0 && type != ChatMessageType.PRIVATECHATOUT) {
-                            pmTab.setIconId(senderIconId);
-                        }
-                        if (pmTab != null && messageContainer != pmContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && pmTab.getUnread() < 99) {
-                            pmTab.incrementUnread();
-                        }
+            if (isPrivateTabOpen(targetName)) {
+                String tabKey = "private_" + targetName;
+                Tab pmTab = tabsByKey.get(tabKey);
+                MessageContainer pmContainer = privateContainers.get(targetName);
+                if (pmContainer != null) {
+                    pmContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
+                    routedToSpecificTab = true;
+                    // Update tab icon from incoming PM sender
+                    if (pmTab != null && senderIconId >= 0 && type != ChatMessageType.PRIVATECHATOUT) {
+                        pmTab.setIconId(senderIconId);
                     }
-                } else if (config.isOpenTabOnIncomingPM() && type != ChatMessageType.PRIVATECHATOUT && type != ChatMessageType.FRIENDNOTIFICATION) {
-                    Pair<Tab, MessageContainer> pair = openTabForPrivateChat(targetName);
-                    if (pair != null) {
-                        // Set tab icon from incoming PM sender
-                        if (senderIconId >= 0) {
-                            pair.getLeft().setIconId(senderIconId);
-                        }
-                        pair.getRight().pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
-                        routedToSpecificTab = true;
-                        if (messageContainer != pair.getRight() && canShowUnread && !suppressOtherTabUnread && !collapsed && pair.getLeft().getUnread() < 99) {
-                            pair.getLeft().incrementUnread();
-                        }
+                    if (pmTab != null && messageContainer != pmContainer && !suppressOtherTabUnread && !collapsed && pmTab.getUnread() < 99) {
+                        pmTab.incrementUnread();
                     }
                 }
-            }
-        } else {
-            // Non-private: route to mode-specific tab (Clan, Friends Chat, etc.)
-            if (mode != ChatMode.PUBLIC) {
-                MessageContainer modeContainer = messageContainers.get(mode.name());
-                Tab modeTab = tabsByKey.get(tabKey(mode));
-                if (modeContainer != null) {
-                    modeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
+            } else if (config.isOpenTabOnIncomingPM() && type != ChatMessageType.PRIVATECHATOUT && type != ChatMessageType.FRIENDNOTIFICATION) {
+                Pair<Tab, MessageContainer> pair = openTabForPrivateChat(targetName);
+                if (pair != null) {
+                    // Set tab icon from incoming PM sender
+                    if (senderIconId >= 0) {
+                        pair.getLeft().setIconId(senderIconId);
+                    }
+                    pair.getRight().pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
                     routedToSpecificTab = true;
-                    if (modeTab != null && messageContainer != modeContainer && canShowUnread && !suppressOtherTabUnread && !collapsed && modeTab.getUnread() < 99) {
-                        modeTab.incrementUnread();
+                    if (messageContainer != pair.getRight() && !suppressOtherTabUnread && !collapsed && pair.getLeft().getUnread() < 99) {
+                        pair.getLeft().incrementUnread();
                     }
                 }
             }
@@ -2052,7 +2022,7 @@ public class ChatOverlay extends OverlayPanel
         Tab allTab = tabsByKey.get(ALL_TAB_KEY);
         boolean isAllTabOnlyMessage = filterType == ChannelFilterType.PUBLIC || filterType == ChannelFilterType.SYSTEM;
         boolean shouldMarkAllUnread = messagePassesFilters && (!routedToSpecificTab || isAllTabOnlyMessage) && !collapsed;
-        if (allTab != null && messageContainer != allContainer && canShowUnread && shouldMarkAllUnread && allTab.getUnread() < 99) {
+        if (allTab != null && messageContainer != allContainer && shouldMarkAllUnread && allTab.getUnread() < 99) {
             allTab.incrementUnread();
         }
     }

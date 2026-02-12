@@ -28,6 +28,8 @@ public interface ChatOverlayConfig
 
     boolean isAutoSelectPrivateTab();
 
+    boolean isAutoClosePrivateTab();
+
     boolean isResizeable();
 
     FontStyle getFontStyle();
@@ -83,12 +85,6 @@ public interface ChatOverlayConfig
     Color getTabCloseButtonTextColor();
 
     ChatMode getDefaultChatMode();
-
-    boolean isClassicMode();
-
-    boolean isClassicModeAllowPmTabs();
-
-    boolean isClassicModeShowUnread();
 
     boolean isGameTabEnabled();
 
@@ -347,17 +343,7 @@ public interface ChatOverlayConfig
         }
 
         @Override
-        public boolean isClassicMode() {
-            return false;
-        }
-
-        @Override
-        public boolean isClassicModeAllowPmTabs() {
-            return false;
-        }
-
-        @Override
-        public boolean isClassicModeShowUnread() {
+        public boolean isAutoClosePrivateTab() {
             return false;
         }
 
