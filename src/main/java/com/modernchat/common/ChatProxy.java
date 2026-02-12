@@ -26,6 +26,8 @@ public class ChatProxy
     @Inject private Client client;
     @Inject private ClientThread clientThread;
 
+    private final AtomicBoolean systemWidgetActive = new AtomicBoolean(false);
+
     @Getter
     @Setter
     private boolean autoHide = false;
@@ -156,5 +158,20 @@ public class ChatProxy
 
     public boolean isLegacy() {
         return modernChat == null || !modernChat.isEnabled() || modernChat.isLegacyShowing();
+    }
+
+    /**
+     * Thread-safe snapshot of {@link ClientUtil#isSystemWidgetActive(Client)}.
+     * Updated every client tick via {@code refreshSystemWidgetActive()}.
+     */
+    public boolean isSystemWidgetActive() {
+        return systemWidgetActive.get();
+    }
+
+    /**
+     * Must be called on the client thread (e.g. from onClientTick).
+     */
+    public void refreshSystemWidgetActive() {
+        systemWidgetActive.set(ClientUtil.isSystemWidgetActive(client));
     }
 }
