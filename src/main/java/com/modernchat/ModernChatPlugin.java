@@ -491,7 +491,7 @@ public class ModernChatPlugin extends Plugin {
 	}
 
 	private void updateDialogState(int groupId) {
-		boolean isDialog = ClientUtil.isDialogOpen(client);
+		boolean isDialog = ClientUtil.isDialogOpen(client) || ClientUtil.isSystemWidgetActive(client);
 		if (dialogOpen.getAndSet(isDialog) != isDialog) {
 			if (isDialog) {
 				eventBus.post(new DialogOptionsOpenedEvent(groupId));
