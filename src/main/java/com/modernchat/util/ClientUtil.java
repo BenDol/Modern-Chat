@@ -82,6 +82,21 @@ public class ClientUtil
             return true;
         }
 
+        Widget dialogBoth = client.getWidget(InterfaceID.CHAT_BOTH, 0);
+        if (dialogBoth != null && !dialogBoth.isHidden()) {
+            return true;
+        }
+
+        Widget dialogDoubleSprite = client.getWidget(InterfaceID.OBJECTBOX_DOUBLE, 0);
+        if (dialogDoubleSprite != null && !dialogDoubleSprite.isHidden()) {
+            return true;
+        }
+
+        Widget messageBox = client.getWidget(InterfaceID.MESSAGEBOX, 0);
+        if (messageBox != null && !messageBox.isHidden()) {
+            return true;
+        }
+
         return false;
     }
 
