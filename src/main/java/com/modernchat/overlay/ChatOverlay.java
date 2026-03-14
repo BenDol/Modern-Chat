@@ -1068,7 +1068,8 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onClientTick(ClientTick tick) {
-        resizeChatbox(desiredChatWidth, desiredChatHeight);
+        if (!legacyShowing)
+            resizeChatbox(desiredChatWidth, desiredChatHeight);
     }
 
     @Subscribe
@@ -1078,7 +1079,8 @@ public class ChatOverlay extends OverlayPanel
             case ScriptID.MESSAGE_LAYER_OPEN:
             case ScriptID.MESSAGE_LAYER_CLOSE:
             case ScriptID.CHAT_TEXT_INPUT_REBUILD:
-                resizeChatbox(desiredChatWidth, desiredChatHeight);
+                if (!legacyShowing)
+                    resizeChatbox(desiredChatWidth, desiredChatHeight);
                 break;
         }
     }
@@ -1694,7 +1696,7 @@ public class ChatOverlay extends OverlayPanel
         if (!legacyShowing)
             wasHidden = hidden; // remember if we were hidden before
         legacyShowing = true;
-        resetChatbox();
+        resetChatbox(true);
 
         if (ClientUtil.setChatHidden(client, false) && tryHideOverlay) {
             setHidden(true);

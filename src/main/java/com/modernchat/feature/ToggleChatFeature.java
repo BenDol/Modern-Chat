@@ -169,6 +169,12 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
             return;
         }
 
+		// Don't toggle when a system widget is active (dialog, "Enter amount:", etc.)
+		// This prevents the deferred toggle from firing after the system input closes.
+		if (chatProxy.isSystemWidgetActive()) {
+			return;
+		}
+
 		if (chatProxy.isCommandMode()) {
 			// Don't toggle chat visibility while in command mode
 			// We cannot consume the input event
