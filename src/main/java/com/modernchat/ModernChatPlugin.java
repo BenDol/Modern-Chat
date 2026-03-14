@@ -460,6 +460,10 @@ public class ModernChatPlugin extends Plugin {
 	public void onClientTick(ClientTick e) {
 		chatProxy.refreshSystemWidgetActive();
 
+		// Poll dialog state every tick to catch changes missed by WidgetLoaded/WidgetClosed
+		// (e.g. game reusing widgets for the same NPC, or dialogs closing without events)
+		updateDialogState(0);
+
 		Widget chatWidget = widgetBucket.getChatWidget();
 		boolean visible = chatWidget != null &&
 			!chatWidget.isHidden() && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());

@@ -2255,7 +2255,7 @@ public class ChatOverlay extends OverlayPanel
         if (!legacyShowing)
             wasHidden = hidden; // remember if we were hidden before
         legacyShowing = true;
-        resetChatbox();
+        resetChatbox(true);
 
         if (ClientUtil.setChatHidden(client, false) && tryHideOverlay) {
             setHidden(true);
