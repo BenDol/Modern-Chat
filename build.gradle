@@ -59,3 +59,7 @@ tasks.register('shadowJar', Jar) {
 	archiveClassifier.set('shadow')
 	archiveFileName.set("${rootProject.name}-${project.version}-all.jar")
 }
+
+if (file('dev.gradle').exists()) {
+	apply from: 'dev.gradle'
+}
