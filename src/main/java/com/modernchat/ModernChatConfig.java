@@ -1,7 +1,6 @@
 package com.modernchat;
 
 import com.modernchat.common.ChatMode;
-import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.Sfx;
 import net.runelite.client.config.Alpha;
@@ -1235,18 +1234,6 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default Keybind featureToggle_ToggleKey() {
         return new Keybind(KeyEvent.VK_ENTER, 0);
-    }
-
-    @ConfigItem(
-        keyName = Keys.featureToggle_ExtendedToggleKey,
-        name = "Extended Toggle Key",
-        description = "Additional key/button to toggle chat (Mouse 4/5 or F13-F24). Works alongside the standard hotkey.",
-        position = 2,
-        section = toggleChatSection
-    )
-    @Override
-    default ExtendedKeybind featureToggle_ExtendedToggleKey() {
-        return ExtendedKeybind.NONE;
     }
 
     @ConfigItem(

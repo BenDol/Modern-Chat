@@ -5,7 +5,6 @@ import com.modernchat.compat.remapper.KeyRemappingService;
 import com.modernchat.common.Anchor;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatProxy;
-import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.NotificationService;
 import com.modernchat.common.PrivateChatAnchor;
 import com.modernchat.common.WidgetBucket;
@@ -25,7 +24,6 @@ import com.modernchat.feature.NotificationChatFeature;
 import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
-import com.modernchat.service.ExtendedInputService;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ForceRecolorService;
@@ -39,7 +37,6 @@ import com.modernchat.service.SpamFilterService;
 import com.modernchat.service.TutorialService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
-import com.modernchat.util.ConfigUtil;
 import com.modernchat.util.GeometryUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -68,7 +65,6 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -82,7 +78,6 @@ import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import java.awt.Color;
-import java.awt.event.KeyEvent;
 import java.awt.Rectangle;
 import java.time.Instant;
 import java.awt.image.BufferedImage;
@@ -123,7 +118,6 @@ public class ModernChatPlugin extends Plugin {
     @Inject private MessageService messageService;
     @Inject private ImageService imageService;
     @Inject private SpamFilterService spamFilterService;
-	@Inject private ExtendedInputService extendedInputService;
 	@Inject private ForceRecolorService forceRecolorService;
 	@Inject private MessageFilterService messageFilterService;
 	@Inject private KeyRemappingService keyRemappingService;
@@ -167,8 +161,6 @@ public class ModernChatPlugin extends Plugin {
 		fontService.startUp();
 		soundService.startUp();
 		imageService.startUp();
-		extendedInputService.startUp();
-		registerExtendedKeybind();
 		forceRecolorService.startUp();
 		messageFilterService.startUp();
 
@@ -246,8 +238,6 @@ public class ModernChatPlugin extends Plugin {
 		soundService.shutDown();
 		tutorialService.shutDown();
 		imageService.shutDown();
-		unregisterExtendedKeybind();
-		extendedInputService.shutDown();
 		forceRecolorService.shutDown();
 		messageFilterService.shutDown();
 		keyRemappingService.shutDown();
@@ -398,13 +388,6 @@ public class ModernChatPlugin extends Plugin {
 		String key = e.getKey();
 		if (key == null)
 			return;
-
-		if (ModernChatConfigBase.Keys.featureToggle_ExtendedToggleKey.equals(key) ||
-			ModernChatConfigBase.Keys.featureToggle_ToggleKey.equals(key))
-		{
-			unregisterExtendedKeybind();
-			registerExtendedKeybind();
-		}
 
 		if (key.endsWith("AnchorPrivateChat")) {
 			if (Boolean.parseBoolean(e.getNewValue()) && client.getVarpValue(VarPlayerID.OPTION_PM) == 0) {
@@ -650,40 +633,6 @@ public class ModernChatPlugin extends Plugin {
 				}
 			}
 		);
-	}
-
-	private void registerExtendedKeybind() {
-		ExtendedKeybind keybind = ConfigUtil.getEnum(
-			configManager, ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featureToggle_ExtendedToggleKey,
-			ExtendedKeybind.NONE, ExtendedKeybind.class);
-		Keybind primaryKey = ConfigUtil.getKeybind(
-			configManager, ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featureToggle_ToggleKey,
-			new Keybind(KeyEvent.VK_ENTER, 0));
-
-		extendedInputService.registerBinding(EXTENDED_BINDING_ID, keybind, (v) -> {
-			if (primaryKey != null) {
-				if (chatProxy.submitInput(new KeyEvent(
-					client.getCanvas(),
-					KeyEvent.KEY_PRESSED,
-					System.currentTimeMillis(),
-					primaryKey.getModifiers(),
-					primaryKey.getKeyCode(),
-					KeyEvent.CHAR_UNDEFINED
-				))) {
-					if (config.featureToggle_Enabled()) {
-						chatProxy.setHidden(true);
-					}
-				} else {
-					if (config.featureToggle_Enabled()) {
-						chatProxy.setHidden(false);
-					}
-				}
-			}
-		});
-	}
-
-	private void unregisterExtendedKeybind() {
-		extendedInputService.unregisterBinding(EXTENDED_BINDING_ID);
 	}
 
 	private void showInstallMessage() {

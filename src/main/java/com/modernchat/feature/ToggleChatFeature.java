@@ -2,7 +2,6 @@ package com.modernchat.feature;
 
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatProxy;
-import com.modernchat.common.ExtendedKeybind;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
@@ -46,7 +45,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	{
 		boolean featureToggle_Enabled();
 		Keybind featureToggle_ToggleKey();
-		ExtendedKeybind featureToggle_ExtendedToggleKey();
 		boolean featureToggle_EscapeHides();
 		boolean featureToggle_StartHidden();
 		boolean featureToggle_AutoHideOnSend();
@@ -81,7 +79,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		return new ToggleChatFeatureConfig() {
 			@Override public boolean featureToggle_Enabled() { return config.featureToggle_Enabled(); }
 			@Override public Keybind featureToggle_ToggleKey() { return config.featureToggle_ToggleKey(); }
-			@Override public ExtendedKeybind featureToggle_ExtendedToggleKey() { return config.featureToggle_ExtendedToggleKey(); }
 			@Override public boolean featureToggle_EscapeHides() { return config.featureToggle_EscapeHides(); }
 			@Override public boolean featureToggle_StartHidden() { return config.featureToggle_StartHidden(); }
 			@Override public boolean featureToggle_AutoHideOnSend() { return config.featureToggle_AutoHideOnSend(); }
