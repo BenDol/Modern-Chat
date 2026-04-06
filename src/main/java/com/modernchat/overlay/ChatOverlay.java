@@ -886,18 +886,6 @@ public class ChatOverlay extends OverlayPanel
         return "Report";
     }
 
-    private void openReportAbuse() {
-        Widget reportWidget = client.getWidget(InterfaceID.Chatbox.REPORTABUSE);
-        if (reportWidget == null) return;
-        client.getMenu().createMenuEntry(0)
-            .setOption("Report")
-            .setTarget("")
-            .setType(MenuAction.CC_OP)
-            .setParam0(-1)
-            .setParam1(reportWidget.getId())
-            .setIdentifier(1);
-    }
-
     private void drawFilterButton(Graphics2D g, int x, int y, int size) {
         // Draw filter icon with configured tint color
         BufferedImage filterIcon = imageService.getFilterIcon();
@@ -1523,11 +1511,12 @@ public class ChatOverlay extends OverlayPanel
 
                 // Add kick option for Friends Chat messages if user has permission
                 if (ChatUtil.isFriendsChatMessage(hit.getLine().getType()) && canKickFromFriendsChat()) {
-                    final String kickTarget = targetName;
+                    /*final String kickTarget = targetName;
                     rootMenu.createMenuEntry(3)
                         .setOption("Kick " + ColorUtil.wrapWithColorTag(kickTarget, Color.RED))
                         .setType(MenuAction.RUNELITE)
-                        .onClick(me -> kickFromFriendsChat(kickTarget));
+                        .onClick(me -> kickFromFriendsChat(kickTarget));*/
+                    // TODO: figure out how we can invoke a kick without sending an event to the server?
                 }
             }
         }
@@ -2677,9 +2666,7 @@ public class ChatOverlay extends OverlayPanel
             // Handle report button click
             if (mainConfig.featureRedesign_ShowReportButton() && reportButtonBounds.contains(e.getPoint())) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                    clientThread.invoke(ChatOverlay.this::openReportAbuse);
-                    e.consume();
-                    return true;
+                    // TODO: figure out how we can invoke the report display
                 }
             }
 
