@@ -1,5 +1,6 @@
 package com.modernchat.service;
 
+import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.common.NotificationService;
@@ -15,6 +16,7 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.PostClientTick;
 import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyListener;
@@ -40,6 +42,7 @@ public class PrivateChatService implements ChatService, KeyListener {
     @Inject private NotificationService notificationService;
     @Inject private MessageService messageService;
     @Inject private ChatProxy chatProxy;
+    @Inject private ModernChatConfig config;
 
     private volatile String lastPmFrom = null;
     private volatile boolean canShowLockMessage = true;
@@ -86,7 +89,8 @@ public class PrivateChatService implements ChatService, KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+        Keybind hideKb = config.featureToggle_EscapeHides();
+        if (hideKb != null && !Keybind.NOT_SET.equals(hideKb) && hideKb.matches(e)) {
             cancelPrivateMessage();
         } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
             clientThread.invoke(() -> {

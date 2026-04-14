@@ -16,8 +16,6 @@ public interface ChatOverlayConfig
 
     boolean isHideOnSend();
 
-    boolean isHideOnEscape();
-
     boolean isOpenTabOnIncomingPM();
 
     boolean isClickOutsideToClose();
@@ -169,11 +167,6 @@ public interface ChatOverlayConfig
 
         @Override
         public boolean isHideOnSend() {
-            return true;
-        }
-
-        @Override
-        public boolean isHideOnEscape() {
             return true;
         }
 
