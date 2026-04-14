@@ -1711,6 +1711,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return true;
     }
 
+    @ConfigItem(
+        keyName = "featureCommands_GroupChatEnabled",
+        name = "Group Chat Enabled",
+        description = "Enable the /g (aliases /gim, /group) command to send a message to Group Ironman group chat from any tab",
+        position = 4,
+        section = commandsSection
+    )
+    @Override
+    default boolean featureCommands_GroupChatEnabled() {
+        return true;
+    }
+
     /* ------------ Feature: Message History ------------ */
 
     @ConfigItem(

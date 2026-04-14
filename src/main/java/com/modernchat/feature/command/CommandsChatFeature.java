@@ -42,6 +42,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         boolean featureCommands_ReplyEnabled();
         boolean featureCommands_WhisperEnabled();
         boolean featureCommands_PrivateMessageEnabled();
+        boolean featureCommands_GroupChatEnabled();
     }
 
     public interface ChatCommandHandler extends KeyListener {
@@ -56,6 +57,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
     @Inject private ReplyChatCommand replyChatCommand;
     @Inject private WhisperChatCommand whisperChatCommand;
     @Inject private PrivateMessageChatCommand privateMessageChatCommand;
+    @Inject private GroupIronmanChatCommand groupIronmanChatCommand;
 
     @Inject @Getter private Client client;
     @Inject @Getter private ClientThread clientThread;
@@ -81,6 +83,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
             @Override public boolean featureCommands_ReplyEnabled() { return cfg.featureCommands_ReplyEnabled(); }
             @Override public boolean featureCommands_WhisperEnabled() { return cfg.featureCommands_WhisperEnabled(); }
             @Override public boolean featureCommands_PrivateMessageEnabled() { return cfg.featureCommands_PrivateMessageEnabled(); }
+            @Override public boolean featureCommands_GroupChatEnabled() { return cfg.featureCommands_GroupChatEnabled(); }
         };
     }
 
@@ -121,6 +124,11 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         // /pm /private message
         commandHandlers.put("pm", privateMessageChatCommand);
         commandHandlers.put("private", new ChatCommandLink("pm"));
+
+        // /g send to Group Ironman group chat
+        commandHandlers.put("g", groupIronmanChatCommand);
+        commandHandlers.put("gim", new ChatCommandLink("g"));
+        commandHandlers.put("group", new ChatCommandLink("g"));
     }
 
     private void shutDownCommandHandlers() {
