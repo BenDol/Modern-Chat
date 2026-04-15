@@ -2328,12 +2328,11 @@ public class ChatOverlay extends OverlayPanel
             value = value.substring(0, charLimit);
         }
 
-        final String text = value.trim();
-        if (filterService.isFiltered(text))
+        if (filterService.isFiltered(value.trim()))
             return false; // don't insert filtered text
 
         inputBuf.setLength(0);
-        inputBuf.append(text);
+        inputBuf.append(value);
         caret = inputBuf.length();
         inputScrollPx = 0;
         caretOn = true;
