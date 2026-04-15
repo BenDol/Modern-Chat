@@ -334,7 +334,7 @@ public interface ModernChatConfigBase extends
         TOGGLE_ENABLED(Keys.featureToggle_Enabled, Kind.BOOL, ModernChatConfigBase::featureToggle_Enabled),
         TOGGLE_KEY(Keys.featureToggle_ToggleKey, Kind.KEYBIND, ModernChatConfigBase::featureToggle_ToggleKey),
         TOGGLE_AUTOHIDE_ON_SEND(Keys.featureToggle_AutoHideOnSend, Kind.BOOL, ModernChatConfigBase::featureToggle_AutoHideOnSend),
-        TOGGLE_ESCAPE_HIDES(Keys.featureToggle_EscapeHides, Kind.BOOL, ModernChatConfigBase::featureToggle_EscapeHides),
+        TOGGLE_ESCAPE_HIDES(Keys.featureToggle_EscapeHides, Kind.KEYBIND, ModernChatConfigBase::featureToggle_EscapeHides),
         TOGGLE_START_HIDDEN(Keys.featureToggle_StartHidden, Kind.BOOL, ModernChatConfigBase::featureToggle_StartHidden),
         TOGGLE_LOCK_CAMERA(Keys.featureToggle_LockCameraWhenVisible, Kind.BOOL, ModernChatConfigBase::featureToggle_LockCameraWhenVisible),
 
@@ -617,7 +617,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureToggle_Enabled() { return getBool(Keys.featureToggle_Enabled, DEFAULTS.featureToggle_Enabled()); }
         @Override public Keybind featureToggle_ToggleKey() { return getKeybind(Keys.featureToggle_ToggleKey, DEFAULTS.featureToggle_ToggleKey()); }
         @Override public boolean featureToggle_AutoHideOnSend() { return getBool(Keys.featureToggle_AutoHideOnSend, DEFAULTS.featureToggle_AutoHideOnSend()); }
-        @Override public boolean featureToggle_EscapeHides() { return getBool(Keys.featureToggle_EscapeHides, DEFAULTS.featureToggle_EscapeHides()); }
+        @Override public Keybind featureToggle_EscapeHides() { return getKeybind(Keys.featureToggle_EscapeHides, DEFAULTS.featureToggle_EscapeHides()); }
         @Override public boolean featureToggle_StartHidden() { return getBool(Keys.featureToggle_StartHidden, DEFAULTS.featureToggle_StartHidden()); }
         @Override public boolean featureToggle_LockCameraWhenVisible() { return getBool(Keys.featureToggle_LockCameraWhenVisible, DEFAULTS.featureToggle_LockCameraWhenVisible()); }
 

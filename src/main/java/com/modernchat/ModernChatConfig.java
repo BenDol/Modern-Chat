@@ -1250,14 +1250,14 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
 
     @ConfigItem(
         keyName = Keys.featureToggle_EscapeHides,
-        name = "Escape hides",
-        description = "Hide the chatbox when pressing Escape",
+        name = "Hide hotkey",
+        description = "Key used to hide the chatbox. Clear (Backspace in the binder) to disable. Respects RuneLite's Key Remapping plugin.",
         position = 4,
         section = toggleChatSection
     )
     @Override
-    default boolean featureToggle_EscapeHides() {
-        return true;
+    default Keybind featureToggle_EscapeHides() {
+        return new Keybind(KeyEvent.VK_ESCAPE, 0);
     }
 
     @ConfigItem(

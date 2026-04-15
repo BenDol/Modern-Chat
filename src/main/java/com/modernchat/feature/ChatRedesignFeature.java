@@ -257,7 +257,6 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         return new ChatOverlayConfig.Default() {
             @Override public boolean isEnabled() { return cfg.featureRedesign_Enabled(); }
             @Override public boolean isHideOnSend() { return mainConfig.featureToggle_AutoHideOnSend(); }
-            @Override public boolean isHideOnEscape() { return mainConfig.featureToggle_EscapeHides(); }
             @Override public boolean isStartHidden() { return mainConfig.featureToggle_StartHidden(); }
             @Override public boolean isShowNotificationBadge() { return cfg.featureRedesign_ShowNotificationBadge(); }
             @Override public boolean isAllowClickThrough() { return cfg.featureRedesign_AllowClickThrough(); }

@@ -63,6 +63,7 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ChatboxInput;
@@ -2866,7 +2867,8 @@ public class ChatOverlay extends OverlayPanel
 
             if (isHidden()) {
                 if (commandMode) {
-                   if (code == KeyEvent.VK_ESCAPE) {
+                   Keybind hideKb = mainConfig.featureToggle_EscapeHides();
+                   if (hideKb != null && !Keybind.NOT_SET.equals(hideKb) && hideKb.matches(e)) {
                        commandMode = false;
                        clientThread.invoke(() -> hideLegacyChat(true));
                        e.consume();
@@ -2878,6 +2880,21 @@ public class ChatOverlay extends OverlayPanel
             final boolean shift = e.isShiftDown();
             final boolean ctrl = e.isControlDown();
             final boolean alt = e.isAltDown();
+
+            // Hide hotkey is handled by ToggleChatFeature to avoid duplicate calls
+            // and ensure KeyRemapping sees the event to exit typing mode.
+            // Only consume here when the Toggle feature is disabled (so the overlay
+            // alone is responsible for unfocusing input).
+            Keybind hideKb = mainConfig.featureToggle_EscapeHides();
+            if (hideKb != null && !Keybind.NOT_SET.equals(hideKb) && hideKb.matches(e)) {
+                if (!mainConfig.featureToggle_Enabled()) {
+                    if (inputFocused) {
+                        unfocusInput();
+                    }
+                    e.consume();
+                }
+                return;
+            }
 
             switch (code) {
                 case KeyEvent.VK_LEFT: {

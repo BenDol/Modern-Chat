@@ -45,7 +45,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	{
 		boolean featureToggle_Enabled();
 		Keybind featureToggle_ToggleKey();
-		boolean featureToggle_EscapeHides();
+		Keybind featureToggle_EscapeHides();
 		boolean featureToggle_StartHidden();
 		boolean featureToggle_AutoHideOnSend();
 		boolean featureToggle_LockCameraWhenVisible();
@@ -79,7 +79,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		return new ToggleChatFeatureConfig() {
 			@Override public boolean featureToggle_Enabled() { return config.featureToggle_Enabled(); }
 			@Override public Keybind featureToggle_ToggleKey() { return config.featureToggle_ToggleKey(); }
-			@Override public boolean featureToggle_EscapeHides() { return config.featureToggle_EscapeHides(); }
+			@Override public Keybind featureToggle_EscapeHides() { return config.featureToggle_EscapeHides(); }
 			@Override public boolean featureToggle_StartHidden() { return config.featureToggle_StartHidden(); }
 			@Override public boolean featureToggle_AutoHideOnSend() { return config.featureToggle_AutoHideOnSend(); }
 			@Override public boolean featureToggle_LockCameraWhenVisible() { return config.featureToggle_LockCameraWhenVisible(); }
@@ -152,10 +152,11 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			}
 		}
 
-		// Handle Escape before isConsumed check - KeyRemapping consumes Escape
-		// when exiting typing mode, but we still need to hide our chat.
+		// Handle the configured hide hotkey before isConsumed check - KeyRemapping
+		// consumes Escape when exiting typing mode, but we still need to hide our chat.
 		// Do NOT consume the event so the client can still process it (e.g. close interfaces).
-		if (config.featureToggle_EscapeHides() && e.getKeyCode() == KeyEvent.VK_ESCAPE && !chatProxy.isSystemWidgetActive()) {
+		Keybind hideKb = config.featureToggle_EscapeHides();
+		if (hideKb != null && !Keybind.NOT_SET.equals(hideKb) && hideKb.matches(e) && !chatProxy.isSystemWidgetActive()) {
 			clientThread.invoke(this::hide);
 			return;
 		}
