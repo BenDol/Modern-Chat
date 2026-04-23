@@ -284,7 +284,8 @@ public class ChatOverlay extends OverlayPanel
             ChatMode.PUBLIC.name(), messageContainerProvider.get(),
             ChatMode.FRIENDS_CHAT.name(), messageContainerProvider.get(),
             ChatMode.CLAN_MAIN.name(), messageContainerProvider.get(),
-            ChatMode.CLAN_GUEST.name(), messageContainerProvider.get()
+            ChatMode.CLAN_GUEST.name(), messageContainerProvider.get(),
+            ChatMode.CLAN_GIM.name(), messageContainerProvider.get()
         ));
 
         messageContainers.forEach((mode, container) -> {

@@ -196,6 +196,7 @@ public interface ModernChatConfigBase extends
         String featureCommands_ReplyEnabled = "featureCommands_ReplyEnabled";
         String featureCommands_WhisperEnabled = "featureCommands_WhisperEnabled";
         String featureCommands_PrivateMessageEnabled = "featureCommands_PrivateMessageEnabled";
+        String featureCommands_GroupChatEnabled = "featureCommands_GroupChatEnabled";
 
         // Message history
         String featureMessageHistory_Enabled = "featureMessageHistory_Enabled";
@@ -367,6 +368,7 @@ public interface ModernChatConfigBase extends
         CMD_REPLY(Keys.featureCommands_ReplyEnabled, Kind.BOOL, ModernChatConfigBase::featureCommands_ReplyEnabled),
         CMD_WHISPER(Keys.featureCommands_WhisperEnabled, Kind.BOOL, ModernChatConfigBase::featureCommands_WhisperEnabled),
         CMD_PM(Keys.featureCommands_PrivateMessageEnabled, Kind.BOOL, ModernChatConfigBase::featureCommands_PrivateMessageEnabled),
+        CMD_GROUP(Keys.featureCommands_GroupChatEnabled, Kind.BOOL, ModernChatConfigBase::featureCommands_GroupChatEnabled),
 
         // ---- Message history ----
         HIST_ENABLED(Keys.featureMessageHistory_Enabled, Kind.BOOL, ModernChatConfigBase::featureMessageHistory_Enabled),
@@ -652,6 +654,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureCommands_ReplyEnabled() { return getBool(Keys.featureCommands_ReplyEnabled, DEFAULTS.featureCommands_ReplyEnabled()); }
         @Override public boolean featureCommands_WhisperEnabled() { return getBool(Keys.featureCommands_WhisperEnabled, DEFAULTS.featureCommands_WhisperEnabled()); }
         @Override public boolean featureCommands_PrivateMessageEnabled() { return getBool(Keys.featureCommands_PrivateMessageEnabled, DEFAULTS.featureCommands_PrivateMessageEnabled()); }
+        @Override public boolean featureCommands_GroupChatEnabled() { return getBool(Keys.featureCommands_GroupChatEnabled, DEFAULTS.featureCommands_GroupChatEnabled()); }
 
         // Message history
         @Override public boolean featureMessageHistory_Enabled() { return getBool(Keys.featureMessageHistory_Enabled, DEFAULTS.featureMessageHistory_Enabled()); }
