@@ -280,12 +280,14 @@ public class ChatOverlay extends OverlayPanel
         resizePanel.setListener(this::setDesiredChatSize);
         resizePanel.startUp(() -> isResizable() && !isHidden() && !client.isMenuOpen());
 
+        MessageContainer clanContainer = messageContainerProvider.get();
+
         messageContainers.putAll(Map.of(
             ChatMode.PUBLIC.name(), messageContainerProvider.get(),
             ChatMode.FRIENDS_CHAT.name(), messageContainerProvider.get(),
-            ChatMode.CLAN_MAIN.name(), messageContainerProvider.get(),
-            ChatMode.CLAN_GUEST.name(), messageContainerProvider.get(),
-            ChatMode.CLAN_GIM.name(), messageContainerProvider.get()
+            ChatMode.CLAN_MAIN.name(), clanContainer,
+            ChatMode.CLAN_GUEST.name(), clanContainer,
+            ChatMode.CLAN_GIM.name(), clanContainer
         ));
 
         messageContainers.forEach((mode, container) -> {
@@ -1878,6 +1880,19 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public ChatMode getCurrentMode() {
+        // Clan modes (CLAN_MAIN/GUEST/GIM) share a single MessageContainer, so the
+        // container's stored mode is whichever initializer ran last. Derive from the
+        // active tab key instead so we send to the clan channel the user is viewing.
+        if (activeTab != null && !activeTab.isPrivate()) {
+            String key = activeTab.getKey();
+            if (!ALL_TAB_KEY.equals(key) && !GAME_TAB_KEY.equals(key) && !TRADE_TAB_KEY.equals(key)) {
+                try {
+                    return ChatMode.valueOf(key);
+                } catch (IllegalArgumentException ignored) {
+                    // Not a ChatMode-keyed tab; fall through.
+                }
+            }
+        }
         return messageContainer != null ? messageContainer.getChatMode() : config.getDefaultChatMode();
     }
 
@@ -1955,6 +1970,19 @@ public class ChatOverlay extends OverlayPanel
             Tab tradeTab = tabsByKey.get(TRADE_TAB_KEY);
             if (tradeTab != null && messageContainer != tradeContainer && !suppressOtherTabUnread && !collapsed && tradeTab.getUnread() < 99) {
                 tradeTab.incrementUnread();
+            }
+        }
+
+        // Route to mode-specific tab (Clan, Clan Guest, Clan GIM, Friends Chat)
+        if (mode != ChatMode.PRIVATE && mode != ChatMode.PUBLIC) {
+            MessageContainer modeContainer = messageContainers.get(mode.name());
+            if (modeContainer != null) {
+                modeContainer.pushLine(line, type, timestamp, senderName, receiverName, targetName, prefix, duplicateKey, collapsed);
+                routedToSpecificTab = true;
+                Tab modeTab = tabsByKey.get(tabKey(mode));
+                if (modeTab != null && messageContainer != modeContainer && !suppressOtherTabUnread && !collapsed && modeTab.getUnread() < 99) {
+                    modeTab.incrementUnread();
+                }
             }
         }
 

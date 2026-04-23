@@ -98,14 +98,10 @@ public class MessageService implements ChatService
             case FRIENDS_CHAT:
                 break;
             case CLAN_MAIN:
-                break;
             case CLAN_GUEST:
                 break;
-
-            // Custom
             case CLAN_GIM:
                 clanType = ClanType.IRONMAN;
-                selectedMode = ChatMode.CLAN_MAIN;
                 break;
             case PRIVATE:
                 if (StringUtil.isNullOrEmpty(targetName)) {
