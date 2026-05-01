@@ -2,9 +2,6 @@ package com.modernchat.service;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.Varbits;
-import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -38,7 +35,6 @@ public class ForceRecolorService implements ChatService {
     private static final String FORCERECOLOR_PLUGIN_NAME = "Force Recolor";
 
     @Inject private ConfigManager configManager;
-    @Inject private Client client;
     @Inject private EventBus eventBus;
     @Inject private PluginManager pluginManager;
 
@@ -53,7 +49,6 @@ public class ForceRecolorService implements ChatService {
     private volatile boolean pluginEnabled = false;
     private volatile boolean allMessageTypes = false;
     private volatile String recolorStyle = "NONE";
-    private volatile int transparencyVarbit = -1;
 
     @Override
     public void startUp() {
@@ -92,14 +87,6 @@ public class ForceRecolorService implements ChatService {
         // recolorStyle == CHAT_COLOR_CONFIG, so we have to refresh on either group changing.
         if (FORCERECOLOR_GROUP.equals(e.getGroup()) || TEXTRECOLOR_GROUP.equals(e.getGroup())) {
             refreshConfig();
-        }
-    }
-
-    @Subscribe
-    public void onVarbitChanged(VarbitChanged e) {
-        int setting = client.getVarbitValue(Varbits.TRANSPARENT_CHATBOX);
-        if (transparencyVarbit != setting) {
-            transparencyVarbit = setting;
         }
     }
 
@@ -164,16 +151,14 @@ public class ForceRecolorService implements ChatService {
             return null;
         }
 
-        // The peek overlay has no chatbox backdrop, so prefer the transparent palette there.
-        // For the main overlay follow the user's chatbox transparency varbit so the colors
-        // line up with what they configured for that mode.
-        boolean useTransparent = isPeekOverlay || (client.isResized() && transparencyVarbit != 0);
-
-        Color primary = useTransparent ? transparentColors.get(matchedGroup) : opaqueColors.get(matchedGroup);
+        // The peek overlay draws over the game without a backdrop, so prefer the transparent
+        // palette there; the main overlay has its own backdrop, so prefer opaque. Fall back to
+        // the other palette if the user only configured one of them in the source plugin.
+        Color primary = isPeekOverlay ? transparentColors.get(matchedGroup) : opaqueColors.get(matchedGroup);
         if (primary != null) {
             return primary;
         }
-        return useTransparent ? opaqueColors.get(matchedGroup) : transparentColors.get(matchedGroup);
+        return isPeekOverlay ? opaqueColors.get(matchedGroup) : transparentColors.get(matchedGroup);
     }
 
     private void refreshConfig() {
