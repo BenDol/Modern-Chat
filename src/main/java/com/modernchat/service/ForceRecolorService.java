@@ -134,10 +134,12 @@ public class ForceRecolorService implements ChatService {
      *
      * @param message The message text to check
      * @param type The chat message type
-     * @param isPeekOverlay True if this is for the peek overlay (always uses transparent colors)
+     * @param isTransparentBackdrop True if the rendering surface is transparent (no backdrop or
+     *                              a low-alpha backdrop). Selects the transparent palette;
+     *                              falls back to opaque if not configured.
      * @return The color to use, or null if no match
      */
-    public @Nullable Color getRecolorForMessage(String message, ChatMessageType type, boolean isPeekOverlay) {
+    public @Nullable Color getRecolorForMessage(String message, ChatMessageType type, boolean isTransparentBackdrop) {
         if (!pluginEnabled || "NONE".equals(recolorStyle) || groupPatterns.isEmpty()) {
             return null;
         }
@@ -151,14 +153,11 @@ public class ForceRecolorService implements ChatService {
             return null;
         }
 
-        // The peek overlay draws over the game without a backdrop, so prefer the transparent
-        // palette there; the main overlay has its own backdrop, so prefer opaque. Fall back to
-        // the other palette if the user only configured one of them in the source plugin.
-        Color primary = isPeekOverlay ? transparentColors.get(matchedGroup) : opaqueColors.get(matchedGroup);
+        Color primary = isTransparentBackdrop ? transparentColors.get(matchedGroup) : opaqueColors.get(matchedGroup);
         if (primary != null) {
             return primary;
         }
-        return isPeekOverlay ? opaqueColors.get(matchedGroup) : transparentColors.get(matchedGroup);
+        return isTransparentBackdrop ? opaqueColors.get(matchedGroup) : transparentColors.get(matchedGroup);
     }
 
     private void refreshConfig() {

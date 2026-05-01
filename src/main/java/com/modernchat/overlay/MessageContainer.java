@@ -122,6 +122,17 @@ public class MessageContainer extends Overlay
         return config.isEnabled();
     }
 
+    /**
+     * The container is treated as transparent when chrome is disabled (no backdrop drawn) or
+     * when the configured backdrop color is more than half-transparent. ForceRecolor uses this
+     * to choose between its opaque and transparent palettes for the matched group.
+     */
+    public boolean isTransparentBackdrop() {
+        if (!chromeEnabled) return true;
+        Color backdrop = config != null ? config.getBackdropColor() : null;
+        return backdrop == null || backdrop.getAlpha() < 128;
+    }
+
     public void startUp(MessageContainerConfig config, ChatMode chatMode) {
         startUp(config, chatMode, true);
     }
@@ -509,7 +520,7 @@ public class MessageContainer extends Overlay
         // Check ForceRecolor for message body color
         String messageToRender = s == null ? "" : s;
         if (forceRecolorService != null) {
-            Color forceColor = forceRecolorService.getRecolorForMessage(s, type, isPeekOverlay);
+            Color forceColor = forceRecolorService.getRecolorForMessage(s, type, isTransparentBackdrop());
             if (forceColor != null) {
                 // Apply ForceRecolor only to message body, sender gets base color
                 messageToRender = applyForceRecolorToBody(s, sender, baseColor, forceColor);
