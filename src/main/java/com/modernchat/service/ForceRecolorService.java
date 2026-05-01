@@ -3,6 +3,8 @@ package com.modernchat.service;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.Varbits;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -10,6 +12,7 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.util.Text;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -31,8 +34,8 @@ import java.util.regex.Pattern;
 @Singleton
 public class ForceRecolorService implements ChatService {
     private static final String FORCERECOLOR_GROUP = "forcerecolor";
+    private static final String TEXTRECOLOR_GROUP = "textrecolor";
     private static final String FORCERECOLOR_PLUGIN_NAME = "Force Recolor";
-    private static final int TRANSPARENT_CHATBOX_VARBIT = 4608;
 
     @Inject private ConfigManager configManager;
     @Inject private Client client;
@@ -50,6 +53,7 @@ public class ForceRecolorService implements ChatService {
     private volatile boolean pluginEnabled = false;
     private volatile boolean allMessageTypes = false;
     private volatile String recolorStyle = "NONE";
+    private volatile int transparencyVarbit = -1;
 
     @Override
     public void startUp() {
@@ -84,8 +88,18 @@ public class ForceRecolorService implements ChatService {
 
     @Subscribe
     public void onConfigChanged(ConfigChanged e) {
-        if (FORCERECOLOR_GROUP.equals(e.getGroup())) {
+        // ForceRecolor reads the default group 0 color from the textrecolor group when
+        // recolorStyle == CHAT_COLOR_CONFIG, so we have to refresh on either group changing.
+        if (FORCERECOLOR_GROUP.equals(e.getGroup()) || TEXTRECOLOR_GROUP.equals(e.getGroup())) {
             refreshConfig();
+        }
+    }
+
+    @Subscribe
+    public void onVarbitChanged(VarbitChanged e) {
+        int setting = client.getVarbitValue(Varbits.TRANSPARENT_CHATBOX);
+        if (transparencyVarbit != setting) {
+            transparencyVarbit = setting;
         }
     }
 
@@ -93,12 +107,10 @@ public class ForceRecolorService implements ChatService {
     public void onPluginChanged(PluginChanged e) {
         if (FORCERECOLOR_PLUGIN_NAME.equals(e.getPlugin().getName())) {
             if (e.isLoaded()) {
-                // ForceRecolor was enabled, refresh config
                 pluginEnabled = true;
                 refreshConfig();
                 log.debug("ForceRecolor plugin enabled, refreshed config");
             } else {
-                // ForceRecolor was disabled, clear cached state
                 pluginEnabled = false;
                 clearState();
                 log.debug("ForceRecolor plugin disabled, cleared state");
@@ -132,12 +144,10 @@ public class ForceRecolorService implements ChatService {
 
     /**
      * Returns a Color for the message if it matches a ForceRecolor pattern.
-     * For peek overlay, uses transparent colors with fallback to opaque.
-     * For main chat overlay, uses opaque colors.
      *
      * @param message The message text to check
      * @param type The chat message type
-     * @param isPeekOverlay True if this is for the peek overlay
+     * @param isPeekOverlay True if this is for the peek overlay (always uses transparent colors)
      * @return The color to use, or null if no match
      */
     public @Nullable Color getRecolorForMessage(String message, ChatMessageType type, boolean isPeekOverlay) {
@@ -145,56 +155,62 @@ public class ForceRecolorService implements ChatService {
             return null;
         }
 
-        // Check message type filter
         if (!allMessageTypes && !isGameMessage(type)) {
             return null;
         }
 
-        // Find lowest matching group (0-9)
         int matchedGroup = findMatchingGroup(message);
         if (matchedGroup < 0) {
             return null;
         }
 
-        if (isPeekOverlay) {
-            // For peek overlay: use transparent colors, fall back to opaque if not defined
-            Color transparentColor = transparentColors.get(matchedGroup);
-            return transparentColor != null ? transparentColor : opaqueColors.get(matchedGroup);
-        } else {
-            // For main chat overlay: use opaque colors
-            return opaqueColors.get(matchedGroup);
+        // The peek overlay has no chatbox backdrop, so prefer the transparent palette there.
+        // For the main overlay follow the user's chatbox transparency varbit so the colors
+        // line up with what they configured for that mode.
+        boolean useTransparent = isPeekOverlay || (client.isResized() && transparencyVarbit != 0);
+
+        Color primary = useTransparent ? transparentColors.get(matchedGroup) : opaqueColors.get(matchedGroup);
+        if (primary != null) {
+            return primary;
         }
+        return useTransparent ? opaqueColors.get(matchedGroup) : transparentColors.get(matchedGroup);
     }
 
     private void refreshConfig() {
-        // Read main settings
         String matchedText = configManager.getConfiguration(FORCERECOLOR_GROUP, "matchedTextString");
         String allTypesStr = configManager.getConfiguration(FORCERECOLOR_GROUP, "allMessageTypes");
         String style = configManager.getConfiguration(FORCERECOLOR_GROUP, "recolorStyle");
 
         allMessageTypes = "true".equalsIgnoreCase(allTypesStr);
-        recolorStyle = style != null ? style : "NONE";
+        recolorStyle = style != null ? style : "CHAT_COLOR_CONFIG"; // matches ForceRecolorConfig default
 
-        // Parse patterns
         parseMatchedTextString(matchedText);
 
-        // Read colors for each group (0-9)
         opaqueColors.clear();
         transparentColors.clear();
 
-        for (int i = 0; i <= 9; i++) {
-            String opaqueKey = i == 0 ? "opaqueRecolor" : "opaqueRecolorGroup" + i;
-            String transparentKey = i == 0 ? "transparentRecolor" : "transparentRecolorGroup" + i;
+        // Group 0 (default group) is special: its colors come from a different config
+        // depending on the user's recolorStyle setting. THIS_CONFIG reads from forcerecolor's
+        // own opaqueRecolor/transparentRecolor; CHAT_COLOR_CONFIG reads from RuneLite's
+        // textrecolor (Chat Color) plugin's opaqueGameMessage/transparentGameMessage.
+        Color group0Opaque = null;
+        Color group0Transparent = null;
+        if ("THIS_CONFIG".equals(recolorStyle)) {
+            group0Opaque = configManager.getConfiguration(FORCERECOLOR_GROUP, "opaqueRecolor", Color.class);
+            group0Transparent = configManager.getConfiguration(FORCERECOLOR_GROUP, "transparentRecolor", Color.class);
+        } else if ("CHAT_COLOR_CONFIG".equals(recolorStyle)) {
+            group0Opaque = configManager.getConfiguration(TEXTRECOLOR_GROUP, "opaqueGameMessage", Color.class);
+            group0Transparent = configManager.getConfiguration(TEXTRECOLOR_GROUP, "transparentGameMessage", Color.class);
+        }
+        if (group0Opaque != null) opaqueColors.put(0, group0Opaque);
+        if (group0Transparent != null) transparentColors.put(0, group0Transparent);
 
-            Color opaque = parseColor(configManager.getConfiguration(FORCERECOLOR_GROUP, opaqueKey));
-            Color transparent = parseColor(configManager.getConfiguration(FORCERECOLOR_GROUP, transparentKey));
-
-            if (opaque != null) {
-                opaqueColors.put(i, opaque);
-            }
-            if (transparent != null) {
-                transparentColors.put(i, transparent);
-            }
+        // Groups 1-9 always come from the forcerecolor group regardless of recolorStyle.
+        for (int i = 1; i <= 9; i++) {
+            Color opaque = configManager.getConfiguration(FORCERECOLOR_GROUP, "opaqueRecolorGroup" + i, Color.class);
+            Color transparent = configManager.getConfiguration(FORCERECOLOR_GROUP, "transparentRecolorGroup" + i, Color.class);
+            if (opaque != null) opaqueColors.put(i, opaque);
+            if (transparent != null) transparentColors.put(i, transparent);
         }
 
         log.debug("ForceRecolor config refreshed: style={}, allTypes={}, patterns={}, opaqueColors={}, transparentColors={}",
@@ -209,8 +225,7 @@ public class ForceRecolorService implements ChatService {
 
         Map<Integer, List<String>> groupToPatterns = new HashMap<>();
 
-        for (String entry : csv.split(",")) {
-            entry = entry.trim();
+        for (String entry : Text.fromCSV(csv)) {
             if (entry.isEmpty()) {
                 continue;
             }
@@ -218,24 +233,30 @@ public class ForceRecolorService implements ChatService {
             int group = 0;
             String text = entry;
 
-            // Check for group suffix (::N)
-            int colonIdx = entry.lastIndexOf("::");
-            if (colonIdx > 0) {
+            // Group suffix is "::N" — split on the last occurrence so patterns containing
+            // "::" still work as long as the trailing token is numeric.
+            String[] segments = entry.split("::");
+            if (segments.length == 2) {
                 try {
-                    group = Integer.parseInt(entry.substring(colonIdx + 2));
-                    text = entry.substring(0, colonIdx);
-                    group = Math.max(0, Math.min(9, group)); // Clamp to 0-9
+                    int parsed = Integer.parseInt(segments[1]);
+                    if (parsed >= 0 && parsed <= 9) {
+                        group = parsed;
+                        text = segments[0];
+                    }
                 } catch (NumberFormatException ignored) {
                     // Keep default group 0 and full text
                 }
             }
 
-            groupToPatterns.computeIfAbsent(group, k -> new ArrayList<>()).add(Pattern.quote(text));
+            // Match Force Recolor's escaping: escape Jagex tags first, then quote for regex.
+            groupToPatterns.computeIfAbsent(group, k -> new ArrayList<>())
+                .add(Pattern.quote(Text.escapeJagex(text)));
         }
 
-        // Build regex with word boundaries for each group
+        // Mirror Force Recolor's boundary regex exactly so we don't lose matches at start/end
+        // of message or around whitespace that \b alone wouldn't treat as a boundary.
         for (Map.Entry<Integer, List<String>> e : groupToPatterns.entrySet()) {
-            String regex = "\\b(" + String.join("|", e.getValue()) + ")\\b";
+            String regex = "(?:\\b|(?<=\\s)|\\A)(?:" + String.join("|", e.getValue()) + ")(?:\\b|(?=\\s)|\\z)";
             try {
                 groupPatterns.put(e.getKey(), Pattern.compile(regex, Pattern.CASE_INSENSITIVE));
             } catch (Exception ex) {
@@ -249,7 +270,6 @@ public class ForceRecolorService implements ChatService {
             return -1;
         }
 
-        // Find lowest matching group number
         int lowestMatch = -1;
         for (Map.Entry<Integer, Pattern> entry : groupPatterns.entrySet()) {
             int group = entry.getKey();
@@ -264,35 +284,10 @@ public class ForceRecolorService implements ChatService {
         return lowestMatch;
     }
 
-    private @Nullable Color parseColor(String colorStr) {
-        if (colorStr == null || colorStr.isEmpty()) {
-            return null;
-        }
-
-        try {
-            // RuneLite stores Color configs as integer ARGB values
-            int argb = Integer.parseInt(colorStr);
-            return new Color(argb, true);
-        } catch (NumberFormatException e) {
-            // Try hex format as fallback
-            if (colorStr.startsWith("#")) {
-                try {
-                    String hex = colorStr.substring(1);
-                    long v = Long.parseLong(hex, 16);
-                    if (hex.length() <= 6) {
-                        return new Color(((int) v & 0xFFFFFF) | 0xFF000000, true);
-                    }
-                    return new Color((int) v, true);
-                } catch (NumberFormatException ignored) {
-                    // Fall through to return null
-                }
-            }
-        }
-        return null;
-    }
-
     private boolean isGameMessage(ChatMessageType type) {
-        // Match ForceRecolor's behavior: only GAMEMESSAGE and SPAM are "game messages"
-        return type == ChatMessageType.GAMEMESSAGE || type == ChatMessageType.SPAM;
+        // Match ForceRecolor's behavior: GAMEMESSAGE, SPAM, and ENGINE are "game messages".
+        return type == ChatMessageType.GAMEMESSAGE
+            || type == ChatMessageType.SPAM
+            || type == ChatMessageType.ENGINE;
     }
 }

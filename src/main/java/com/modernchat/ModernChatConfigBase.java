@@ -135,6 +135,8 @@ public interface ModernChatConfigBase extends
         String filters_Enabled = "filters_Enabled";
         String filters_ChatFilterEnabled = "filters_ChatFilterEnabled";
         String filters_AreaMuteEnabled = "filters_AreaMuteEnabled";
+        String filters_SpamCorpusEnabled = "filters_SpamCorpusEnabled";
+        String filters_VanillaTabFilterEnabled = "filters_VanillaTabFilterEnabled";
 
         // General
         String general_AnchorPrivateChat = "general_AnchorPrivateChat";
@@ -314,6 +316,8 @@ public interface ModernChatConfigBase extends
         FILTERS_ENABLED(Keys.filters_Enabled, Kind.BOOL, ModernChatConfigBase::filters_Enabled),
         FILTERS_CHAT_FILTER_ENABLED(Keys.filters_ChatFilterEnabled, Kind.BOOL, ModernChatConfigBase::filters_ChatFilterEnabled),
         FILTERS_AREA_MUTE_ENABLED(Keys.filters_AreaMuteEnabled, Kind.BOOL, ModernChatConfigBase::filters_AreaMuteEnabled),
+        FILTERS_SPAM_CORPUS_ENABLED(Keys.filters_SpamCorpusEnabled, Kind.BOOL, ModernChatConfigBase::filters_SpamCorpusEnabled),
+        FILTERS_VANILLA_TAB_FILTER_ENABLED(Keys.filters_VanillaTabFilterEnabled, Kind.BOOL, ModernChatConfigBase::filters_VanillaTabFilterEnabled),
 
         // ---- General ----
         GENERAL_ANCHOR_PM(Keys.general_AnchorPrivateChat, Kind.BOOL, ModernChatConfigBase::general_AnchorPrivateChat),
@@ -425,6 +429,8 @@ public interface ModernChatConfigBase extends
     boolean filters_Enabled();
     boolean filters_ChatFilterEnabled();
     boolean filters_AreaMuteEnabled();
+    boolean filters_SpamCorpusEnabled();
+    boolean filters_VanillaTabFilterEnabled();
     boolean general_AnchorPrivateChat();
     int general_AnchorPrivateChatOffsetX();
     int general_AnchorPrivateChatOffsetY();
@@ -597,6 +603,8 @@ public interface ModernChatConfigBase extends
         @Override public boolean filters_Enabled() { return getBool(Keys.filters_Enabled, DEFAULTS.filters_Enabled()); }
         @Override public boolean filters_ChatFilterEnabled() { return getBool(Keys.filters_ChatFilterEnabled, DEFAULTS.filters_ChatFilterEnabled()); }
         @Override public boolean filters_AreaMuteEnabled() { return getBool(Keys.filters_AreaMuteEnabled, DEFAULTS.filters_AreaMuteEnabled()); }
+        @Override public boolean filters_SpamCorpusEnabled() { return getBool(Keys.filters_SpamCorpusEnabled, DEFAULTS.filters_SpamCorpusEnabled()); }
+        @Override public boolean filters_VanillaTabFilterEnabled() { return getBool(Keys.filters_VanillaTabFilterEnabled, DEFAULTS.filters_VanillaTabFilterEnabled()); }
 
         // General colors & options
         @Override public boolean general_AnchorPrivateChat() { return getBool(Keys.general_AnchorPrivateChat, DEFAULTS.general_AnchorPrivateChat()); }

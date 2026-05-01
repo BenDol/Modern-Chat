@@ -1322,6 +1322,30 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return true;
     }
 
+    @ConfigItem(
+        keyName = Keys.filters_SpamCorpusEnabled,
+        name = "Spam Corpus",
+        description = "Hide messages whose text was marked as spam via the chat right-click menu",
+        position = 3,
+        section = filtersSection
+    )
+    @Override
+    default boolean filters_SpamCorpusEnabled() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = Keys.filters_VanillaTabFilterEnabled,
+        name = "Vanilla Tab Filter",
+        description = "Honour the OSRS Game-tab filter dropdown (On/Filtered/Off): Filtered hides flavor text like 'You catch a shrimp.', Off hides all game messages",
+        position = 4,
+        section = filtersSection
+    )
+    @Override
+    default boolean filters_VanillaTabFilterEnabled() {
+        return true;
+    }
+
     /* ------------ Feature: Peek Overlay ------------ */
 
     @ConfigItem(

@@ -3,6 +3,8 @@ package com.modernchat.service;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.service.filter.AreaMutePluginFilter;
 import com.modernchat.service.filter.ChatFilterPluginFilter;
+import com.modernchat.service.filter.SpamCorpusFilter;
+import com.modernchat.service.filter.VanillaChatFilter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.eventbus.EventBus;
@@ -24,6 +26,8 @@ public class MessageFilterService implements ChatService {
 
     @Inject private ChatFilterPluginFilter chatFilterPluginFilter;
     @Inject private AreaMutePluginFilter areaMutePluginFilter;
+    @Inject private SpamCorpusFilter spamCorpusFilter;
+    @Inject private VanillaChatFilter vanillaChatFilter;
 
     private final CopyOnWriteArrayList<MessageFilter> filters = new CopyOnWriteArrayList<>();
 
@@ -34,8 +38,10 @@ public class MessageFilterService implements ChatService {
         chatFilterPluginFilter.startUp();
         areaMutePluginFilter.startUp();
 
+        registerFilter(vanillaChatFilter);
         registerFilter(chatFilterPluginFilter);
         registerFilter(areaMutePluginFilter);
+        registerFilter(spamCorpusFilter);
     }
 
     @Override

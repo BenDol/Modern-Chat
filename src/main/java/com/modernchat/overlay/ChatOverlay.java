@@ -60,6 +60,7 @@ import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetSizeMode;
 import net.runelite.client.callback.ClientThread;
@@ -1468,6 +1469,9 @@ public class ChatOverlay extends OverlayPanel
         RowHit hit = messageContainer != null ? messageContainer.rowAt(mouse) : null;
         if (hit != null) {
             final String rowText = buildPlainRowText(hit.getLine());
+            // Spam corpus matches against the raw ChatMessage text (no timestamp / sender prefix),
+            // so derive the message body from the duplicate key when available.
+            final String spamKey = extractRawMessage(hit.getLine(), rowText);
 
             rootMenu.createMenuEntry(1)
                 .setOption("Copy line")
@@ -1475,31 +1479,34 @@ public class ChatOverlay extends OverlayPanel
                 .onClick(me -> copyToClipboard(rowText));
 
             // Spam filter menu options
-            boolean isMarkedSpam = spamFilterService.isMarkedSpam(rowText);
-            boolean isMarkedHam = spamFilterService.isMarkedHam(rowText);
+            boolean isMarkedSpam = spamFilterService.isMarkedSpam(spamKey);
+            boolean isMarkedHam = spamFilterService.isMarkedHam(spamKey);
 
             if (isMarkedSpam) {
                 rootMenu.createMenuEntry(1)
                     .setOption("Unmark spam")
                     .setType(MenuAction.RUNELITE)
-                    .onClick(me -> spamFilterService.removeFromSpam(rowText));
+                    .onClick(me -> spamFilterService.removeFromSpam(spamKey));
             } else {
                 rootMenu.createMenuEntry(1)
                     .setOption("Mark spam")
                     .setType(MenuAction.RUNELITE)
-                    .onClick(me -> spamFilterService.markSpam(rowText));
+                    .onClick(me -> spamFilterService.markSpam(spamKey));
             }
 
+            // Ham (whitelist override) only matters when there's an existing spam classification
+            // to override or an existing ham entry to remove. Hide otherwise — the menu would
+            // imply functionality that doesn't apply unless the user runs SpamFilterPlugin too.
             if (isMarkedHam) {
                 rootMenu.createMenuEntry(1)
-                    .setOption("Unmark ham")
+                    .setOption("Unmark not spam")
                     .setType(MenuAction.RUNELITE)
-                    .onClick(me -> spamFilterService.removeFromHam(rowText));
-            } else {
+                    .onClick(me -> spamFilterService.removeFromHam(spamKey));
+            } else if (isMarkedSpam) {
                 rootMenu.createMenuEntry(1)
-                    .setOption("Mark ham")
+                    .setOption("Mark not spam")
                     .setType(MenuAction.RUNELITE)
-                    .onClick(me -> spamFilterService.markHam(rowText));
+                    .onClick(me -> spamFilterService.markHam(spamKey));
             }
 
             String targetName = hit.getTargetName();
@@ -1576,6 +1583,17 @@ public class ChatOverlay extends OverlayPanel
                 .setOption("Set as peek source")
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> eventBus.post(new SetPeekSourceEvent(hovered.getKey())));
+
+            // Vanilla Game-tab filter mode (mirrors the OSRS chatbox dropdown). The varbit is
+            // server-synced at login but vanilla writes it client-only mid-session, so a direct
+            // setVarbit on the client thread reproduces the in-game tab click.
+            if (GAME_TAB_KEY.equals(hovered.getKey())) {
+                int currentMode = client.getVarbitValue(VarbitID.GAME_FILTER);
+                // Flat entries (RuneLite's mini-menu doesn't support 3-deep submenus reliably).
+                index = addGameFilterOption(sub, 0, "Filter: On", currentMode, index);
+                index = addGameFilterOption(sub, 1, "Filter: Filtered", currentMode, index);
+                index = addGameFilterOption(sub, 2, "Filter: Off", currentMode, index);
+            }
         }
 
         eventBus.post(new ChatMenuOpenedEvent());
@@ -2140,6 +2158,33 @@ public class ChatOverlay extends OverlayPanel
         StringBuilder sb = new StringBuilder();
         for (TextSegment ts : rl.getSegs()) sb.append(ts.getText());
         return sb.toString();
+    }
+
+    private int addGameFilterOption(Menu menu, int mode, String label, int currentMode, int index) {
+        String display = mode == currentMode
+            ? ColorUtil.wrapWithColorTag(label, Color.YELLOW)
+            : label;
+        menu.createMenuEntry(index)
+            .setOption(display)
+            .setType(MenuAction.RUNELITE)
+            .onClick(me -> clientThread.invoke(() -> client.setVarbit(VarbitID.GAME_FILTER, mode)));
+        return index + 1;
+    }
+
+    /**
+     * Returns the raw message body of a row (no timestamp, prefix, or sender prefix), suitable
+     * for storing in the spam corpus where it can be matched against {@code ChatMessage#getMessage()}.
+     * Falls back to the rendered row text if the original is unavailable.
+     */
+    private String extractRawMessage(RichLine rl, String fallback) {
+        String dupKey = rl.getDuplicateKey();
+        if (dupKey != null) {
+            int colon = dupKey.indexOf(':');
+            if (colon >= 0) {
+                return dupKey.substring(colon + 1);
+            }
+        }
+        return fallback;
     }
 
     private void copyToClipboard(String s) {
