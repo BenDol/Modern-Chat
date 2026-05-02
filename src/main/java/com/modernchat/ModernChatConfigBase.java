@@ -143,6 +143,7 @@ public interface ModernChatConfigBase extends
         String general_AnchorPrivateChatOffsetX = "general_AnchorPrivateChatOffsetX";
         String general_AnchorPrivateChatOffsetY = "general_AnchorPrivateChatOffsetY";
         String general_HelperNotifications = "general_HelperNotifications";
+        String general_ChatWithMenuEnabled = "general_ChatWithMenuEnabled";
         String featureRedesign_ShowReportButton = "featureRedesign_ShowReportButton";
         String featureRedesign_ShowSessionTimer = "featureRedesign_ShowSessionTimer";
         String general_PublicChatColor = "general_PublicChatColor";
@@ -324,6 +325,7 @@ public interface ModernChatConfigBase extends
         GENERAL_ANCHOR_PM_OFFSET_X(Keys.general_AnchorPrivateChatOffsetX, Kind.INT, ModernChatConfigBase::general_AnchorPrivateChatOffsetX),
         GENERAL_ANCHOR_PM_OFFSET_Y(Keys.general_AnchorPrivateChatOffsetY, Kind.INT, ModernChatConfigBase::general_AnchorPrivateChatOffsetY),
         GENERAL_HELPER_NOTIFICATIONS(Keys.general_HelperNotifications, Kind.BOOL, ModernChatConfigBase::general_HelperNotifications),
+        GENERAL_CHAT_WITH_MENU_ENABLED(Keys.general_ChatWithMenuEnabled, Kind.BOOL, ModernChatConfigBase::general_ChatWithMenuEnabled),
         FEATURE_REDESIGN_SHOW_REPORT_BUTTON(Keys.featureRedesign_ShowReportButton, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowReportButton),
         FEATURE_REDESIGN_SHOW_SESSION_TIMER(Keys.featureRedesign_ShowSessionTimer, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowSessionTimer),
         GENERAL_PUBLIC_COLOR(Keys.general_PublicChatColor, Kind.COLOR, ModernChatConfigBase::general_PublicChatColor),
@@ -435,6 +437,7 @@ public interface ModernChatConfigBase extends
     int general_AnchorPrivateChatOffsetX();
     int general_AnchorPrivateChatOffsetY();
     boolean general_HelperNotifications();
+    boolean general_ChatWithMenuEnabled();
     boolean featureRedesign_ShowReportButton();
     boolean featureRedesign_ShowSessionTimer();
     Color general_PublicChatColor();
@@ -611,6 +614,7 @@ public interface ModernChatConfigBase extends
         @Override public int general_AnchorPrivateChatOffsetX() { return getInt(Keys.general_AnchorPrivateChatOffsetX, DEFAULTS.general_AnchorPrivateChatOffsetX()); }
         @Override public int general_AnchorPrivateChatOffsetY() { return getInt(Keys.general_AnchorPrivateChatOffsetY, DEFAULTS.general_AnchorPrivateChatOffsetY()); }
         @Override public boolean general_HelperNotifications() { return getBool(Keys.general_HelperNotifications, DEFAULTS.general_HelperNotifications()); }
+        @Override public boolean general_ChatWithMenuEnabled() { return getBool(Keys.general_ChatWithMenuEnabled, DEFAULTS.general_ChatWithMenuEnabled()); }
         @Override public boolean featureRedesign_ShowReportButton() { return getBool(Keys.featureRedesign_ShowReportButton, DEFAULTS.featureRedesign_ShowReportButton()); }
         @Override public boolean featureRedesign_ShowSessionTimer() { return getBool(Keys.featureRedesign_ShowSessionTimer, DEFAULTS.featureRedesign_ShowSessionTimer()); }
         @Override public Color general_PublicChatColor() { return getColor(Keys.general_PublicChatColor, DEFAULTS.general_PublicChatColor()); }

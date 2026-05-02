@@ -1096,6 +1096,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.general_ChatWithMenuEnabled,
+        name = "Show 'Chat with' Menu Option",
+        description = "Show the 'Chat with' option when right-clicking a player (in chat, friends list or world). Disable to remove this menu entry.",
+        position = 6,
+        section = generalSection
+    )
+    @Override
+    default boolean general_ChatWithMenuEnabled() {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = Keys.featureRedesign_ShowReportButton,
         name = "Show Report Button",
         description = "Show the report button in the chat input box",

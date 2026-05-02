@@ -275,6 +275,9 @@ public class ModernChatPlugin extends Plugin {
 		if (entries.length == 1)
 			return;
 
+		if (!config.general_ChatWithMenuEnabled())
+			return;
+
 		tryAddPrivateMessageMenuOption(entries);
 	}
 
