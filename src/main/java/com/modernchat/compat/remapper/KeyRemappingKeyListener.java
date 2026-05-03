@@ -1,6 +1,5 @@
 package com.modernchat.compat.remapper;
 
-import com.modernchat.util.ClientUtil;
 import net.runelite.client.config.ModifierlessKeybind;
 import net.runelite.client.input.KeyListener;
 
@@ -28,51 +27,93 @@ public class KeyRemappingKeyListener implements KeyListener {
             return;
         }
 
-        boolean typing = service.isTyping();
+        if (!service.isTyping()) {
+            int mappedKeyCode = KeyEvent.VK_UNDEFINED;
 
-        // Typing transitions
-        if (!typing && e.getKeyCode() == KeyEvent.VK_ENTER) {
-            service.unlockChat();
-            return;
-        }
-
-        if (!typing && e.getKeyCode() == KeyEvent.VK_SLASH) {
-            service.unlockChat();
-            return;
-        }
-
-        if (typing && (e.getKeyCode() == KeyEvent.VK_ESCAPE || e.getKeyCode() == KeyEvent.VK_ENTER)) {
-            service.lockChat();
-            if (e.getKeyCode() != KeyEvent.VK_ENTER)
-                e.consume();
-            return;
-        }
-
-        // Don't remap keys while typing
-        if (typing)
-            return;
-
-        // Camera remapping
-        if (service.isCameraRemap()) {
-            int remapped = matchCameraKey(e);
-            if (remapped != -1) {
-                blockedChars.add(e.getKeyChar());
-                modified.put(e.getKeyCode(), remapped);
-                e.setKeyCode(remapped);
-                e.setKeyChar(KeyEvent.CHAR_UNDEFINED);
-                return;
+            if (service.isCameraRemap()) {
+                if (matches(e, service.getUp()))
+                    mappedKeyCode = KeyEvent.VK_UP;
+                else if (matches(e, service.getDown()))
+                    mappedKeyCode = KeyEvent.VK_DOWN;
+                else if (matches(e, service.getLeft()))
+                    mappedKeyCode = KeyEvent.VK_LEFT;
+                else if (matches(e, service.getRight()))
+                    mappedKeyCode = KeyEvent.VK_RIGHT;
             }
-        }
 
-        // F-key remapping
-        if (service.isFkeyRemap() && !service.isDialogOpen()) {
-            int remapped = matchFKey(e);
-            if (remapped != -1) {
-                blockedChars.add(e.getKeyChar());
-                modified.put(e.getKeyCode(), remapped);
-                e.setKeyCode(remapped);
+            // F-key remap (and ESC remap) is gated by fkeyRemap and dialog state,
+            // so it does not steal number keys used to choose dialog options.
+            var isDialogOpen = service.isDialogOpen();
+            if (!isDialogOpen) {
+                if (service.isFkeyRemap()) {
+                    if (matches(e, service.getF1()))
+                        mappedKeyCode = KeyEvent.VK_F1;
+                    else if (matches(e, service.getF2()))
+                        mappedKeyCode = KeyEvent.VK_F2;
+                    else if (matches(e, service.getF3()))
+                        mappedKeyCode = KeyEvent.VK_F3;
+                    else if (matches(e, service.getF4()))
+                        mappedKeyCode = KeyEvent.VK_F4;
+                    else if (matches(e, service.getF5()))
+                        mappedKeyCode = KeyEvent.VK_F5;
+                    else if (matches(e, service.getF6()))
+                        mappedKeyCode = KeyEvent.VK_F6;
+                    else if (matches(e, service.getF7()))
+                        mappedKeyCode = KeyEvent.VK_F7;
+                    else if (matches(e, service.getF8()))
+                        mappedKeyCode = KeyEvent.VK_F8;
+                    else if (matches(e, service.getF9()))
+                        mappedKeyCode = KeyEvent.VK_F9;
+                    else if (matches(e, service.getF10()))
+                        mappedKeyCode = KeyEvent.VK_F10;
+                    else if (matches(e, service.getF11()))
+                        mappedKeyCode = KeyEvent.VK_F11;
+                    else if (matches(e, service.getF12()))
+                        mappedKeyCode = KeyEvent.VK_F12;
+                }
+
+                if (matches(e, service.getEsc()))
+                    mappedKeyCode = KeyEvent.VK_ESCAPE;
+            }
+
+            // Space remap only applies inside dialogs (excluding the options dialog,
+            // which doesn't listen for space).
+            if (service.isDialogOpen() && !service.isOptionsDialogOpen()
+                && matches(e, service.getSpace())) {
+                mappedKeyCode = KeyEvent.VK_SPACE;
+            }
+
+            if (!service.isOptionsDialogOpen() && matches(e, service.getControl())) {
+                mappedKeyCode = KeyEvent.VK_CONTROL;
+            }
+
+            if (mappedKeyCode != KeyEvent.VK_UNDEFINED && mappedKeyCode != e.getKeyCode()) {
+                final char keyChar = e.getKeyChar();
+                modified.put(e.getKeyCode(), mappedKeyCode);
+                e.setKeyCode(mappedKeyCode);
                 e.setKeyChar(KeyEvent.CHAR_UNDEFINED);
-                return;
+                if (keyChar != KeyEvent.CHAR_UNDEFINED) {
+                    blockedChars.add(keyChar);
+                }
+            }
+
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_ENTER:
+                case KeyEvent.VK_SLASH:
+                case KeyEvent.VK_COLON:
+                    service.unlockChat();
+                    break;
+            }
+        } else {
+            switch (e.getKeyCode()) {
+                case KeyEvent.VK_ESCAPE:
+                    // Block escape so it doesn't trigger in-game hotkeys when exiting typing.
+                    e.consume();
+                    service.lockChat();
+                    break;
+                case KeyEvent.VK_ENTER:
+                    service.lockChat();
+                    break;
             }
         }
     }
@@ -81,6 +122,11 @@ public class KeyRemappingKeyListener implements KeyListener {
     public void keyReleased(KeyEvent e) {
         if (!service.isEnabled())
             return;
+
+        final char keyChar = e.getKeyChar();
+        if (keyChar != KeyEvent.CHAR_UNDEFINED) {
+            blockedChars.remove(keyChar);
+        }
 
         Integer remapped = modified.remove(e.getKeyCode());
         if (remapped != null) {
@@ -94,59 +140,12 @@ public class KeyRemappingKeyListener implements KeyListener {
         if (!service.isEnabled())
             return;
 
-        if (blockedChars.remove(e.getKeyChar())) {
+        final char keyChar = e.getKeyChar();
+        if (keyChar != KeyEvent.CHAR_UNDEFINED
+            && blockedChars.contains(keyChar)
+            && service.chatboxFocused()) {
             e.consume();
         }
-    }
-
-    private int matchCameraKey(KeyEvent e) {
-        if (matches(e, service.getUp()))
-            return KeyEvent.VK_UP;
-        if (matches(e, service.getDown()))
-            return KeyEvent.VK_DOWN;
-        if (matches(e, service.getLeft()))
-            return KeyEvent.VK_LEFT;
-        if (matches(e, service.getRight()))
-            return KeyEvent.VK_RIGHT;
-        return -1;
-    }
-
-    private int matchFKey(KeyEvent e) {
-        if (matches(e, service.getF1()))
-            return KeyEvent.VK_F1;
-        if (matches(e, service.getF2()))
-            return KeyEvent.VK_F2;
-        if (matches(e, service.getF3()))
-            return KeyEvent.VK_F3;
-        if (matches(e, service.getF4()))
-            return KeyEvent.VK_F4;
-        if (matches(e, service.getF5()))
-            return KeyEvent.VK_F5;
-        if (matches(e, service.getF6()))
-            return KeyEvent.VK_F6;
-        if (matches(e, service.getF7()))
-            return KeyEvent.VK_F7;
-        if (matches(e, service.getF8()))
-            return KeyEvent.VK_F8;
-        if (matches(e, service.getF9()))
-            return KeyEvent.VK_F9;
-        if (matches(e, service.getF10()))
-            return KeyEvent.VK_F10;
-        if (matches(e, service.getF11()))
-            return KeyEvent.VK_F11;
-        if (matches(e, service.getF12()))
-            return KeyEvent.VK_F12;
-        return -1;
-    }
-
-    private int matchOtherKey(KeyEvent e) {
-        if (matches(e, service.getEsc()))
-            return KeyEvent.VK_ESCAPE;
-        if (service.isDialogOpen() && !service.isOptionsDialogOpen() && matches(e, service.getSpace()))
-            return KeyEvent.VK_SPACE;
-        if (!service.isOptionsDialogOpen() && matches(e, service.getControl()))
-            return KeyEvent.VK_CONTROL;
-        return -1;
     }
 
     private static boolean matches(KeyEvent e, ModifierlessKeybind keybind) {
