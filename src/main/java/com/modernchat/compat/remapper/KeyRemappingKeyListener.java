@@ -43,8 +43,7 @@ public class KeyRemappingKeyListener implements KeyListener {
 
             // F-key remap (and ESC remap) is gated by fkeyRemap and dialog state,
             // so it does not steal number keys used to choose dialog options.
-            var isDialogOpen = service.isDialogOpen();
-            if (!isDialogOpen) {
+            if (!service.isDialogOpen()) {
                 if (service.isFkeyRemap()) {
                     if (matches(e, service.getF1()))
                         mappedKeyCode = KeyEvent.VK_F1;
