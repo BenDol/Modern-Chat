@@ -9,6 +9,7 @@ import com.modernchat.draw.Padding;
 import com.modernchat.draw.PrefixSegment;
 import com.modernchat.draw.RichLine;
 import com.modernchat.draw.RowHit;
+import com.modernchat.draw.SenderSegment;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.TimestampSegment;
 import com.modernchat.draw.VisualLine;
@@ -36,6 +37,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.util.Text;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -302,6 +304,11 @@ public class MessageContainer extends Overlay
                             if (pfxColor.getAlpha() > 0) {
                                 segColor = pfxColor;
                             }
+                        } else if (seg instanceof SenderSegment) {
+                            Color nameColor = config.getNameColor();
+                            if (nameColor.getAlpha() > 0) {
+                                segColor = nameColor;
+                            }
                         }
 
                         // Draw text with shadow or outline
@@ -527,7 +534,7 @@ public class MessageContainer extends Overlay
             }
         }
 
-        RichLine rl = parseRich(messageToRender, baseColor == null ? Color.WHITE : baseColor, type, timestamp, prefix);
+        RichLine rl = parseRich(messageToRender, baseColor == null ? Color.WHITE : baseColor, type, timestamp, prefix, sender);
         rl.setType(type);
         rl.setSender(sender);
         rl.setReceiver(receiver);
@@ -581,7 +588,7 @@ public class MessageContainer extends Overlay
         return forceTag + message + endTag;
     }
 
-    private RichLine parseRich(String s, Color base, ChatMessageType type, long timestamp, String prefix) {
+    private RichLine parseRich(String s, Color base, ChatMessageType type, long timestamp, String prefix, String sender) {
         RichLine out = new RichLine();
         out.setTimestamp(timestamp);
         if (s == null) return out;
@@ -589,6 +596,14 @@ public class MessageContainer extends Overlay
         Deque<Color> stack = new ArrayDeque<>();
         Color cur = base;
         StringBuilder buf = new StringBuilder();
+
+        // Visible sender-name chars still to emit as SenderSegment; 0 disables marking
+        int senderRemaining = 0;
+        if (!StringUtil.isNullOrEmpty(sender)) {
+            String senderVisible = Text.removeTags(sender);
+            if (!senderVisible.isEmpty() && visibleTextStartsWithSender(s, senderVisible))
+                senderRemaining = senderVisible.length();
+        }
 
         // Timestamp color: use configured color if not transparent, else use line color
         Color timestampColor = config.getTimestampColor();
@@ -625,7 +640,7 @@ public class MessageContainer extends Overlay
                 }
 
                 if (buf.length() > 0) {
-                    out.getSegs().add(new TextSegment(buf.toString(), cur));
+                    senderRemaining = emitText(out, buf.toString(), cur, senderRemaining);
                     buf.setLength(0);
                 }
 
@@ -666,9 +681,67 @@ public class MessageContainer extends Overlay
         }
 
         if (buf.length() > 0)
-            out.getSegs().add(new TextSegment(buf.toString(), cur));
+            emitText(out, buf.toString(), cur, senderRemaining);
 
         return out;
+    }
+
+    /**
+     * Emits a parsed text run, marking the first {@code senderRemaining} chars as a
+     * SenderSegment so the sender name can be recolored at render time. The run is
+     * split when the sender-name boundary falls inside it. Returns the number of
+     * sender chars still pending.
+     */
+    private int emitText(RichLine out, String text, Color color, int senderRemaining) {
+        if (senderRemaining <= 0) {
+            out.getSegs().add(new TextSegment(text, color));
+            return 0;
+        }
+        int take = Math.min(senderRemaining, text.length());
+        out.getSegs().add(new SenderSegment(text.substring(0, take), color));
+        if (take < text.length())
+            out.getSegs().add(new TextSegment(text.substring(take), color));
+        return senderRemaining - take;
+    }
+
+    /**
+     * Checks that the visible text of a composed line starts with "sender: ", using the
+     * same tag rules as parseRich (col/img/br are invisible, lt/gt decode to chars, and
+     * unknown tags render literally so they fail the match - names never contain '<').
+     */
+    private static boolean visibleTextStartsWithSender(String s, String sender) {
+        String target = sender + ": ";
+        int n = 0;
+        for (int i = 0; i < s.length() && n < target.length(); ) {
+            char ch = s.charAt(i);
+            if (ch != '<') {
+                if (target.charAt(n) != ch)
+                    return false;
+                n++;
+                i++;
+                continue;
+            }
+            int j = s.indexOf('>', i + 1);
+            if (j < 0)
+                return false;
+            String tagLower = s.substring(i + 1, j).toLowerCase(Locale.ROOT);
+            if (tagLower.equals("lt") || tagLower.equals("gt")) {
+                if (target.charAt(n) != (tagLower.equals("lt") ? '<' : '>'))
+                    return false;
+                n++;
+            } else if (tagLower.startsWith("img")) {
+                // mirror parseRich: malformed img tags render literally and fail the match
+                try {
+                    Integer.parseInt(tagLower.substring(tagLower.contains("=") ? 4 : 3));
+                } catch (Exception ignored) {
+                    return false;
+                }
+            } else if (!tagLower.startsWith("col") && !tagLower.equals("/col") && !tagLower.equals("br")) {
+                return false;
+            }
+            i = j + 1;
+        }
+        return n == target.length();
     }
 
     private List<VisualLine> wrapRichLine(RichLine rl, FontMetrics fm, int maxWidth)
@@ -764,7 +837,7 @@ public class MessageContainer extends Overlay
                             fit = Math.max(1, fitCharsForWidth(fm, word, start, maxWidth));
                         }
                         String part = word.substring(start, start + fit);
-                        cur.getSegs().add(new TextSegment(part, s.getColor()));
+                        cur.getSegs().add(copyRun(s, part));
                         curW += fm.stringWidth(part);
                         start += fit;
 
@@ -781,7 +854,7 @@ public class MessageContainer extends Overlay
                         curW = 0;
                     }
                     if (!word.isEmpty()) {
-                        cur.getSegs().add(new TextSegment(word, s.getColor()));
+                        cur.getSegs().add(copyRun(s, word));
                         curW += wordW;
                     }
                 }
@@ -793,7 +866,7 @@ public class MessageContainer extends Overlay
                         cur = new VisualLine();
                         curW = 0;
                     }
-                    cur.getSegs().add(new TextSegment(space, s.getColor()));
+                    cur.getSegs().add(copyRun(s, space));
                     curW += spW;
                 }
 
@@ -804,6 +877,13 @@ public class MessageContainer extends Overlay
         if (!cur.getSegs().isEmpty())
             out.add(cur);
         return out;
+    }
+
+    /** Copies a wrapped text run, preserving SenderSegment type so render-time recolor survives wrapping. */
+    private static TextSegment copyRun(TextSegment src, String text) {
+        return src instanceof SenderSegment
+            ? new SenderSegment(text, src.getColor())
+            : new TextSegment(text, src.getColor());
     }
 
     private int fitCharsForWidth(FontMetrics fm, String s, int start, int remainingWidth) {

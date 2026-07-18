@@ -186,6 +186,12 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 				if (peekColor.getAlpha() > 0) return peekColor;
 				return mainConfig.featureRedesign_TypePrefixColor();
 			}
+			@Override public Color getNameColor() {
+				// Peek color -> Modern Design color -> transparent (line color fallback)
+				Color peekColor = mainConfig.featurePeek_NameColor();
+				if (peekColor.getAlpha() > 0) return peekColor;
+				return mainConfig.featureRedesign_NameColor();
+			}
 		};
 	}
 
