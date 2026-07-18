@@ -1263,7 +1263,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigItem(
         keyName = Keys.featureToggle_OpenOnTypedKeys,
         name = "Open Chat On / : !",
-        description = "Open the chat with the pressed character pre-typed in the input box when /, : or ! is pressed while the chat is hidden",
+        description = "Open the chat with the pressed character pre-typed in the input box when /, : or ! is pressed while the chat is hidden or unfocused",
         position = 2,
         section = toggleChatSection
     )

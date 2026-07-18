@@ -3,6 +3,7 @@ package com.modernchat.feature;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.common.WidgetBucket;
+import com.modernchat.compat.remapper.KeyRemappingService;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.event.DialogOptionsClosedEvent;
 import com.modernchat.event.FeatureStartedEvent;
@@ -13,6 +14,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
@@ -54,6 +56,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	private static final int DEFER_HIDE_DELAY_TICKS = 0;   // initial wait before first check
 	private static final int DEFER_HIDE_TIMEOUT_TICKS = 5; // give up if input never clears
+	private static final int PENDING_OPEN_TIMEOUT_TICKS = 2; // safety: drop a pending open that never ran
 	public static Rectangle LAST_CHAT_BOUNDS = null;
 
 	@Inject private Client client;
@@ -62,6 +65,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	@Inject private MouseManager mouseManager;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
+	@Inject private KeyRemappingService keyRemappingService;
 
 	private boolean loggedIn = false;
 
@@ -69,6 +73,16 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 	private boolean deferredHideRequested = false;
 	private int deferDelayTicksLeft = 0;
 	private int deferTimeoutTicksLeft = 0;
+
+	// Pending-open state: set on the AWT thread when a typed trigger char is
+	// consumed, cleared on the client thread once the deferred show() runs (or
+	// aborts/expires). While set, keyTyped consumes and buffers every printable
+	// keystroke so none leak to the client in the consume-then-invoke gap.
+	// pendingOpenSeed guards all pending-open fields; pendingOpen is volatile
+	// so the AWT fast path can check it without locking.
+	private final StringBuilder pendingOpenSeed = new StringBuilder();
+	private volatile boolean pendingOpen = false;
+	private int pendingOpenTimeoutTicks = 0;
 
 	@Inject
 	public ToggleChatFeature(ModernChatConfig config, EventBus eventBus) {
@@ -110,6 +124,10 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 		keyManager.unregisterKeyListener(this);
 
+		// Never leave keystroke consumption armed; this also cancels any open
+		// still queued on the client thread (the invoke re-checks pendingOpen).
+		endPendingOpen();
+
 		clientThread.invoke(() -> setHidden(false));
 	}
 
@@ -135,11 +153,23 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	@Override
 	public void keyTyped(KeyEvent e) {
-		if (e.isConsumed() || !config.featureToggle_OpenOnTypedKeys())
+		if (e.isConsumed())
 			return;
 
 		char ch = e.getKeyChar();
+
+		// A deferred open is already queued on the client thread; buffer the
+		// keystroke so it can't leak to the client before the input takes focus.
+		if (pendingOpen) {
+			bufferPendingKeystroke(e, ch);
+			return;
+		}
+
+		// Cheap char test first, before any config lookup
 		if (ch != '/' && ch != ':' && ch != '!')
+			return;
+
+		if (!config.featureToggle_OpenOnTypedKeys())
 			return;
 
 		// Modern chat only - KeyRemapping's slash-unlock owns the legacy path
@@ -154,16 +184,105 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		if (chatProxy.isSystemWidgetActive())
 			return;
 
+		// Another widget owns keyboard input (world map search, etc.). This is the
+		// AWT-safe part of KeyRemappingService.chatboxFocused(); the widget-dependent
+		// checks are re-run on the client thread in canOpenChatCT() below.
+		if (client.getFocusedInputFieldWidget() != null)
+			return;
+
 		// Consume so the client never sees the char; it is seeded below instead.
 		e.consume();
 
+		beginPendingOpen(ch);
+
 		clientThread.invoke(() -> {
-			if (ClientUtil.isSystemWidgetActive(client))
+			try {
+				// Skip if the pending open was cancelled (shutdown/timeout) meanwhile,
+				// and re-check widget state on the client thread before showing.
+				if (pendingOpen && canOpenChatCT()) {
+					show();
+					flushPendingOpenCT();
+				}
+			} finally {
+				// Always clear, even if the open aborted or threw, so keyTyped
+				// can't keep consuming keystrokes. On abort the seed is dropped.
+				endPendingOpen();
+			}
+		});
+	}
+
+	/**
+	 * While an open is pending, consume printable keystrokes and append them to
+	 * the seed buffer so they arrive in the chat input instead of the client.
+	 */
+	private void bufferPendingKeystroke(KeyEvent e, char ch) {
+		if (ch == KeyEvent.CHAR_UNDEFINED || Character.isISOControl(ch))
+			return; // let non-printable keys through untouched
+
+		synchronized (pendingOpenSeed) {
+			if (!pendingOpen)
 				return;
 
-			show();
-			chatProxy.setInputText(chatProxy.getInputText() + ch);
-		});
+			pendingOpenSeed.append(ch);
+		}
+		e.consume();
+	}
+
+	private void beginPendingOpen(char ch) {
+		synchronized (pendingOpenSeed) {
+			pendingOpenSeed.setLength(0);
+			pendingOpenSeed.append(ch);
+			pendingOpenTimeoutTicks = PENDING_OPEN_TIMEOUT_TICKS;
+			pendingOpen = true;
+		}
+
+		// Notify the key remapping compat synchronously (still on AWT) so camera
+		// or F-key remapping can't remap keystrokes typed in the gap - mirrors
+		// how KeyRemappingKeyListener flips typing on AWT for VK_SLASH.
+		keyRemappingService.setChatOpenPending(true);
+	}
+
+	/**
+	 * MUST be on client thread: seeds the buffered keystrokes into the chat input
+	 * and clears the pending-open state. Runs under the seed lock so a keystroke
+	 * is either buffered before the splice or handled by the now-focused input.
+	 */
+	private void flushPendingOpenCT() {
+		synchronized (pendingOpenSeed) {
+			if (pendingOpen && pendingOpenSeed.length() > 0)
+				chatProxy.setInputText(chatProxy.getInputText() + pendingOpenSeed);
+
+			pendingOpenSeed.setLength(0);
+			pendingOpenTimeoutTicks = 0;
+			pendingOpen = false;
+		}
+		keyRemappingService.setChatOpenPending(false);
+	}
+
+	/** Clears the pending-open state and drops any buffered seed. Idempotent. */
+	private void endPendingOpen() {
+		synchronized (pendingOpenSeed) {
+			pendingOpenSeed.setLength(0);
+			pendingOpenTimeoutTicks = 0;
+			pendingOpen = false;
+		}
+		keyRemappingService.setChatOpenPending(false);
+	}
+
+	/**
+	 * MUST be on client thread: widget-dependent re-check that nothing else owns
+	 * keyboard input before opening chat. Mirrors the guards KeyRemappingService
+	 * uses in chatboxFocused() and isDialogOpen().
+	 */
+	private boolean canOpenChatCT() {
+		if (ClientUtil.isSystemWidgetActive(client))
+			return false;
+
+		if (client.getFocusedInputFieldWidget() != null)
+			return false;
+
+		// Bank pin keypad visible - don't open over the Keyboard Bankpin feature
+		return ClientUtil.isHidden(client, InterfaceID.BankpinKeypad.UNIVERSE);
 	}
 
 	@Override
@@ -263,7 +382,28 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	@Subscribe
 	public void onGameTick(GameTick tick) {
+		expirePendingOpen();
 		handleDeferredHide();
+	}
+
+	/**
+	 * Safety net: if the queued open never ran (client stall, shutdown race),
+	 * stop consuming keystrokes after a couple of game ticks.
+	 */
+	private void expirePendingOpen() {
+		if (!pendingOpen)
+			return;
+
+		synchronized (pendingOpenSeed) {
+			if (!pendingOpen)
+				return;
+
+			if (--pendingOpenTimeoutTicks > 0)
+				return;
+		}
+
+		log.debug("Pending chat open never completed, dropping buffered keystrokes");
+		endPendingOpen();
 	}
 
 	private boolean handleDeferredHide() {
