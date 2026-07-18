@@ -10,6 +10,11 @@ import net.runelite.client.events.ChatboxInput;
 public class WhisperChatCommand extends AbstractChatCommand {
 
     @Override
+    public boolean isEnabled(CommandsChatConfig config) {
+        return config.featureCommands_WhisperEnabled();
+    }
+
+    @Override
     public void handleInputOrSubmit(String[] args, ChatboxInput ev) {
         CommandsChatConfig config = feature.getConfig();
         if (!config.featureCommands_WhisperEnabled())

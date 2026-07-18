@@ -940,6 +940,10 @@ public class MessageContainer extends Overlay
         return getColor(chatMode);
     }
 
+    public @Nullable Color getTextColor(ChatMode mode) {
+        return getColor(mode);
+    }
+
     public int fadeDelaySeconds() {
         return config.getFadeDelay();
     }

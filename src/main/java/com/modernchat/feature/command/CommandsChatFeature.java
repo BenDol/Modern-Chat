@@ -24,9 +24,9 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Singleton
@@ -49,6 +49,8 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         void startUp(CommandsChatFeature feature);
         void shutDown(CommandsChatFeature feature);
 
+        default boolean isEnabled(CommandsChatConfig config) { return true; }
+
         default void handleInput(String[] args) {}
         default void handleSubmit(String[] args, ChatboxInput ev) {}
         default void handleInputOrSubmit(String[] args, ChatboxInput ev) {}
@@ -64,11 +66,12 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
     @Inject @Getter private PrivateChatService privateChatService;
     @Inject @Getter private ChatProxy chatProxy;
 
+    // Written from the client thread and the AWT thread (channel prefix sends)
     @Getter @Setter
-    private String lastChatInput;
+    private volatile String lastChatInput;
 
-    // "command" -> handler(args)
-    private final Map<String, ChatCommandHandler> commandHandlers = new HashMap<>();
+    // "command" -> handler(args); read from the AWT thread via isCommandEnabled
+    private final Map<String, ChatCommandHandler> commandHandlers = new ConcurrentHashMap<>();
 
     @Inject
     public CommandsChatFeature(ModernChatConfig rootConfig, EventBus eventBus) {
@@ -256,8 +259,12 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         return parts;
     }
 
-    public boolean isCommand(String cmd) {
+    /** True when the text resolves to a command whose handler is currently enabled. */
+    public boolean isCommandEnabled(String cmd) {
+        if (!isEnabled())
+            return false;
+
         Pair<ChatCommandHandler, String[]> handler = getCommandHandler(cmd);
-        return handler != null && handler.getLeft() != null;
+        return handler != null && handler.getLeft() != null && handler.getLeft().isEnabled(config);
     }
 }

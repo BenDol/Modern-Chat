@@ -27,6 +27,7 @@ import com.modernchat.event.DialogOptionsOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.event.NavigateHistoryEvent;
 import com.modernchat.event.SetPeekSourceEvent;
+import com.modernchat.event.SubmitHistoryEvent;
 import com.modernchat.event.TabChangeEvent;
 import com.modernchat.event.TabClosedEvent;
 import com.modernchat.service.FilterService;
@@ -277,6 +278,7 @@ public class ChatOverlay extends OverlayPanel
         defaultTabNames.put(ChatMode.FRIENDS_CHAT, "Friends Chat");
         defaultTabNames.put(ChatMode.CLAN_MAIN, "Clan");
         defaultTabNames.put(ChatMode.CLAN_GUEST, "Clan Guest");
+        defaultTabNames.put(ChatMode.CLAN_GIM, "Group");
 
         eventBus.register(this);
 
@@ -1392,6 +1394,13 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public Color getInputPrefixColor() {
+        ChatMode override = getActiveInputModeOverride();
+        if (override != null && messageContainer != null) {
+            Color overrideColor = messageContainer.getTextColor(override);
+            if (overrideColor != null)
+                return overrideColor;
+        }
+
         Color prefixColor = messageContainer != null ? messageContainer.getTextColor() : null;
         return prefixColor != null ? prefixColor : config.getInputPrefixColor();
     }
@@ -1775,6 +1784,12 @@ public class ChatOverlay extends OverlayPanel
     private String getPlayerPrefix() {
         Player lp = client.getLocalPlayer();
         String name = lp != null && lp.getName() != null ? Text.removeTags(lp.getName()) : "Player";
+
+        // Surface a sticky channel override that has no tab to reflect it
+        ChatMode override = getActiveInputModeOverride();
+        if (override != null)
+            return "[" + defaultTabNames.getOrDefault(override, override.name()) + "] " + name + ": ";
+
         return name + ": ";
     }
 
@@ -1919,12 +1934,13 @@ public class ChatOverlay extends OverlayPanel
         if (text.isEmpty() || text.charAt(0) != '/')
             return false;
 
-        // Registered chat commands (/w, /r, /pm, /g, ...) keep their existing routing
+        // Registered chat commands (/w, /r, /pm, /g, ...) keep their existing routing,
+        // but only while their handler is enabled; otherwise the prefix path applies
         CommandsChatFeature commandsChatFeature = commandsChatFeatureProvider.get();
-        if (commandsChatFeature.isCommand(text))
+        if (commandsChatFeature.isCommandEnabled(text))
             return false;
 
-        ChatUtil.ChannelPrefix prefix = ChatUtil.parseChannelPrefix(text);
+        ChatUtil.ChannelPrefix prefix = ChatUtil.parseChannelPrefix(text, config.isChannelPrefixesExtended());
         if (prefix == null)
             return false;
 
@@ -1933,6 +1949,9 @@ public class ChatOverlay extends OverlayPanel
             // Keep the last typed input slash-free so CommandsChatFeature does not
             // re-prefix the stripped message when the send fires ChatboxInput
             commandsChatFeature.setLastChatInput(message);
+            // Record the typed form (with prefix) so history recall replays the
+            // routing; the ChatboxInput echo of the stripped message is skipped
+            eventBus.post(new SubmitHistoryEvent(text, message));
             messageService.sendMessage(message, prefix.getMode(), null);
         }
 
@@ -1978,10 +1997,15 @@ public class ChatOverlay extends OverlayPanel
         }
     }
 
-    public ChatMode getCurrentMode() {
-        // Sticky channel prefix targeting a channel with no tab; private tabs keep PM routing
+    // Sticky channel prefix targeting a channel with no tab; private tabs keep PM routing
+    private @Nullable ChatMode getActiveInputModeOverride() {
         ChatMode override = inputModeOverride;
-        if (override != null && (activeTab == null || !activeTab.isPrivate()))
+        return override != null && (activeTab == null || !activeTab.isPrivate()) ? override : null;
+    }
+
+    public ChatMode getCurrentMode() {
+        ChatMode override = getActiveInputModeOverride();
+        if (override != null)
             return override;
 
         // Clan modes (CLAN_MAIN/GUEST/GIM) share a single MessageContainer, so the

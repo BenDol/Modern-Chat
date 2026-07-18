@@ -83,6 +83,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         boolean featureRedesign_TradeTabEnabled();
         boolean featureRedesign_ShowTabIcons();
         boolean featureRedesign_ChannelPrefixes();
+        boolean featureRedesign_ChannelPrefixesExtended();
         ChatMode featureRedesign_DefaultChatMode();
         FontStyle featureRedesign_FontStyle();
         int featureRedesign_Padding();
@@ -194,6 +195,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean featureRedesign_TradeTabEnabled() { return cfg.featureRedesign_TradeTabEnabled(); }
             @Override public boolean featureRedesign_ShowTabIcons() { return cfg.featureRedesign_ShowTabIcons(); }
             @Override public boolean featureRedesign_ChannelPrefixes() { return cfg.featureRedesign_ChannelPrefixes(); }
+            @Override public boolean featureRedesign_ChannelPrefixesExtended() { return cfg.featureRedesign_ChannelPrefixesExtended(); }
             @Override public FontStyle featureRedesign_FontStyle() { return cfg.featureRedesign_FontStyle(); }
             @Override public int featureRedesign_Padding() { return cfg.featureRedesign_Padding(); }
             @Override public int featureRedesign_InputFontSize() { return cfg.featureRedesign_InputFontSize(); }
@@ -277,6 +279,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean isTradeTabEnabled() { return cfg.featureRedesign_TradeTabEnabled(); }
             @Override public boolean isShowTabIcons() { return cfg.featureRedesign_ShowTabIcons(); }
             @Override public boolean isChannelPrefixesEnabled() { return cfg.featureRedesign_ChannelPrefixes(); }
+            @Override public boolean isChannelPrefixesExtended() { return cfg.featureRedesign_ChannelPrefixesExtended(); }
             @Override public int getInputFontSize() { return cfg.featureRedesign_InputFontSize(); }
             @Override public Color getBackdropColor() { return cfg.featureRedesign_BackdropColor(); }
             @Override public Color getBorderColor() { return cfg.featureRedesign_BorderColor(); }

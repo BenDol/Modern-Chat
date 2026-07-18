@@ -327,6 +327,19 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return true;
     }
 
+    @ConfigItem(
+        keyName = Keys.featureRedesign_ChannelPrefixesExtended,
+        name = "Extended Channel Prefixes",
+        description = "Also accept extra word aliases (/s, /say, /public, /cc, /fc, /clan, /guest, /gim, /group). " +
+                      "These differ from vanilla routing: the vanilla client sends them verbatim to the friends channel",
+        position = 18,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ChannelPrefixesExtended() {
+        return false;
+    }
+
     /* ------------ Modern Chat Style ------------ */
 
     @ConfigItem(
