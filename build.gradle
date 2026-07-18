@@ -60,6 +60,17 @@ tasks.register('shadowJar', Jar) {
 	archiveFileName.set("${rootProject.name}-${project.version}-all.jar")
 }
 
+tasks.register('runClient', JavaExec) {
+	group = 'runelite'
+	description = 'Launch RuneLite with Modern Chat loaded (same as the IntelliJ ExamplePluginTest run configuration)'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.example.ExamplePluginTest'
+	enableAssertions = true
+	if (project.hasProperty('clientArgs')) {
+		args project.property('clientArgs').toString().split('\\s+')
+	}
+}
+
 if (file('dev.gradle').exists()) {
 	apply from: 'dev.gradle'
 }
