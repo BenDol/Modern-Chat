@@ -69,6 +69,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		int featurePeek_FontSize();
 		int featurePeek_TextShadow();
 		int featurePeek_TextOutline();
+		int featurePeek_LineSpacing();
 		int featurePeek_Padding();
 		int featurePeek_OffsetX();
 		int featurePeek_OffsetY();
@@ -115,6 +116,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public int featurePeek_FontSize() { return config.featurePeek_FontSize(); }
 			@Override public int featurePeek_TextShadow() { return config.featurePeek_TextShadow(); }
 			@Override public int featurePeek_TextOutline() { return config.featurePeek_TextOutline(); }
+			@Override public int featurePeek_LineSpacing() { return config.featurePeek_LineSpacing(); }
 			@Override public int featurePeek_Padding() { return config.featurePeek_Padding(); }
 			@Override public int featurePeek_OffsetX() { return config.featurePeek_OffsetX(); }
 			@Override public int featurePeek_OffsetY() { return config.featurePeek_OffsetY(); }
@@ -155,7 +157,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Point getOffset() { return new Point(cfg.featurePeek_OffsetX(), cfg.featurePeek_OffsetY()); }
 			@Override public Margin getMargin() { return new Margin(0, cfg.featurePeek_MarginBottom(), 0, cfg.featurePeek_MarginRight()); }
 			@Override public Padding getPadding() { return new Padding(cfg.featurePeek_Padding()); }
-			@Override public int getLineSpacing() { return super.getLineSpacing(); }
+			@Override public int getLineSpacing() { return cfg.featurePeek_LineSpacing(); }
 			@Override public int getScrollStep() { return 0; }
 			@Override public int getScrollbarWidth() { return 0; }
 			@Override public FontStyle getLineFontStyle() { return cfg.featurePeek_FontStyle(); }
