@@ -238,6 +238,13 @@ public class ChatUtil
      * ChatMessage name - we have to look the rank up from the relevant channel.
      */
     public static int getRankIconId(ChatMessageType type, @Nullable String senderName, Client client, ChatIconManager chatIconManager) {
+        // Only friends chat and clan messages carry rank icons - bail out on cheap
+        // enum compares before doing any name normalization work
+        boolean friendsChat = isFriendsChatMessage(type);
+        boolean clanChat = isClanMessage(type);
+        if (!friendsChat && !clanChat)
+            return -1;
+
         if (StringUtil.isNullOrEmpty(senderName))
             return -1;
 
@@ -246,7 +253,7 @@ public class ChatUtil
         if (cleanName.isEmpty())
             return -1;
 
-        if (isFriendsChatMessage(type)) {
+        if (friendsChat) {
             FriendsChatManager friendsChatManager = client.getFriendsChatManager();
             if (friendsChatManager == null)
                 return -1;
@@ -259,40 +266,36 @@ public class ChatUtil
             return chatIconManager.getIconNumber(rank);
         }
 
-        if (isClanMessage(type)) {
-            ClanChannel channel;
-            ClanSettings settings;
-            switch (toChatMode(type)) {
-                case CLAN_MAIN:
-                    channel = client.getClanChannel();
-                    settings = client.getClanSettings();
-                    break;
-                case CLAN_GUEST:
-                    channel = client.getGuestClanChannel();
-                    settings = client.getGuestClanSettings();
-                    break;
-                case CLAN_GIM:
-                    channel = client.getClanChannel(ClanID.GROUP_IRONMAN);
-                    settings = client.getClanSettings(ClanID.GROUP_IRONMAN);
-                    break;
-                default:
-                    return -1;
-            }
-            if (channel == null || settings == null)
+        ClanChannel channel;
+        ClanSettings settings;
+        switch (toChatMode(type)) {
+            case CLAN_MAIN:
+                channel = client.getClanChannel();
+                settings = client.getClanSettings();
+                break;
+            case CLAN_GUEST:
+                channel = client.getGuestClanChannel();
+                settings = client.getGuestClanSettings();
+                break;
+            case CLAN_GIM:
+                channel = client.getClanChannel(ClanID.GROUP_IRONMAN);
+                settings = client.getClanSettings(ClanID.GROUP_IRONMAN);
+                break;
+            default:
                 return -1;
-            ClanChannelMember member = channel.findMember(cleanName);
-            if (member == null)
-                return -1;
-            ClanRank rank = member.getRank();
-            if (rank == null)
-                return -1;
-            ClanTitle title = settings.titleForRank(rank);
-            if (title == null)
-                return -1;
-            return chatIconManager.getIconNumber(title);
         }
-
-        return -1;
+        if (channel == null || settings == null)
+            return -1;
+        ClanChannelMember member = channel.findMember(cleanName);
+        if (member == null)
+            return -1;
+        ClanRank rank = member.getRank();
+        if (rank == null)
+            return -1;
+        ClanTitle title = settings.titleForRank(rank);
+        if (title == null)
+            return -1;
+        return chatIconManager.getIconNumber(title);
     }
 
     public static int getModImageId(String msg) {
