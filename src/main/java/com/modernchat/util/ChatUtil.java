@@ -246,6 +246,13 @@ public class ChatUtil
     /** Pattern to detect ChatFilterPlugin's collapse suffix like " (2)", " (15)" etc. */
     private static final Pattern COLLAPSE_PATTERN = Pattern.compile(" \\(\\d+\\)$");
 
+    /** Returns the trailing collapse suffix (e.g. " (2)") of the given text, or null when absent. */
+    public static @Nullable String extractCollapseSuffix(@Nullable String s) {
+        if (s == null || s.isEmpty()) return null;
+        Matcher m = COLLAPSE_PATTERN.matcher(s);
+        return m.find() ? m.group() : null;
+    }
+
     /** Message types that ChatFilterPlugin considers collapsible (game message types) */
     private static final Set<ChatMessageType> COLLAPSIBLE_MESSAGETYPES = EnumSet.of(
         ChatMessageType.ENGINE,

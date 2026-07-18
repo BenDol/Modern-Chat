@@ -105,6 +105,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -113,6 +114,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.IntFunction;
 
 @Slf4j
@@ -156,6 +158,16 @@ public class ChatOverlay extends OverlayPanel
     @Getter @Nullable private MessageContainer messageContainer = null;
     @Getter @Nullable private MessageContainer allContainer = null;
     @Getter private EnumSet<ChatMode> availableChatModes = EnumSet.noneOf(ChatMode.class);
+
+    // Deduped snapshot of this overlay's containers for refresh sweeps; invalidated
+    // (set to null) whenever containers are added or removed
+    private volatile List<MessageContainer> sweepContainers = null;
+    // Containers owned by other features (e.g. the peek overlay) that join our sweep
+    private final List<MessageContainer> externalRefreshContainers = new CopyOnWriteArrayList<>();
+    // Client cycle of the last full / live-only sweep; both features sweep on the same
+    // events, so repeat calls within one cycle are deduped
+    private int lastFullSweepCycle = -1;
+    private int lastLiveSweepCycle = -1;
 
     // All tab constants (replaces Public, receives all messages)
     private static final String ALL_TAB_KEY = "ALL";
@@ -316,6 +328,8 @@ public class ChatOverlay extends OverlayPanel
         tradeContainer.setChromeEnabled(true);
         tradeContainer.startUp(containerConfig, ChatMode.PUBLIC);
 
+        sweepContainers = null;
+
         refreshTabs();
 
         ChatProxy chatProxy = chatProxyProvider.get();
@@ -353,6 +367,7 @@ public class ChatOverlay extends OverlayPanel
             tradeContainer.shutDown();
             tradeContainer = null;
         }
+        sweepContainers = null;
 
         lastViewport = null;
         commandMode = false;
@@ -1233,6 +1248,7 @@ public class ChatOverlay extends OverlayPanel
                 MessageContainer container = containers.remove(containerKey);
                 if (container != null) {
                     container.shutDown();
+                    sweepContainers = null;
                 } else {
                     log.warn("Attempted to remove non-existing container for key: {}", containerKey);
                 }
@@ -2080,34 +2096,90 @@ public class ChatOverlay extends OverlayPanel
 
     /**
      * Re-check tracked MessageNodes across all containers and rebuild lines other plugins
-     * edited after capture (e.g. Chat Commands, issue #20). Node lookups are memoized so the
-     * chat line buffers are scanned at most once per distinct node id per sweep.
+     * edited after capture (e.g. Chat Commands, issue #20). All containers - including
+     * externally registered ones such as the peek overlay - share one lazily built
+     * id -> MessageNode index per sweep. Both the redesign and peek features call this for
+     * the same events, so repeat calls within one client cycle are no-ops; a node edit
+     * landing later in the same cycle is caught by the next BUILD_CHATBOX sweep.
      */
     public void refreshTrackedLines(boolean liveOnly) {
-        Map<Integer, MessageNode> nodeCache = new HashMap<>();
-        IntFunction<MessageNode> lookup = id -> {
-            Integer key = id;
-            if (nodeCache.containsKey(key))
-                return nodeCache.get(key);
-            MessageNode node = ClientUtil.findMessageNode(client, id);
-            nodeCache.put(key, node);
-            return node;
+        int cycle = client.getGameCycle();
+        if (cycle == lastFullSweepCycle || (liveOnly && cycle == lastLiveSweepCycle))
+            return;
+        if (liveOnly)
+            lastLiveSweepCycle = cycle;
+        else
+            lastFullSweepCycle = cycle;
+
+        // Own containers are not rendered while hidden or while legacy chat is showing;
+        // they catch up on the first sweep after becoming visible again
+        List<MessageContainer> own = hidden || legacyShowing ? List.of() : getSweepContainers();
+
+        boolean anyTracked = false;
+        for (MessageContainer container : own) {
+            if (container.hasTrackedLines(liveOnly)) {
+                anyTracked = true;
+                break;
+            }
+        }
+        if (!anyTracked) {
+            for (MessageContainer container : externalRefreshContainers) {
+                if (container.hasTrackedLines(liveOnly)) {
+                    anyTracked = true;
+                    break;
+                }
+            }
+        }
+        if (!anyTracked)
+            return;
+
+        // One id -> node index per sweep, built only when a tracked line needs a lookup
+        IntFunction<MessageNode> lookup = new IntFunction<MessageNode>() {
+            private Map<Integer, MessageNode> index;
+
+            @Override
+            public MessageNode apply(int id) {
+                if (index == null)
+                    index = ClientUtil.buildMessageNodeIndex(client);
+                return index.get(id);
+            }
         };
 
-        // De-dupe: the clan modes share one container instance
-        Set<MessageContainer> containers = new HashSet<>();
-        if (allContainer != null)
-            containers.add(allContainer);
-        if (gameContainer != null)
-            containers.add(gameContainer);
-        if (tradeContainer != null)
-            containers.add(tradeContainer);
-        containers.addAll(messageContainers.values());
-        containers.addAll(privateContainers.values());
-
-        for (MessageContainer container : containers) {
+        for (MessageContainer container : own) {
             container.refreshTrackedLines(liveOnly, lookup);
         }
+        for (MessageContainer container : externalRefreshContainers) {
+            container.refreshTrackedLines(liveOnly, lookup);
+        }
+    }
+
+    /** Registers a container owned by another feature to be included in refresh sweeps. */
+    public void registerRefreshContainer(MessageContainer container) {
+        if (container != null && !externalRefreshContainers.contains(container))
+            externalRefreshContainers.add(container);
+    }
+
+    public void unregisterRefreshContainer(MessageContainer container) {
+        externalRefreshContainers.remove(container);
+    }
+
+    private List<MessageContainer> getSweepContainers() {
+        List<MessageContainer> cached = sweepContainers;
+        if (cached == null) {
+            // De-dupe: the clan modes share one container instance
+            Set<MessageContainer> set = new HashSet<>();
+            if (allContainer != null)
+                set.add(allContainer);
+            if (gameContainer != null)
+                set.add(gameContainer);
+            if (tradeContainer != null)
+                set.add(tradeContainer);
+            set.addAll(messageContainers.values());
+            set.addAll(privateContainers.values());
+            cached = new ArrayList<>(set);
+            sweepContainers = cached;
+        }
+        return cached;
     }
 
     public boolean isPrivateTabOpen(String targetName) {
@@ -2187,6 +2259,7 @@ public class ChatOverlay extends OverlayPanel
             container.setPrivate(true);
             container.startUp(config.getMessageContainerConfig(), ChatMode.PRIVATE);
             privateContainers.put(targetName, container);
+            sweepContainers = null;
 
             // Copy existing private messages for this target from the All container
             if (allContainer != null) {

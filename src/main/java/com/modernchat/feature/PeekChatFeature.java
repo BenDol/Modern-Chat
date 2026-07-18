@@ -204,11 +204,16 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		chatPeekOverlay.startUp(partitionConfig(config), ChatMode.PUBLIC, false);
 
 		overlayManager.add(chatPeekOverlay);
+
+		// Join the shared refresh sweep so both features reuse one node index per event
+		chatOverlay.registerRefreshContainer(chatPeekOverlay);
 	}
 
 	@Override
 	public void shutDown(boolean fullShutdown) {
 		super.shutDown(fullShutdown);
+
+		chatOverlay.unregisterRefreshContainer(chatPeekOverlay);
 
 		chatPeekOverlay.shutDown();
 
@@ -420,16 +425,17 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Subscribe
 	public void onScriptPostFired(ScriptPostFired e) {
-		// Rebuild peeked lines whose MessageNodes were edited by other plugins (issue #20)
+		// Rebuild peeked lines whose MessageNodes were edited by other plugins (issue #20);
+		// the shared sweep dedupes when the redesign feature already ran it this cycle
 		if (e.getScriptId() == ScriptID.BUILD_CHATBOX) {
-			chatPeekOverlay.refreshTrackedLines(false);
+			chatOverlay.refreshTrackedLines(false);
 		}
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick e) {
 		// Only re-checks lines matching a live-updating pattern (system update timer, issue #14)
-		chatPeekOverlay.refreshTrackedLines(true);
+		chatOverlay.refreshTrackedLines(true);
 	}
 
 	@Subscribe

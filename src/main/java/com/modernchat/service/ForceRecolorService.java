@@ -50,9 +50,15 @@ public class ForceRecolorService implements ChatService {
     private volatile boolean allMessageTypes = false;
     private volatile String recolorStyle = "NONE";
 
+    // Cached game-message highlight colors from RuneLite's Chat Color plugin (textrecolor
+    // group, ChatColorConfig). Kept independent of the ForceRecolor plugin state.
+    private volatile Color opaqueGameMessageHighlight = null;
+    private volatile Color transparentGameMessageHighlight = null;
+
     @Override
     public void startUp() {
         eventBus.register(this);
+        refreshHighlightColors();
         checkPluginEnabled();
         if (pluginEnabled) {
             refreshConfig();
@@ -83,6 +89,10 @@ public class ForceRecolorService implements ChatService {
 
     @Subscribe
     public void onConfigChanged(ConfigChanged e) {
+        if (TEXTRECOLOR_GROUP.equals(e.getGroup())) {
+            refreshHighlightColors();
+        }
+
         // ForceRecolor reads the default group 0 color from the textrecolor group when
         // recolorStyle == CHAT_COLOR_CONFIG, so we have to refresh on either group changing.
         if (FORCERECOLOR_GROUP.equals(e.getGroup()) || TEXTRECOLOR_GROUP.equals(e.getGroup())) {
@@ -158,6 +168,23 @@ public class ForceRecolorService implements ChatService {
             return primary;
         }
         return isTransparentBackdrop ? opaqueColors.get(matchedGroup) : transparentColors.get(matchedGroup);
+    }
+
+    /**
+     * Returns the user's configured game-message highlight color from RuneLite's Chat Color
+     * plugin config, or null when unset (callers fall back to RuneLite's #EF1020 default).
+     */
+    public @Nullable Color getGameMessageHighlight(boolean transparent) {
+        return transparent ? transparentGameMessageHighlight : opaqueGameMessageHighlight;
+    }
+
+    private void refreshHighlightColors() {
+        // ChatColorConfig's group is "textrecolor"; ConfigManager only stores values the
+        // user changed, so these stay null while the RuneLite defaults are in effect
+        opaqueGameMessageHighlight =
+            configManager.getConfiguration(TEXTRECOLOR_GROUP, "opaqueGameMessageHighlight", Color.class);
+        transparentGameMessageHighlight =
+            configManager.getConfiguration(TEXTRECOLOR_GROUP, "transparentGameMessageHighlight", Color.class);
     }
 
     private void refreshConfig() {
