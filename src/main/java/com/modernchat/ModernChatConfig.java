@@ -1143,6 +1143,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return true;
     }
 
+    @ConfigItem(
+        keyName = Keys.general_UseChatColorsPlugin,
+        name = "Use Chat Colors Plugin",
+        description = "Use the Chat Colors plugin's colors for chat channels when available, instead of the colors below",
+        position = 7,
+        section = generalSection
+    )
+    @Override
+    default boolean general_UseChatColorsPlugin() {
+        return false;
+    }
+
     @Alpha
     @ConfigItem(
         keyName = Keys.general_PublicChatColor,
