@@ -114,6 +114,10 @@ public class ChatProxy
         return modernChat.isEnabled() ? modernChat.getInputText() : ClientUtil.getChatInputText(client);
     }
 
+    public boolean isInputFocused() {
+        return modernChat.isEnabled() && modernChat.isInputFocused();
+    }
+
     public void setHidden(boolean hidden) {
         if (modernChat.isEnabled()) {
             modernChat.setHidden(hidden);

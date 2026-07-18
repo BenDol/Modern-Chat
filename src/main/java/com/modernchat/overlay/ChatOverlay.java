@@ -167,7 +167,7 @@ public class ChatOverlay extends OverlayPanel
 
     // Input box state
     private final Rectangle inputBounds = new Rectangle();
-    private boolean inputFocused = false;
+    @Getter private boolean inputFocused = false;
     private final StringBuilder inputBuf = new StringBuilder();
     private int caret = 0;
     private int inputScrollPx = 0;

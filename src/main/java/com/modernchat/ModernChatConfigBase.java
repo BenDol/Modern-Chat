@@ -162,6 +162,7 @@ public interface ModernChatConfigBase extends
         String featureToggle_EscapeHides = "featureToggle_EscapeHides";
         String featureToggle_StartHidden = "featureToggle_StartHidden";
         String featureToggle_LockCameraWhenVisible = "featureToggle_LockCameraWhenVisible";
+        String featureToggle_OpenOnTypedKeys = "featureToggle_OpenOnTypedKeys";
 
         // Peek
         String featurePeek_Enabled = "featurePeek_Enabled";
@@ -345,6 +346,7 @@ public interface ModernChatConfigBase extends
         TOGGLE_ESCAPE_HIDES(Keys.featureToggle_EscapeHides, Kind.KEYBIND, ModernChatConfigBase::featureToggle_EscapeHides),
         TOGGLE_START_HIDDEN(Keys.featureToggle_StartHidden, Kind.BOOL, ModernChatConfigBase::featureToggle_StartHidden),
         TOGGLE_LOCK_CAMERA(Keys.featureToggle_LockCameraWhenVisible, Kind.BOOL, ModernChatConfigBase::featureToggle_LockCameraWhenVisible),
+        TOGGLE_OPEN_ON_TYPED_KEYS(Keys.featureToggle_OpenOnTypedKeys, Kind.BOOL, ModernChatConfigBase::featureToggle_OpenOnTypedKeys),
 
         // ---- Peek ----
         PEEK_ENABLED(Keys.featurePeek_Enabled, Kind.BOOL, ModernChatConfigBase::featurePeek_Enabled),
@@ -635,6 +637,7 @@ public interface ModernChatConfigBase extends
         @Override public Keybind featureToggle_EscapeHides() { return getKeybind(Keys.featureToggle_EscapeHides, DEFAULTS.featureToggle_EscapeHides()); }
         @Override public boolean featureToggle_StartHidden() { return getBool(Keys.featureToggle_StartHidden, DEFAULTS.featureToggle_StartHidden()); }
         @Override public boolean featureToggle_LockCameraWhenVisible() { return getBool(Keys.featureToggle_LockCameraWhenVisible, DEFAULTS.featureToggle_LockCameraWhenVisible()); }
+        @Override public boolean featureToggle_OpenOnTypedKeys() { return getBool(Keys.featureToggle_OpenOnTypedKeys, DEFAULTS.featureToggle_OpenOnTypedKeys()); }
 
         // Peek overlay
         @Override public boolean featurePeek_Enabled() { return getBool(Keys.featurePeek_Enabled, DEFAULTS.featurePeek_Enabled()); }

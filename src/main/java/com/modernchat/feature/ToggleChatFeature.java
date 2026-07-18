@@ -49,6 +49,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 		boolean featureToggle_StartHidden();
 		boolean featureToggle_AutoHideOnSend();
 		boolean featureToggle_LockCameraWhenVisible();
+		boolean featureToggle_OpenOnTypedKeys();
 	}
 
 	private static final int DEFER_HIDE_DELAY_TICKS = 0;   // initial wait before first check
@@ -83,6 +84,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			@Override public boolean featureToggle_StartHidden() { return config.featureToggle_StartHidden(); }
 			@Override public boolean featureToggle_AutoHideOnSend() { return config.featureToggle_AutoHideOnSend(); }
 			@Override public boolean featureToggle_LockCameraWhenVisible() { return config.featureToggle_LockCameraWhenVisible(); }
+			@Override public boolean featureToggle_OpenOnTypedKeys() { return config.featureToggle_OpenOnTypedKeys(); }
 		};
 	}
 
@@ -133,6 +135,35 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 
 	@Override
 	public void keyTyped(KeyEvent e) {
+		if (e.isConsumed() || !config.featureToggle_OpenOnTypedKeys())
+			return;
+
+		char ch = e.getKeyChar();
+		if (ch != '/' && ch != ':' && ch != '!')
+			return;
+
+		// Modern chat only - KeyRemapping's slash-unlock owns the legacy path
+		if (chatProxy.isLegacy() || chatProxy.isCommandMode())
+			return;
+
+		// Only seed when the input isn't already taking typed keys; the overlay's
+		// key listener runs before this one and consumes typed chars when focused.
+		if (!chatProxy.isHidden() && chatProxy.isInputFocused())
+			return;
+
+		if (chatProxy.isSystemWidgetActive())
+			return;
+
+		// Consume so the client never sees the char; it is seeded below instead.
+		e.consume();
+
+		clientThread.invoke(() -> {
+			if (ClientUtil.isSystemWidgetActive(client))
+				return;
+
+			show();
+			chatProxy.setInputText(chatProxy.getInputText() + ch);
+		});
 	}
 
 	@Override
