@@ -1755,9 +1755,14 @@ public class ChatOverlay extends OverlayPanel
     private String getPlayerPrefix() {
         // RSN Hider rewrites the legacy input widget but skips it while hidden,
         // so mirror its custom name here to avoid leaking the real name
-        String customRsn = rsnHiderService.getCustomRsn();
-        if (customRsn != null)
-            return customRsn + ": ";
+        String customRsnPrefix = rsnHiderService.getCustomRsnPrefix();
+        if (customRsnPrefix != null)
+            return customRsnPrefix;
+
+        // RSN Hider without a custom name substitutes a random alias we cannot
+        // read, so fall back to a neutral masked prefix instead of the real name
+        if (rsnHiderService.isPluginEnabled())
+            return "Player: ";
 
         Player lp = client.getLocalPlayer();
         String name = lp != null && lp.getName() != null ? Text.removeTags(lp.getName()) : "Player";

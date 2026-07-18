@@ -32,7 +32,7 @@ public class RsnHiderService implements ChatService {
     @Inject private PluginManager pluginManager;
 
     private volatile boolean pluginEnabled = false;
-    private volatile String customRsn = null;
+    private volatile String customRsnPrefix = null;
 
     @Override
     public void startUp() {
@@ -50,13 +50,20 @@ public class RsnHiderService implements ChatService {
     }
 
     /**
-     * Returns the custom RSN configured in RSN Hider, or null when RSN Hider is
-     * disabled or no custom name is set. When unset, RSN Hider substitutes a random
-     * name held in a private field we cannot access, so callers should fall back
-     * to the real name.
+     * Returns whether the RSN Hider plugin is currently enabled.
      */
-    public @Nullable String getCustomRsn() {
-        return pluginEnabled ? customRsn : null;
+    public boolean isPluginEnabled() {
+        return pluginEnabled;
+    }
+
+    /**
+     * Returns the ready-made input prefix ("name: ") built from the custom RSN
+     * configured in RSN Hider, or null when RSN Hider is disabled or no custom
+     * name is set. When unset, RSN Hider substitutes a random name held in a
+     * private field we cannot access, so callers should mask the real name.
+     */
+    public @Nullable String getCustomRsnPrefix() {
+        return pluginEnabled ? customRsnPrefix : null;
     }
 
     @Subscribe
@@ -96,13 +103,14 @@ public class RsnHiderService implements ChatService {
 
     private void refreshConfig() {
         String value = configManager.getConfiguration(RSNHIDER_GROUP, CUSTOM_RSN_KEY);
-        // RSN Hider only treats the exact empty string as "unset" (random name mode)
-        customRsn = value != null && !value.isEmpty() ? value : null;
-        log.debug("RSN Hider config refreshed: customRsn set={}", customRsn != null);
+        // RSN Hider only treats the exact empty string as "unset" (random name mode).
+        // Cache the ready-made prefix so callers avoid rebuilding it every frame.
+        customRsnPrefix = value != null && !value.isEmpty() ? value + ": " : null;
+        log.debug("RSN Hider config refreshed: customRsn set={}", customRsnPrefix != null);
     }
 
     private void clearState() {
         pluginEnabled = false;
-        customRsn = null;
+        customRsnPrefix = null;
     }
 }
