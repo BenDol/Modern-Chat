@@ -1709,7 +1709,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigItem(
         keyName = Keys.featurePeek_LineSpacing,
         name = "Message Spacing",
-        description = "Extra vertical space between messages in the peek overlay",
+        description = "Extra vertical space between lines in the peek overlay",
         position = 26,
         section = peekOverlaySection
     )
