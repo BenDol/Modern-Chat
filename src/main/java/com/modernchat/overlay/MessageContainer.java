@@ -53,6 +53,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
@@ -92,6 +93,10 @@ public class MessageContainer extends Overlay
     @Getter private volatile long fadeStartAtMs = Long.MAX_VALUE;
     @Getter private volatile boolean fading = false;
     @Getter private volatile long lastFadeResetMs = 0;
+    // Per-line fade: reusable per-row alpha scratch so steady-state frames allocate nothing
+    private float[] rowAlphas = new float[64];
+    // Per-line fade: when non-zero, pushRich stamps this fade clock base on incoming lines
+    protected long pendingFadeStartOverrideMs = 0;
 
     protected final Deque<RichLine> lines = new ArrayDeque<>();
     protected Font lineFont = null;
@@ -168,15 +173,8 @@ public class MessageContainer extends Overlay
         updateFadeAlpha();
 
         final boolean perLineFade = isFadePerLine();
-        final long now = System.currentTimeMillis();
-        float newestLineAlpha = 1f;
-        if (perLineFade) {
-            newestLineAlpha = maxLineFadeAlpha(now);
-            if (newestLineAlpha <= 0.01f)
-                return null; // every line fully faded; nothing to render
-        } else if (fadeAlpha <= 0.01f) {
+        if (!perLineFade && fadeAlpha <= 0.01f)
             return null; // fully faded; nothing to render
-        }
 
         Rectangle vp = boundsProvider.get();
         if (vp == null || vp.width <= 0 || vp.height <= 0)
@@ -207,9 +205,54 @@ public class MessageContainer extends Overlay
         final Composite oldComp = g.getComposite();
         g.setComposite(containerComposite);
         try {
+            // Font styles
+            Font font = getLineFont();
+            float fontSize = config.getLineFontSize();
+            if (fontSize > 0) font = font.deriveFont(fontSize);
+            g.setFont(font);
+            FontMetrics fm = g.getFontMetrics();
+            final int lineH = fm.getAscent() + fm.getDescent() + config.getLineSpacing();
+            lastLineHeight = Math.max(1, lineH);
+
+            // Per-line fade params hoisted so the single flatten pass below computes each
+            // visible line's alpha exactly once per frame
+            final long now = perLineFade ? System.currentTimeMillis() : 0L;
+            final long fadeDelayMs = perLineFade ? Math.max(0, fadeDelaySeconds() * 1000L) : 0L;
+            final int fadeDurMs = perLineFade ? Math.max(1, fadeDurationMs()) : 1;
+            float newestLineAlpha = 0f;
+
+            // Flatten wrapped lines (oldest to newest)
+            final List<VisualLine> all = new ArrayList<>(64);
+            for (RichLine rl : lines) {
+                if (!isLineVisible(rl)) {
+                    continue;
+                }
+
+                if (rl.getLineCache() == null) {
+                    rl.setLineCache(wrapRichLine(rl, fm, innerW));
+                }
+                final List<VisualLine> cache = rl.getLineCache();
+                if (cache != null && !cache.isEmpty()) {
+                    if (perLineFade) {
+                        final float lineAlpha = lineFadeAlpha(rl, now, fadeDelayMs, fadeDurMs);
+                        if (lineAlpha > newestLineAlpha)
+                            newestLineAlpha = lineAlpha;
+                        final int rowBase = all.size();
+                        ensureRowAlphaCapacity(rowBase + cache.size());
+                        for (int i = 0; i < cache.size(); i++)
+                            rowAlphas[rowBase + i] = lineAlpha;
+                    }
+                    all.addAll(cache);
+                }
+            }
+
+            // Every visible line fully faded; nothing to render (finally restores composite)
+            if (perLineFade && newestLineAlpha <= 0.01f)
+                return null;
+
             if (chromeEnabled) {
-                // Backdrop and border; in per-line mode they follow the newest line's fade
-                // so the box disappears along with the last visible line
+                // Backdrop and border; in per-line mode they follow the newest visible line's
+                // fade so the box disappears along with the last visible line
                 if (perLineFade)
                     g.setComposite(AlphaComposite.SrcOver.derive(Math.max(0f, Math.min(1f, containerAlpha * newestLineAlpha))));
 
@@ -221,46 +264,6 @@ public class MessageContainer extends Overlay
 
                 if (perLineFade)
                     g.setComposite(containerComposite);
-            }
-
-            // Font styles
-            Font font = getLineFont();
-            float fontSize = config.getLineFontSize();
-            if (fontSize > 0) font = font.deriveFont(fontSize);
-            g.setFont(font);
-            FontMetrics fm = g.getFontMetrics();
-            final int lineH = fm.getAscent() + fm.getDescent() + config.getLineSpacing();
-            lastLineHeight = Math.max(1, lineH);
-
-            // Flatten wrapped lines (oldest to newest)
-            final List<VisualLine> all = new ArrayList<>(64);
-            final List<Float> rowAlphas = perLineFade ? new ArrayList<>(64) : null;
-            for (RichLine rl : lines) {
-                if (!config.isShowPrivateMessages() && ChatUtil.isPrivateMessage(rl.getType())) {
-                    continue;
-                }
-
-                if (!config.isShowNpcMessages() && ChatUtil.isNpcMessage(rl.getType())) {
-                    continue;
-                }
-
-                // Channel filter check - only apply to containers with filters enabled (All tab)
-                if (applyChannelFilters && channelFilterState != null && !channelFilterState.shouldShowMessage(rl.getType())) {
-                    continue;
-                }
-
-                if (rl.getLineCache() == null) {
-                    rl.setLineCache(wrapRichLine(rl, fm, innerW));
-                }
-                final List<VisualLine> cache = rl.getLineCache();
-                if (cache != null && !cache.isEmpty()) {
-                    all.addAll(cache);
-                    if (rowAlphas != null) {
-                        final Float lineAlpha = lineFadeAlpha(rl, now);
-                        for (int i = 0; i < cache.size(); i++)
-                            rowAlphas.add(lineAlpha);
-                    }
-                }
             }
 
             // Measure content height and auto-stick to bottom when needed
@@ -279,12 +282,14 @@ public class MessageContainer extends Overlay
             int y = msgViewport.y - scrollOffsetPx + fm.getAscent();
             int rowIdx = 0;
             for (VisualLine vl : all) {
-                final float rowAlpha = rowAlphas != null ? rowAlphas.get(rowIdx++) : 1f;
+                final float rowAlpha = perLineFade ? rowAlphas[rowIdx++] : 1f;
                 if (y - fm.getAscent() > msgViewport.y + msgViewport.height)
                     break; // below viewport
                 // Fully faded rows keep their slot (no reflow) but are not drawn
                 if (y + fm.getDescent() >= msgViewport.y && rowAlpha > 0.01f) {
-                    if (rowAlphas != null)
+                    // Rows at full alpha draw under the container composite as-is
+                    final boolean rowComposite = perLineFade && rowAlpha < 1f;
+                    if (rowComposite)
                         g.setComposite(AlphaComposite.SrcOver.derive(Math.max(0f, Math.min(1f, containerAlpha * rowAlpha))));
 
                     int dx = left;
@@ -348,7 +353,7 @@ public class MessageContainer extends Overlay
                             break;
                     }
 
-                    if (rowAlphas != null)
+                    if (rowComposite)
                         g.setComposite(containerComposite);
                 }
                 y += lineH;
@@ -680,6 +685,9 @@ public class MessageContainer extends Overlay
                         out.getSegs().add(new TextSegment("", cur));
                     pushRich(out);
                     out = new RichLine();
+                    // Continuation lines share the first line's timestamp so per-line
+                    // fade does not treat them as instantly aged
+                    out.setTimestamp(timestamp);
                     i = j + 1;
                     continue;
                 } else if (tagLower.startsWith("img")) {
@@ -900,6 +908,8 @@ public class MessageContainer extends Overlay
      */
     protected void pushRich(RichLine rl) {
         if (rl == null || rl.getSegs().isEmpty()) return;
+        if (pendingFadeStartOverrideMs != 0)
+            rl.setFadeStartOverrideMs(pendingFadeStartOverrideMs);
         lines.addLast(rl);
         while (lines.size() > maxLines) lines.removeFirst();
 
@@ -1024,31 +1034,65 @@ public class MessageContainer extends Overlay
         fadeAlpha = easedFadeAlpha(t, dur);
     }
 
-    /**
-     * Per-line fade alpha. The line's fade clock starts at its own timestamp, or at the
-     * last global fade reset (chat closed, config change) if that is more recent, so a
-     * reset re-reveals every line before each re-ages independently.
-     */
-    private float lineFadeAlpha(RichLine rl, long now) {
-        final long fadeStart = Math.max(rl.getTimestamp(), lastFadeResetMs)
-            + Math.max(0, fadeDelaySeconds() * 1000L);
-        if (now <= fadeStart)
-            return 1f;
-        return easedFadeAlpha(now - fadeStart, Math.max(1, fadeDurationMs()));
+    /** Render visibility filters shared by the flatten pass and per-line fade bookkeeping. */
+    private boolean isLineVisible(RichLine rl) {
+        if (!config.isShowPrivateMessages() && ChatUtil.isPrivateMessage(rl.getType())) {
+            return false;
+        }
+
+        if (!config.isShowNpcMessages() && ChatUtil.isNpcMessage(rl.getType())) {
+            return false;
+        }
+
+        // Channel filter check - only apply to containers with filters enabled (All tab)
+        return !applyChannelFilters || channelFilterState == null || channelFilterState.shouldShowMessage(rl.getType());
     }
 
-    /** Highest per-line alpha, i.e. the newest line's alpha; 0 when there are no lines. */
-    private float maxLineFadeAlpha(long now) {
-        float max = 0f;
+    /**
+     * Per-line fade alpha. The line's fade clock starts at its own timestamp (or its
+     * fade-start override for suppressed lines), or at the last global fade reset
+     * (chat closed, config change) if that is more recent, so a reset re-reveals every
+     * line before each re-ages independently.
+     */
+    private float lineFadeAlpha(RichLine rl, long now, long delayMs, int durationMs) {
+        final long override = rl.getFadeStartOverrideMs();
+        final long fadeStart = Math.max(override != 0 ? override : rl.getTimestamp(), lastFadeResetMs) + delayMs;
+        if (now <= fadeStart)
+            return 1f;
+        return easedFadeAlpha(now - fadeStart, durationMs);
+    }
+
+    /** Grows the reusable per-row alpha scratch; steady-state frames allocate nothing. */
+    private void ensureRowAlphaCapacity(int needed) {
+        if (rowAlphas.length < needed)
+            rowAlphas = Arrays.copyOf(rowAlphas, Math.max(needed, rowAlphas.length * 2));
+    }
+
+    /**
+     * Marks lines pushed until {@link #endInheritedFadePush()} with a fade clock inherited
+     * from the newest visible line (or one already fully aged when none is visible), so a
+     * suppressed line renders at the current overlay alpha instead of reviving the fade.
+     */
+    protected void beginInheritedFadePush() {
+        long newestBase = 0;
         for (RichLine rl : lines) {
-            final float a = lineFadeAlpha(rl, now);
-            if (a > max) {
-                max = a;
-                if (max >= 1f)
-                    break;
-            }
+            if (!isLineVisible(rl))
+                continue;
+            final long override = rl.getFadeStartOverrideMs();
+            final long base = override != 0 ? override : rl.getTimestamp();
+            if (base > newestBase)
+                newestBase = base;
         }
-        return max;
+        if (newestBase <= 0) {
+            // Nothing visible to inherit from: age the incoming line past the full fade
+            newestBase = System.currentTimeMillis()
+                - Math.max(0, fadeDelaySeconds() * 1000L) - Math.max(1, fadeDurationMs());
+        }
+        pendingFadeStartOverrideMs = newestBase;
+    }
+
+    protected void endInheritedFadePush() {
+        pendingFadeStartOverrideMs = 0;
     }
 
     /** Shared fade curve for container-wide and per-line fades: easeOutCubic from 1 to 0. */
