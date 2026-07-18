@@ -314,6 +314,19 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return true;
     }
 
+    @ConfigItem(
+        keyName = Keys.featureRedesign_ChannelPrefixes,
+        name = "Channel Prefixes",
+        description = "Support vanilla chat-input channel prefixes in the input box " +
+                      "(e.g. /p public, / friends, // clan, /// guest, //// group, /@c to also switch channel)",
+        position = 17,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_ChannelPrefixes() {
+        return true;
+    }
+
     /* ------------ Modern Chat Style ------------ */
 
     @ConfigItem(

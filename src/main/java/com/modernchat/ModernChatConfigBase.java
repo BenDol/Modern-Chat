@@ -69,6 +69,7 @@ public interface ModernChatConfigBase extends
         String featureRedesign_GameTabEnabled = "featureRedesign_GameTabEnabled";
         String featureRedesign_TradeTabEnabled = "featureRedesign_TradeTabEnabled";
         String featureRedesign_ShowTabIcons = "featureRedesign_ShowTabIcons";
+        String featureRedesign_ChannelPrefixes = "featureRedesign_ChannelPrefixes";
 
         // Style: fonts & sizes
         String featureRedesign_FontStyle = "featureRedesign_FontStyle";
@@ -248,6 +249,7 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_GAME_TAB_ENABLED(Keys.featureRedesign_GameTabEnabled, Kind.BOOL, ModernChatConfigBase::featureRedesign_GameTabEnabled),
         FEATURE_REDESIGN_TRADE_TAB_ENABLED(Keys.featureRedesign_TradeTabEnabled, Kind.BOOL, ModernChatConfigBase::featureRedesign_TradeTabEnabled),
         FEATURE_REDESIGN_SHOW_TAB_ICONS(Keys.featureRedesign_ShowTabIcons, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowTabIcons),
+        FEATURE_REDESIGN_CHANNEL_PREFIXES(Keys.featureRedesign_ChannelPrefixes, Kind.BOOL, ModernChatConfigBase::featureRedesign_ChannelPrefixes),
 
         // ---- Style: fonts & sizes ----
         FEATURE_REDESIGN_FONT_STYLE(Keys.featureRedesign_FontStyle, FontStyle.class, ModernChatConfigBase::featureRedesign_FontStyle),
@@ -538,6 +540,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureRedesign_GameTabEnabled() { return getBool(Keys.featureRedesign_GameTabEnabled, DEFAULTS.featureRedesign_GameTabEnabled()); }
         @Override public boolean featureRedesign_TradeTabEnabled() { return getBool(Keys.featureRedesign_TradeTabEnabled, DEFAULTS.featureRedesign_TradeTabEnabled()); }
         @Override public boolean featureRedesign_ShowTabIcons() { return getBool(Keys.featureRedesign_ShowTabIcons, DEFAULTS.featureRedesign_ShowTabIcons()); }
+        @Override public boolean featureRedesign_ChannelPrefixes() { return getBool(Keys.featureRedesign_ChannelPrefixes, DEFAULTS.featureRedesign_ChannelPrefixes()); }
 
         // Style: fonts & sizes
         @Override public FontStyle featureRedesign_FontStyle() { return getEnum(Keys.featureRedesign_FontStyle, DEFAULTS.featureRedesign_FontStyle(), FontStyle.class); }

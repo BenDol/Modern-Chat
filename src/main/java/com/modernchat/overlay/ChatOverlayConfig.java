@@ -32,6 +32,8 @@ public interface ChatOverlayConfig
 
     boolean isResizeable();
 
+    boolean isChannelPrefixesEnabled();
+
     FontStyle getFontStyle();
 
     Padding getPadding();
@@ -204,6 +206,11 @@ public interface ChatOverlayConfig
 
         @Override
         public boolean isResizeable() {
+            return true;
+        }
+
+        @Override
+        public boolean isChannelPrefixesEnabled() {
             return true;
         }
 

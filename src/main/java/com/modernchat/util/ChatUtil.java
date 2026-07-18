@@ -22,7 +22,10 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +45,87 @@ public class ChatUtil
         String senderName;
         String receiverName;
         int senderIconId; // -1 if none
+    }
+
+    @Value
+    public static class ChannelPrefix {
+        ChatMode mode;
+        boolean sticky; // sticky variants also set the persistent input channel
+        String message;
+    }
+
+    // Vanilla chat-input channel aliases (single-slash word prefixes). Private message
+    // aliases (/w, /pm, ...) are intentionally absent - CommandsChatFeature owns them.
+    private static final Map<String, ChatMode> CHANNEL_PREFIX_ALIASES = buildChannelPrefixAliases();
+
+    private static Map<String, ChatMode> buildChannelPrefixAliases() {
+        Map<String, ChatMode> aliases = new HashMap<>();
+        aliases.put("p", ChatMode.PUBLIC);
+        aliases.put("public", ChatMode.PUBLIC);
+        aliases.put("s", ChatMode.PUBLIC);
+        aliases.put("say", ChatMode.PUBLIC);
+        aliases.put("f", ChatMode.FRIENDS_CHAT);
+        aliases.put("cc", ChatMode.FRIENDS_CHAT);
+        aliases.put("fc", ChatMode.FRIENDS_CHAT);
+        aliases.put("c", ChatMode.CLAN_MAIN);
+        aliases.put("clan", ChatMode.CLAN_MAIN);
+        aliases.put("gc", ChatMode.CLAN_GUEST);
+        aliases.put("guest", ChatMode.CLAN_GUEST);
+        aliases.put("g", ChatMode.CLAN_GIM);
+        aliases.put("gim", ChatMode.CLAN_GIM);
+        aliases.put("group", ChatMode.CLAN_GIM);
+        return aliases;
+    }
+
+    /**
+     * Parse a vanilla chat-input channel prefix (e.g. "/p hi", "//hi", "///@ hi", "/@c").
+     * Only a '/' at position 0 counts (leading whitespace makes it a normal message).
+     * Slash runs (//, ///, ////) may be followed directly by text; word aliases must be
+     * followed by a space or end the input. Anything else after a single slash falls
+     * through to the friends channel, mirroring vanilla. Returns null when the text is
+     * not a channel prefix and should be sent as-is.
+     */
+    public static @Nullable ChannelPrefix parseChannelPrefix(String text) {
+        if (text == null || text.isEmpty() || text.charAt(0) != '/')
+            return null;
+
+        int slashes = 0;
+        while (slashes < text.length() && text.charAt(slashes) == '/')
+            slashes++;
+
+        if (slashes >= 2) {
+            if (slashes > 4)
+                return null;
+
+            ChatMode mode = slashes == 2 ? ChatMode.CLAN_MAIN
+                : slashes == 3 ? ChatMode.CLAN_GUEST
+                : ChatMode.CLAN_GIM;
+
+            int start = slashes;
+            boolean sticky = start < text.length() && text.charAt(start) == '@';
+            if (sticky)
+                start++;
+
+            return new ChannelPrefix(mode, sticky, stripSeparatorSpace(text.substring(start)));
+        }
+
+        int space = text.indexOf(' ');
+        String token = (space < 0 ? text.substring(1) : text.substring(1, space)).toLowerCase(Locale.ROOT);
+        boolean sticky = token.startsWith("@");
+        String word = sticky ? token.substring(1) : token;
+        ChatMode mode = word.isEmpty() ? null : CHANNEL_PREFIX_ALIASES.get(word);
+        if (mode != null)
+            return new ChannelPrefix(mode, sticky, space < 0 ? "" : text.substring(space + 1));
+
+        if (sticky)
+            return null; // "/@unknown" is not an alias, send as a plain message
+
+        // Bare "/" routes everything after it to the friends channel (vanilla behavior)
+        return new ChannelPrefix(ChatMode.FRIENDS_CHAT, false, stripSeparatorSpace(text.substring(1)));
+    }
+
+    private static String stripSeparatorSpace(String s) {
+        return s.startsWith(" ") ? s.substring(1) : s;
     }
 
     public static int extractIconId(@Nullable String name) {

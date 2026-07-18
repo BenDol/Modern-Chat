@@ -4,6 +4,7 @@ import com.modernchat.ModernChatConfig;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.event.ChatPrivateMessageSentEvent;
 import com.modernchat.feature.ToggleChatFeature;
+import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
@@ -59,6 +60,7 @@ import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
@@ -132,6 +134,8 @@ public class ChatOverlay extends OverlayPanel
     @Inject private Provider<MessageContainer> messageContainerProvider;
     @Inject @Getter private ChannelFilterState channelFilterState;
     @Inject private Provider<ChatProxy> chatProxyProvider;
+    // Provider breaks the Guice cycle CommandsChatFeature -> ChatProxy -> ChatOverlay
+    @Inject private Provider<CommandsChatFeature> commandsChatFeatureProvider;
     @Inject private ModernChatConfig mainConfig;
 
     private ChatOverlayConfig config;
@@ -174,6 +178,11 @@ public class ChatOverlay extends OverlayPanel
     private long lastBlinkMs = 0;
     private boolean caretOn = true;
     private volatile boolean syncingInput = false;
+
+    // Sticky channel prefix target when no tab exists for the channel; cleared on tab select
+    @Nullable private volatile ChatMode inputModeOverride = null;
+    // Cached vanilla "Chatbox Mode - Set Automatically" setting (varbit, read on client thread)
+    private volatile boolean chatboxModeAutoset = false;
 
     // Selection state
     private int selStart = 0;
@@ -315,7 +324,10 @@ public class ChatOverlay extends OverlayPanel
         refreshTabs();
 
         ChatProxy chatProxy = chatProxyProvider.get();
-        clientThread.invoke(() -> setHidden(config.isStartHidden()));
+        clientThread.invoke(() -> {
+            chatboxModeAutoset = client.getVarbitValue(VarbitID.OPTION_CHATBOX_MODE_AUTOSET) != 0;
+            setHidden(config.isStartHidden());
+        });
         clientThread.invokeAtTickEnd(() -> selectTab(config.getDefaultChatMode()));
     }
 
@@ -353,6 +365,7 @@ public class ChatOverlay extends OverlayPanel
         lastViewport = null;
         commandMode = false;
         syncingInput = false;
+        inputModeOverride = null;
 
         resizePanel.shutDown();
         overlayManager.remove(resizePanel);
@@ -1292,6 +1305,9 @@ public class ChatOverlay extends OverlayPanel
             return;
         }
 
+        // Selecting a tab supersedes any sticky channel prefix override
+        inputModeOverride = null;
+
         t.setUnread(0);
 
         // Handle "All" tab
@@ -1420,6 +1436,12 @@ public class ChatOverlay extends OverlayPanel
             // keep the legacy chat input in sync, if the text matches it will be ignored
             setInputText(ClientUtil.getChatInputText(client), false);
         }
+    }
+
+    @Subscribe
+    public void onVarbitChanged(VarbitChanged e) {
+        if (e.getVarbitId() == VarbitID.OPTION_CHATBOX_MODE_AUTOSET)
+            chatboxModeAutoset = e.getValue() != 0;
     }
 
     @Subscribe
@@ -1882,7 +1904,58 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void sendMessage(String text) {
+        if (trySendWithChannelPrefix(text))
+            return;
+
         messageService.sendMessage(text, getCurrentMode(), getCurrentTarget());
+    }
+
+    private boolean trySendWithChannelPrefix(String text) {
+        if (!config.isChannelPrefixesEnabled())
+            return false;
+
+        // Vanilla only treats a '/' at position 0 as a channel prefix; a message that
+        // starts with whitespace then '/' is a normal message (leading spaces preserved)
+        if (text.isEmpty() || text.charAt(0) != '/')
+            return false;
+
+        // Registered chat commands (/w, /r, /pm, /g, ...) keep their existing routing
+        CommandsChatFeature commandsChatFeature = commandsChatFeatureProvider.get();
+        if (commandsChatFeature.isCommand(text))
+            return false;
+
+        ChatUtil.ChannelPrefix prefix = ChatUtil.parseChannelPrefix(text);
+        if (prefix == null)
+            return false;
+
+        String message = prefix.getMessage();
+        if (!message.trim().isEmpty()) {
+            // Keep the last typed input slash-free so CommandsChatFeature does not
+            // re-prefix the stripped message when the send fires ChatboxInput
+            commandsChatFeature.setLastChatInput(message);
+            messageService.sendMessage(message, prefix.getMode(), null);
+        }
+
+        // Vanilla "Chatbox Mode - Set Automatically" makes plain aliases behave sticky
+        if (prefix.isSticky() || chatboxModeAutoset)
+            switchInputMode(prefix.getMode());
+
+        return true;
+    }
+
+    private void switchInputMode(ChatMode mode) {
+        if (mode == ChatMode.PUBLIC) {
+            // Public has no dedicated tab; the All tab sends to public chat
+            selectTabByKey(ALL_TAB_KEY);
+            return;
+        }
+
+        if (tabsByKey.containsKey(tabKey(mode))) {
+            selectTab(mode);
+        } else {
+            // Not in that channel, so no tab exists to reflect it; retarget the input only
+            inputModeOverride = mode;
+        }
     }
 
     private int getCharacterLimit() {
@@ -1906,6 +1979,11 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public ChatMode getCurrentMode() {
+        // Sticky channel prefix targeting a channel with no tab; private tabs keep PM routing
+        ChatMode override = inputModeOverride;
+        if (override != null && (activeTab == null || !activeTab.isPrivate()))
+            return override;
+
         // Clan modes (CLAN_MAIN/GUEST/GIM) share a single MessageContainer, so the
         // container's stored mode is whichever initializer ran last. Derive from the
         // active tab key instead so we send to the clan channel the user is viewing.
