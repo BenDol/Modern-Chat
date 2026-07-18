@@ -247,6 +247,32 @@ public class ChatOverlay extends OverlayPanel
     private final Rectangle reportButtonBounds = new Rectangle();
     @Setter private volatile Instant loginTime = null;
 
+    // Combat achievement lookup
+    private static final String WIKI_SEARCH_URL = "https://oldschool.runescape.wiki/w/Special:Search?search=";
+
+    /**
+     * Matches combat achievement broadcasts, both the local "Congratulations, you've completed
+     * a hard combat task: ..." phrasing and the clan "Player has completed a hard combat task: ..."
+     * variant, capturing the task name.
+     */
+    private static final Pattern COMBAT_TASK_PATTERN = Pattern.compile(
+        "completed an? (?:easy|medium|hard|elite|master|grandmaster) combat task:\\s*(.+)",
+        Pattern.CASE_INSENSITIVE);
+
+    /** Strips surrounding quotes left over from broadcast formatting. */
+    private static final Pattern QUOTE_TRIM = Pattern.compile("^[\"']+|[\"']+$");
+
+    /**
+     * Message types combat achievement broadcasts arrive as: the local completion
+     * message is a GAMEMESSAGE and clan broadcasts are clan system messages.
+     * Player-typed types (public/private/clan chat) must not trigger the lookup entry.
+     */
+    private static final EnumSet<ChatMessageType> COMBAT_TASK_BROADCAST_TYPES = EnumSet.of(
+        ChatMessageType.GAMEMESSAGE,
+        ChatMessageType.CLAN_MESSAGE,
+        ChatMessageType.CLAN_GUEST_MESSAGE,
+        ChatMessageType.CLAN_GIM_MESSAGE);
+
     public ChatOverlay() {
     }
 
@@ -1491,7 +1517,11 @@ public class ChatOverlay extends OverlayPanel
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> copyToClipboard(rowText));
 
-            final String taskName = extractCombatTaskName(spamKey);
+            // Only broadcast-capable lines can be combat achievement messages;
+            // player-typed text (public/private/clan chat) must not trigger the entry
+            final String taskName = COMBAT_TASK_BROADCAST_TYPES.contains(hit.getLine().getType())
+                ? extractCombatTaskName(spamKey)
+                : null;
             if (taskName != null) {
                 rootMenu.createMenuEntry(1)
                     .setOption("Lookup task")
@@ -2209,17 +2239,6 @@ public class ChatOverlay extends OverlayPanel
         return fallback;
     }
 
-    private static final String WIKI_SEARCH_URL = "https://oldschool.runescape.wiki/w/Special:Search?search=";
-
-    /**
-     * Matches combat achievement broadcasts, both the local "Congratulations, you've completed
-     * a hard combat task: ..." phrasing and the clan "Player has completed a hard combat task: ..."
-     * variant, capturing the task name.
-     */
-    private static final Pattern COMBAT_TASK_PATTERN = Pattern.compile(
-        "completed an? (?:easy|medium|hard|elite|master|grandmaster) combat task:\\s*(.+)",
-        Pattern.CASE_INSENSITIVE);
-
     /** Returns the task name from a combat achievement line, or null if the line isn't one. */
     private static @Nullable String extractCombatTaskName(@Nullable String text) {
         if (text == null)
@@ -2231,7 +2250,7 @@ public class ChatOverlay extends OverlayPanel
         if (name.endsWith("."))
             name = name.substring(0, name.length() - 1);
         // Strip surrounding quotes left over from broadcast formatting
-        name = name.replaceAll("^[\"']+|[\"']+$", "").trim();
+        name = QUOTE_TRIM.matcher(name).replaceAll("").trim();
         return name.isEmpty() ? null : name;
     }
 
