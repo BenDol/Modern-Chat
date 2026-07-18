@@ -29,9 +29,12 @@ import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.Point;
+import net.runelite.api.ScriptID;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.PostClientTick;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -413,6 +416,20 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 				chatPeekOverlay.copyLine(rl);
 			}
 		}
+	}
+
+	@Subscribe
+	public void onScriptPostFired(ScriptPostFired e) {
+		// Rebuild peeked lines whose MessageNodes were edited by other plugins (issue #20)
+		if (e.getScriptId() == ScriptID.BUILD_CHATBOX) {
+			chatPeekOverlay.refreshTrackedLines(false);
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick e) {
+		// Only re-checks lines matching a live-updating pattern (system update timer, issue #14)
+		chatPeekOverlay.refreshTrackedLines(true);
 	}
 
 	@Subscribe

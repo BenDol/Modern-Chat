@@ -482,6 +482,9 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 if (!overlay.isLegacyShowing()) {
                     overlay.hideLegacyChat(false);
                 }
+                // Other plugins (e.g. Chat Commands) edit MessageNodes and then call
+                // refreshChat(), which rebuilds the chatbox - re-read our tracked lines
+                overlay.refreshTrackedLines(false);
             });
         }
     }
@@ -529,6 +532,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Subscribe
     public void onGameTick(GameTick tick) {
         overlay.inputTick();
+        // Only re-checks lines matching a live-updating pattern (system update timer, issue #14)
+        overlay.refreshTrackedLines(true);
     }
 
     @Subscribe(priority = -3) // run after ChatMessageManager

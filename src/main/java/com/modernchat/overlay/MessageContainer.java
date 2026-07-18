@@ -17,6 +17,7 @@ import com.modernchat.service.FontService;
 import com.modernchat.service.ForceRecolorService;
 import com.modernchat.service.ImageService;
 import com.modernchat.util.ChatUtil;
+import com.modernchat.util.ClientUtil;
 import com.modernchat.util.ColorUtil;
 import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
@@ -28,6 +29,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.MessageNode;
 import net.runelite.api.Point;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.input.MouseManager;
@@ -54,9 +56,11 @@ import java.awt.event.MouseWheelEvent;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -65,6 +69,10 @@ public class MessageContainer extends Overlay
     private static final int DEFAULT_MAX_LINES = 20;
     private static final int MIN_THUMB_H = 24;
     private static final int SCROLL_TO_BOTTOM_SENTINEL = Integer.MAX_VALUE;
+    /** Max recent lines walked per container when re-checking MessageNodes for edits */
+    public static final int MAX_REFRESH_LINES = 50;
+    /** Matches RuneLite's default transparent-chatbox highlight (ChatColorConfig #EF1020) */
+    private static final Color RUNELITE_HIGHLIGHT_COLOR = new Color(0xEF, 0x10, 0x20);
 
     @Getter @Setter private int maxLines = DEFAULT_MAX_LINES;
 
@@ -486,7 +494,8 @@ public class MessageContainer extends Overlay
             targetName,
             line.getPrefix(),
             line.getDuplicateKey(),
-            line.isCollapsed());
+            line.isCollapsed(),
+            line);
     }
 
     public void pushLine(
@@ -512,6 +521,21 @@ public class MessageContainer extends Overlay
         String duplicateKey,
         boolean collapsed
     ) {
+        pushLine(s, type, timestamp, sender, receiver, targetName, prefix, duplicateKey, collapsed, null);
+    }
+
+    public void pushLine(
+        String s,
+        ChatMessageType type,
+        long timestamp,
+        String sender,
+        String receiver,
+        String targetName,
+        String prefix,
+        String duplicateKey,
+        boolean collapsed,
+        @Nullable MessageLine source
+    ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
 
         // Always use default color as base (for sender name, etc.)
@@ -535,12 +559,91 @@ public class MessageContainer extends Overlay
         rl.setDuplicateKey(duplicateKey);
         rl.setCollapsed(collapsed);
 
+        if (source != null && source.getMessageNodeId() != -1) {
+            rl.setMessageNodeId(source.getMessageNodeId());
+            rl.setNodeValueSnapshot(source.getNodeValueSnapshot());
+            rl.setSenderPrefix(source.getSenderPrefix());
+            rl.setLiveUpdating(ChatUtil.isLiveUpdatingText(source.getNodeValueSnapshot()));
+        }
+
         // If this is a collapsed message (has count suffix), remove previous messages with same key
         if (collapsed && duplicateKey != null) {
             lines.removeIf(line -> duplicateKey.equals(line.getDuplicateKey()));
         }
 
         pushRich(rl);
+    }
+
+    public void refreshTrackedLines(boolean liveOnly) {
+        refreshTrackedLines(liveOnly, id -> ClientUtil.findMessageNode(client, id));
+    }
+
+    /**
+     * Re-read the MessageNodes behind recently captured lines and rebuild any whose text was
+     * edited after capture (e.g. Chat Commands rewriting a !kc result). Bounded by
+     * MAX_REFRESH_LINES walked per call; when liveOnly is set, only lines matching a
+     * live-updating pattern (system update timer) are re-checked.
+     */
+    public void refreshTrackedLines(boolean liveOnly, IntFunction<MessageNode> nodeLookup) {
+        if (lines.isEmpty())
+            return;
+
+        int walked = 0;
+        Iterator<RichLine> it = lines.descendingIterator();
+        while (it.hasNext() && walked < MAX_REFRESH_LINES) {
+            RichLine rl = it.next();
+            walked++;
+
+            if (rl.getMessageNodeId() == -1)
+                continue;
+            if (liveOnly && !rl.isLiveUpdating())
+                continue;
+
+            MessageNode node = nodeLookup.apply(rl.getMessageNodeId());
+            if (node == null)
+                continue;
+
+            String rlFormat = node.getRuneLiteFormatMessage();
+            String effective = rlFormat != null ? rlFormat : node.getValue();
+            if (effective == null || effective.equals(rl.getNodeValueSnapshot()))
+                continue;
+
+            rebuildTrackedLine(rl, effective);
+        }
+    }
+
+    private void rebuildTrackedLine(RichLine rl, String effectiveText) {
+        ChatMessageType type = rl.getType() == null ? ChatMessageType.GAMEMESSAGE : rl.getType();
+        Color baseColor = getColor(type);
+
+        String translated = ChatUtil.translateRuneLiteColorTags(effectiveText, baseColor, RUNELITE_HIGHLIGHT_COLOR);
+        String rendered = ChatUtil.composeLineText(rl.getSenderPrefix(), translated);
+
+        String messageToRender = rendered;
+        if (forceRecolorService != null) {
+            Color forceColor = forceRecolorService.getRecolorForMessage(rendered, type, isTransparentBackdrop());
+            if (forceColor != null) {
+                messageToRender = applyForceRecolorToBody(rendered, rl.getSender(), baseColor, forceColor);
+            }
+        }
+
+        // parseRich pushes a new line on <br>, which would corrupt an in-place rebuild
+        messageToRender = messageToRender.replaceAll("(?i)<br>", " ");
+
+        // Keep the original resolved prefix text; parseRich would otherwise re-derive it
+        String prefix = null;
+        for (TextSegment seg : rl.getSegs()) {
+            if (seg instanceof PrefixSegment) {
+                prefix = seg.getText();
+                break;
+            }
+        }
+
+        RichLine parsed = parseRich(messageToRender, baseColor, type, rl.getTimestamp(), prefix);
+        rl.getSegs().clear();
+        rl.getSegs().addAll(parsed.getSegs());
+        rl.setNodeValueSnapshot(effectiveText);
+        rl.resetCache();
     }
 
     /**
@@ -851,6 +954,10 @@ public class MessageContainer extends Overlay
         copy.setSender(source.getSender());
         copy.setReceiver(source.getReceiver());
         copy.setTargetName(source.getTargetName());
+        copy.setMessageNodeId(source.getMessageNodeId());
+        copy.setNodeValueSnapshot(source.getNodeValueSnapshot());
+        copy.setSenderPrefix(source.getSenderPrefix());
+        copy.setLiveUpdating(source.isLiveUpdating());
 
         // Copy segments (they're immutable-ish, safe to share references)
         copy.getSegs().addAll(source.getSegs());

@@ -11,6 +11,7 @@ import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.widgets.Widget;
 import lombok.Value;
+import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
@@ -297,29 +298,19 @@ public class ChatUtil
             senderName = ColorUtil.wrapWithColorTag(params.length > 1 ? params[params.length - 2] : senderName, Color.CYAN);
         }
 
-        ChatMessageBuilder builder = new ChatMessageBuilder();
+        ChatMessageBuilder senderBuilder = new ChatMessageBuilder();
 
         if (!StringUtil.isNullOrEmpty(senderName)) {
             // Render account-type icons (ironman, leagues, etc.) before the sender name.
             // senderName itself stays tag-free - it is used for tab keys and target names.
             for (int iconId : senderReceiver.getSenderIconIds()) {
-                builder.img(iconId);
+                senderBuilder.img(iconId);
             }
-            builder.append(senderName, false).append(": ");
+            senderBuilder.append(senderName, false).append(": ");
         }
 
-        String message = msg;
-        if (params.length > 1) {
-            int icon = ChatUtil.getModImageId(params[0]);
-            if (icon != -1) {
-                builder.img(icon);
-            }
-
-            // message should always be last
-            message = params[params.length - 1];
-        }
-
-        builder.append(message, false);
+        String senderPrefix = senderBuilder.build();
+        String text = composeLineText(senderPrefix, msg);
 
         // Generate duplicate key from name + original message (for collapse detection)
         String duplicateKey = e.getName() + ":" + originalMsg;
@@ -331,7 +322,69 @@ public class ChatUtil
             && COLLAPSE_PATTERN.matcher(filteredMessage).find()
             && !originalMsg.equals(filteredMessage); // only if filtered differs from original
 
-        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed, senderIconId);
+        // Track the backing MessageNode so lines can be rebuilt when other
+        // plugins edit the node after the fact (e.g. Chat Commands, issue #20)
+        MessageNode node = e.getMessageNode();
+        int messageNodeId = node != null ? node.getId() : -1;
+        String nodeValueSnapshot = null;
+        if (node != null) {
+            String rlFormat = node.getRuneLiteFormatMessage();
+            nodeValueSnapshot = rlFormat != null ? rlFormat : node.getValue();
+        }
+
+        return new MessageLine(text, type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed,
+            senderIconId, messageNodeId, nodeValueSnapshot, senderPrefix);
+    }
+
+    /**
+     * Compose the rendered line text from an already-composed sender prefix (icons + name + ": ",
+     * may be null or empty) and the raw message body. Splits off mod icon params ("IMG:x|message")
+     * the same way message capture does, so refreshed lines render identically to captured ones.
+     */
+    public static String composeLineText(@Nullable String senderPrefix, String msg) {
+        ChatMessageBuilder builder = new ChatMessageBuilder();
+        if (!StringUtil.isNullOrEmpty(senderPrefix)) {
+            builder.append(senderPrefix, false);
+        }
+
+        String message = msg;
+        String[] params = msg.split("\\|", 3);
+        if (params.length > 1) {
+            int icon = ChatUtil.getModImageId(params[0]);
+            if (icon != -1) {
+                builder.img(icon);
+            }
+
+            // message should always be last
+            message = params[params.length - 1];
+        }
+
+        builder.append(message, false);
+        return builder.build();
+    }
+
+    /**
+     * Translate RuneLite-format color tags (<colNORMAL>, <colHIGHLIGHT>) - as emitted by
+     * ChatMessageBuilder and RuneLite's Chat Commands plugin - into concrete <col=RRGGBB>
+     * tags that the rich-text parser understands.
+     */
+    public static String translateRuneLiteColorTags(String s, Color normal, Color highlight) {
+        if (s == null || s.indexOf('<') < 0)
+            return s;
+
+        String out = s;
+        if (normal != null)
+            out = out.replace("<col" + ChatColorType.NORMAL.name() + ">", ColorUtil.colorTag(normal));
+        if (highlight != null)
+            out = out.replace("<col" + ChatColorType.HIGHLIGHT.name() + ">", ColorUtil.colorTag(highlight));
+        return out;
+    }
+
+    /** Chat lines the client rewrites in place each tick start with this (issue #14) */
+    public static final String SYSTEM_UPDATE_PREFIX = "System update";
+
+    public static boolean isLiveUpdatingText(@Nullable String s) {
+        return s != null && Text.removeTags(s).startsWith(SYSTEM_UPDATE_PREFIX);
     }
 
     public static String getPrefix(ChatMessageType type) {
