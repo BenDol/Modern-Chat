@@ -2,6 +2,7 @@ package com.modernchat.overlay;
 
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.InputColorMode;
 import com.modernchat.draw.ChannelFilterType;
 import com.modernchat.draw.Padding;
 
@@ -49,6 +50,8 @@ public interface ChatOverlayConfig
     Color getInputBorderColor();
 
     Color getInputShadowColor();
+
+    InputColorMode getInputColorMode();
 
     Color getInputPrefixColor();
 
@@ -235,6 +238,11 @@ public interface ChatOverlayConfig
         @Override
         public Color getBorderColor() {
             return new Color(12, 12, 12, 0);
+        }
+
+        @Override
+        public InputColorMode getInputColorMode() {
+            return InputColorMode.PREFIX;
         }
 
         @Override

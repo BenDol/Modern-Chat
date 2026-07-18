@@ -7,6 +7,7 @@ import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.InputColorMode;
 import com.modernchat.common.MessageLine;
 import com.modernchat.common.NotificationService;
 import com.modernchat.common.WidgetBucket;
@@ -860,7 +861,7 @@ public class ChatOverlay extends OverlayPanel
         TextDrawUtil.drawTextWithShadow(g, prefix, inputInnerLeft, baseline,
             getInputPrefixColor(), config.getInputShadowColor(), 1, 0);
         TextDrawUtil.drawTextWithShadow(g, inputText, inputInnerLeft + prefixW, baseline,
-            config.getInputTextColor(), config.getInputShadowColor(), 1, 0);
+            getInputTextColor(), config.getInputShadowColor(), 1, 0);
 
         // Caret
         long now = System.currentTimeMillis();
@@ -1376,8 +1377,21 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public Color getInputPrefixColor() {
+        InputColorMode mode = config.getInputColorMode();
+        if (mode != InputColorMode.PREFIX && mode != InputColorMode.BOTH)
+            return config.getInputPrefixColor();
+
         Color prefixColor = messageContainer != null ? messageContainer.getTextColor() : null;
         return prefixColor != null ? prefixColor : config.getInputPrefixColor();
+    }
+
+    public Color getInputTextColor() {
+        InputColorMode mode = config.getInputColorMode();
+        if (mode != InputColorMode.TEXT && mode != InputColorMode.BOTH)
+            return config.getInputTextColor();
+
+        Color textColor = messageContainer != null ? messageContainer.getTextColor() : null;
+        return textColor != null ? textColor : config.getInputTextColor();
     }
 
     public boolean isTabSelected(Tab t) {

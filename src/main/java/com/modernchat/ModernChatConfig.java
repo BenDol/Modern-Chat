@@ -2,6 +2,7 @@ package com.modernchat;
 
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.InputColorMode;
 import com.modernchat.common.Sfx;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
@@ -456,6 +457,20 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default Color featureRedesign_BorderColor() {
         return new Color(12, 12, 12, 0);
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_InputColorMode,
+        name = "Input Color Mode",
+        description = "Which parts of the input line use the target channel's chat color: " +
+                      "PREFIX colors the player name, TEXT colors the typed message, BOTH colors both, " +
+                      "OFF uses the static input colors below for everything",
+        position = 12,
+        section = modernChatStyleSection
+    )
+    @Override
+    default InputColorMode featureRedesign_InputColorMode() {
+        return InputColorMode.PREFIX;
     }
 
     @ConfigItem(
