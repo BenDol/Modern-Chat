@@ -130,7 +130,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_SuppressFadeAtGE() { return config.featurePeek_SuppressFadeAtGE(); }
 			@Override public boolean featurePeek_ShowNpcMessages() { return config.featurePeek_ShowNpcMessages(); }
 
-			// Chat Colors has no welcome message color, so it always uses the general color
+			// Chat Colors has no welcome message color; fall back to Modern Chat's general welcome color
 			@Override public Color getWelcomeColor() { return config.general_WelcomeChatColor(); }
 			@Override public Color getPublicColor() { return chatColorsOrDefault(ChatColorsService.Channel.PUBLIC, config.general_PublicChatColor()); }
 			@Override public Color getPrivateColor() { return chatColorsOrDefault(ChatColorsService.Channel.PRIVATE, config.general_PrivateChatColor()); }
@@ -142,10 +142,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	}
 
 	private Color chatColorsOrDefault(ChatColorsService.Channel channel, Color fallback) {
-		// Mirrors MessageContainer.isTransparentBackdrop() for the peek overlay's backdrop
-		boolean transparent = MessageContainer.isTransparentBackdrop(mainConfig.featurePeek_BackgroundColor());
-		Color c = chatColorsService != null ? chatColorsService.getColor(channel, transparent) : null;
-		return c != null ? c : fallback;
+		return chatColorsService.getColorOrDefault(channel, mainConfig.featurePeek_BackgroundColor(), fallback);
 	}
 
 	protected MessageContainerConfig partitionConfig(PeekChatFeatureConfig cfg) {

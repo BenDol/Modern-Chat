@@ -378,10 +378,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     }
 
     private Color chatColorsOrDefault(ChatColorsService.Channel channel, Color fallback) {
-        // Mirrors MessageContainer.isTransparentBackdrop() for the message container's backdrop
-        boolean transparent = MessageContainer.isTransparentBackdrop(mainConfig.featureRedesign_MessageContainer_BackdropColor());
-        Color c = chatColorsService != null ? chatColorsService.getColor(channel, transparent) : null;
-        return c != null ? c : fallback;
+        return chatColorsService.getColorOrDefault(channel, mainConfig.featureRedesign_MessageContainer_BackdropColor(), fallback);
     }
 
     @Override

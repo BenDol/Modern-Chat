@@ -1,6 +1,7 @@
 package com.modernchat.service;
 
 import com.modernchat.ModernChatConfig;
+import com.modernchat.overlay.MessageContainer;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
@@ -100,6 +101,21 @@ public class ChatColorsService implements ChatService {
             return primary;
         }
         return isTransparentBackdrop ? opaqueColors.get(channel) : transparentColors.get(channel);
+    }
+
+    /**
+     * Convenience over {@link #getColor(Channel, boolean)} that derives the transparency flag
+     * from the caller's backdrop color (see {@link MessageContainer#isTransparentBackdrop(Color)})
+     * and falls back to the given color when Chat Colors has nothing configured.
+     *
+     * @param channel The chat channel to look up
+     * @param backdropColor The backdrop color of the rendering surface
+     * @param fallback The color to use when Chat Colors has no color for the channel
+     * @return The Chat Colors color, or the fallback
+     */
+    public Color getColorOrDefault(Channel channel, Color backdropColor, Color fallback) {
+        Color c = getColor(channel, MessageContainer.isTransparentBackdrop(backdropColor));
+        return c != null ? c : fallback;
     }
 
     private void refreshConfig() {

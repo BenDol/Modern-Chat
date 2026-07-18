@@ -132,6 +132,8 @@ public class MessageContainer extends Overlay
         return isTransparentBackdrop(config != null ? config.getBackdropColor() : null);
     }
 
+    // Assumes chrome is enabled (a backdrop is actually drawn); callers without a container
+    // instance cannot apply the chromeEnabled short-circuit of the instance method above.
     public static boolean isTransparentBackdrop(Color backdrop) {
         return backdrop == null || backdrop.getAlpha() < 128;
     }
@@ -465,7 +467,7 @@ public class MessageContainer extends Overlay
                 c = config.getPrivateColor();
                 break;
             case WELCOME:
-                c = Color.WHITE;
+                c = config.getWelcomeColor();
                 break;
             default:
                 c = config.getSystemColor();
