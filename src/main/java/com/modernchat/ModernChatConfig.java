@@ -1048,7 +1048,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigItem(
         keyName = Keys.featureRedesign_NameColor,
         name = "Name Color",
-        description = "Color for sender names in chat messages. Set fully transparent to use message color.",
+        description = "Color for sender names in chat messages. Set fully transparent to use message color. Applies to new messages.",
         position = 47,
         section = modernChatStyleSection
     )
@@ -1709,7 +1709,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigItem(
         keyName = Keys.featurePeek_NameColor,
         name = "Name Color",
-        description = "Color for sender names in chat messages. Set fully transparent to use Modern Design color, or message color if that is also transparent.",
+        description = "Color for sender names in chat messages. Set fully transparent to use Modern Design color, or message color if that is also transparent. Applies to new messages.",
         position = 26,
         section = peekOverlaySection
     )

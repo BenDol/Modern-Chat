@@ -250,6 +250,12 @@ public class MessageContainer extends Overlay
             Shape oldClip = g.getClip();
             g.setClip(msgViewport);
 
+            // Hoist override colors out of the per-segment loop; the config proxy is
+            // otherwise hit once per segment per frame
+            final Color timestampOverride = config.getTimestampColor();
+            final Color prefixOverride = config.getTypePrefixColor();
+            final Color nameOverride = config.getNameColor();
+
             int y = msgViewport.y - scrollOffsetPx + fm.getAscent();
             for (VisualLine vl : all) {
                 if (y - fm.getAscent() > msgViewport.y + msgViewport.height)
@@ -295,19 +301,16 @@ public class MessageContainer extends Overlay
                         // Determine color: use config override if not transparent, else segment color
                         Color segColor = seg.getColor();
                         if (seg instanceof TimestampSegment) {
-                            Color tsColor = config.getTimestampColor();
-                            if (tsColor.getAlpha() > 0) {
-                                segColor = tsColor;
+                            if (timestampOverride.getAlpha() > 0) {
+                                segColor = timestampOverride;
                             }
                         } else if (seg instanceof PrefixSegment) {
-                            Color pfxColor = config.getTypePrefixColor();
-                            if (pfxColor.getAlpha() > 0) {
-                                segColor = pfxColor;
+                            if (prefixOverride.getAlpha() > 0) {
+                                segColor = prefixOverride;
                             }
                         } else if (seg instanceof SenderSegment) {
-                            Color nameColor = config.getNameColor();
-                            if (nameColor.getAlpha() > 0) {
-                                segColor = nameColor;
+                            if (nameOverride.getAlpha() > 0) {
+                                segColor = nameOverride;
                             }
                         }
 
@@ -597,9 +600,13 @@ public class MessageContainer extends Overlay
         Color cur = base;
         StringBuilder buf = new StringBuilder();
 
-        // Visible sender-name chars still to emit as SenderSegment; 0 disables marking
+        // Visible sender-name chars still to emit as SenderSegment; 0 disables marking.
+        // Skipped entirely while the name color override is transparent (feature off) so the
+        // pre-scan does not run for every pushed line. Lines pushed while disabled keep their
+        // base colors until re-pushed (dirty() only re-wraps, it does not re-parse), which is
+        // an accepted trade-off documented in the config item description.
         int senderRemaining = 0;
-        if (!StringUtil.isNullOrEmpty(sender)) {
+        if (config.getNameColor().getAlpha() > 0 && !StringUtil.isNullOrEmpty(sender)) {
             String senderVisible = Text.removeTags(sender);
             if (!senderVisible.isEmpty() && visibleTextStartsWithSender(s, senderVisible))
                 senderRemaining = senderVisible.length();
@@ -849,9 +856,17 @@ public class MessageContainer extends Overlay
                     }
                 } else {
                     if (curW + wordW > maxWidth) {
-                        out.add(cur);
-                        cur = new VisualLine();
-                        curW = 0;
+                        VisualLine next = new VisualLine();
+                        int nextW = 0;
+                        // Keep the sender name and its colon together: when the ": msg"
+                        // run would wrap right after the name, carry the name's trailing
+                        // sender run onto the new line instead of breaking after the bare name
+                        if (i == 0 && word.equals(":"))
+                            nextW = detachTrailingSenderRun(cur, next, fm);
+                        if (!cur.getSegs().isEmpty())
+                            out.add(cur);
+                        cur = next;
+                        curW = nextW;
                     }
                     if (!word.isEmpty()) {
                         cur.getSegs().add(copyRun(s, word));
@@ -884,6 +899,36 @@ public class MessageContainer extends Overlay
         return src instanceof SenderSegment
             ? new SenderSegment(text, src.getColor())
             : new TextSegment(text, src.getColor());
+    }
+
+    /**
+     * Moves the trailing non-space SenderSegment run of {@code line} into {@code target}
+     * so a leading ":" token stays glued to the sender name across a wrap. Only sender
+     * runs are moved, so no other segment sequence is affected. Returns the width of the
+     * moved segments.
+     */
+    private static int detachTrailingSenderRun(VisualLine line, VisualLine target, FontMetrics fm) {
+        List<TextSegment> segs = line.getSegs();
+        int idx = segs.size();
+        while (idx > 0) {
+            TextSegment seg = segs.get(idx - 1);
+            if (!(seg instanceof SenderSegment))
+                break;
+            String t = seg.getText();
+            if (t == null || t.isEmpty())
+                break;
+            char last = t.charAt(t.length() - 1);
+            if (last == ' ' || last == '\u00A0')
+                break; // sender names can contain spaces; break at them as usual
+            idx--;
+        }
+        int moved = 0;
+        while (segs.size() > idx) {
+            TextSegment seg = segs.remove(idx);
+            target.getSegs().add(seg);
+            moved += fm.stringWidth(seg.getText());
+        }
+        return moved;
     }
 
     private int fitCharsForWidth(FontMetrics fm, String s, int start, int remainingWidth) {
