@@ -77,6 +77,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		boolean featurePeek_PrefixChatTypes();
 		boolean featurePeek_ShowNpcMessages();
 		boolean featurePeek_FadeEnabled();
+		boolean featurePeek_FadePerLine();
 		int featurePeek_FadeDelay();
 		int featurePeek_FadeDuration();
 		String featurePeek_SourceTabKey();
@@ -123,6 +124,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Color getPublicColor() { return config.general_PublicChatColor(); }
 			@Override public boolean featurePeek_PrefixChatTypes() { return config.featurePeek_PrefixChatTypes(); }
 			@Override public boolean featurePeek_FadeEnabled() { return config.featurePeek_FadeEnabled(); }
+			@Override public boolean featurePeek_FadePerLine() { return config.featurePeek_FadePerLine(); }
 			@Override public int featurePeek_FadeDelay() { return config.featurePeek_FadeDelay(); }
 			@Override public int featurePeek_FadeDuration() { return config.featurePeek_FadeDuration(); }
 			@Override public String featurePeek_SourceTabKey() { return config.featurePeek_SourceTabKey(); }
@@ -150,6 +152,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean isShowNpcMessages() { return cfg.featurePeek_ShowNpcMessages(); }
 			@Override public boolean isFollowChatBox() { return cfg.featurePeek_FollowChatBox(); }
 			@Override public boolean isFadeEnabled() { return cfg.featurePeek_FadeEnabled(); }
+			@Override public boolean isFadePerLine() { return cfg.featurePeek_FadePerLine(); }
 			@Override public int getFadeDelay() { return cfg.featurePeek_FadeDelay(); }
 			@Override public int getFadeDuration() { return cfg.featurePeek_FadeDuration(); }
 			@Override public Point getOffset() { return new Point(cfg.featurePeek_OffsetX(), cfg.featurePeek_OffsetY()); }

@@ -41,7 +41,8 @@ public class ChatPeekOverlay extends MessageContainer
     public void pushLine(MessageLine line) {
         super.pushLine(line);
 
-        if (canAutoResetFade(line.getType(), line.isCollapsed())) {
+        // In per-line fade mode the fresh timestamp un-fades just the new line
+        if (!isFadePerLine() && canAutoResetFade(line.getType(), line.isCollapsed())) {
             resetFade();
         }
     }
@@ -52,7 +53,7 @@ public class ChatPeekOverlay extends MessageContainer
     {
         super.pushLine(s, type, timestamp, sender, receiver, targetName, prefix);
 
-        if (canAutoResetFade(type, false)) {
+        if (!isFadePerLine() && canAutoResetFade(type, false)) {
             resetFade();
         }
     }

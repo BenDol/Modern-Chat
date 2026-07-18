@@ -183,6 +183,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_MarginRight = "featurePeek_MarginRight";
         String featurePeek_MarginBottom = "featurePeek_MarginBottom";
         String featurePeek_FadeEnabled = "featurePeek_FadeEnabled";
+        String featurePeek_FadePerLine = "featurePeek_FadePerLine";
         String featurePeek_FadeDelay = "featurePeek_FadeDelay";
         String featurePeek_FadeDuration = "featurePeek_FadeDuration";
         String featurePeek_SourceTabKey = "featurePeek_SourceTabKey";
@@ -366,6 +367,7 @@ public interface ModernChatConfigBase extends
         PEEK_MARGIN_RIGHT(Keys.featurePeek_MarginRight, Kind.INT, ModernChatConfigBase::featurePeek_MarginRight),
         PEEK_MARGIN_BOTTOM(Keys.featurePeek_MarginBottom, Kind.INT, ModernChatConfigBase::featurePeek_MarginBottom),
         PEEK_FADE_ENABLED(Keys.featurePeek_FadeEnabled, Kind.BOOL, ModernChatConfigBase::featurePeek_FadeEnabled),
+        PEEK_FADE_PER_LINE(Keys.featurePeek_FadePerLine, Kind.BOOL, ModernChatConfigBase::featurePeek_FadePerLine),
         PEEK_FADE_DELAY(Keys.featurePeek_FadeDelay, Kind.INT, ModernChatConfigBase::featurePeek_FadeDelay),
         PEEK_FADE_DURATION(Keys.featurePeek_FadeDuration, Kind.INT, ModernChatConfigBase::featurePeek_FadeDuration),
         PEEK_TIMESTAMP_COLOR(Keys.featurePeek_TimestampColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TimestampColor),
@@ -656,6 +658,7 @@ public interface ModernChatConfigBase extends
         @Override public int featurePeek_MarginRight() { return getInt(Keys.featurePeek_MarginRight, DEFAULTS.featurePeek_MarginRight()); }
         @Override public int featurePeek_MarginBottom() { return getInt(Keys.featurePeek_MarginBottom, DEFAULTS.featurePeek_MarginBottom()); }
         @Override public boolean featurePeek_FadeEnabled() { return getBool(Keys.featurePeek_FadeEnabled, DEFAULTS.featurePeek_FadeEnabled()); }
+        @Override public boolean featurePeek_FadePerLine() { return getBool(Keys.featurePeek_FadePerLine, DEFAULTS.featurePeek_FadePerLine()); }
         @Override public int featurePeek_FadeDelay() { return getInt(Keys.featurePeek_FadeDelay, DEFAULTS.featurePeek_FadeDelay()); }
         @Override public int featurePeek_FadeDuration() { return getInt(Keys.featurePeek_FadeDuration, DEFAULTS.featurePeek_FadeDuration()); }
         @Override public String featurePeek_SourceTabKey() { return getString(Keys.featurePeek_SourceTabKey, DEFAULTS.featurePeek_SourceTabKey()); }
