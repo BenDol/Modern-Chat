@@ -19,6 +19,9 @@ public final class RichLine
     private String duplicateKey;
     /** True if this message has a collapse count suffix like " (2)" */
     private boolean collapsed;
+    /** When non-zero, replaces timestamp as the per-line fade clock base so suppressed
+     *  lines inherit the current overlay fade instead of reviving it */
+    private long fadeStartOverrideMs;
 
     // Cached values for performance
     private List<VisualLine> lineCache = null;

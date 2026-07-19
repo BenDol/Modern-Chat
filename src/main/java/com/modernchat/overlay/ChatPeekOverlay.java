@@ -39,20 +39,40 @@ public class ChatPeekOverlay extends MessageContainer
 
     @Override
     public void pushLine(MessageLine line) {
-        super.pushLine(line);
-
-        if (canAutoResetFade(line.getType(), line.isCollapsed())) {
-            resetFade();
-        }
+        pushFadeAware(line.getType(), line.isCollapsed(), () -> super.pushLine(line));
     }
 
     @Override
     public void pushLine(String s, ChatMessageType type, long timestamp, String sender,
                          String receiver, String targetName, String prefix)
     {
-        super.pushLine(s, type, timestamp, sender, receiver, targetName, prefix);
+        pushFadeAware(type, false, () -> super.pushLine(s, type, timestamp, sender, receiver, targetName, prefix));
+    }
 
-        if (canAutoResetFade(type, false)) {
+    /**
+     * In per-line fade mode an allowed line un-fades itself via its fresh timestamp, while a
+     * suppressed line (spam, collapsed, muted tab, GE suppression) inherits the current
+     * overlay fade so it cannot revive the backdrop. In container mode an allowed line
+     * resets the container-wide fade, matching the original behavior.
+     */
+    private void pushFadeAware(ChatMessageType type, boolean collapsed, Runnable push) {
+        final boolean autoReset = canAutoResetFade(type, collapsed);
+
+        if (isFadePerLine()) {
+            if (!autoReset) {
+                beginInheritedFadePush();
+            }
+            try {
+                push.run();
+            } finally {
+                endInheritedFadePush();
+            }
+            return;
+        }
+
+        push.run();
+
+        if (autoReset) {
             resetFade();
         }
     }
