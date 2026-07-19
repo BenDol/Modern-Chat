@@ -33,6 +33,7 @@ import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageService;
+import com.modernchat.service.RsnHiderService;
 import com.modernchat.service.SpamFilterService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
@@ -129,6 +130,7 @@ public class ChatOverlay extends OverlayPanel
     @Inject private MessageService messageService;
     @Inject private ImageService imageService;
     @Inject private SpamFilterService spamFilterService;
+    @Inject private RsnHiderService rsnHiderService;
     @Inject @Getter private ResizePanel resizePanel;
     @Inject private Provider<MessageContainer> messageContainerProvider;
     @Inject @Getter private ChannelFilterState channelFilterState;
@@ -1765,6 +1767,17 @@ public class ChatOverlay extends OverlayPanel
     }
 
     private String getPlayerPrefix() {
+        // RSN Hider rewrites the legacy input widget but skips it while hidden,
+        // so mirror its custom name here to avoid leaking the real name
+        String customRsnPrefix = rsnHiderService.getCustomRsnPrefix();
+        if (customRsnPrefix != null)
+            return customRsnPrefix;
+
+        // RSN Hider without a custom name substitutes a random alias we cannot
+        // read, so fall back to a neutral masked prefix instead of the real name
+        if (rsnHiderService.isPluginEnabled())
+            return "Player: ";
+
         Player lp = client.getLocalPlayer();
         String name = lp != null && lp.getName() != null ? Text.removeTags(lp.getName()) : "Player";
         return name + ": ";
