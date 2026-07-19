@@ -75,10 +75,11 @@ public class MessageService implements ChatService
         }
 
         // Handle :: commands
-        if (text.trim().startsWith("::")) {
+        final String trimmed = text.trim();
+        if (trimmed.startsWith("::")) {
             clientThread.invoke(() -> {
                 client.setVarcStrValue(VarClientID.CHATINPUT, text);
-                String typedText = text.substring(2);
+                String typedText = trimmed.substring(2);
                 String[] split = typedText.split(" ");
                 if (split.length == 0)
                     return;

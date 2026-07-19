@@ -31,6 +31,11 @@ public class PrivateMessageChatCommand extends AbstractChatCommand {
     }
 
     @Override
+    public boolean isEnabled(CommandsChatConfig config) {
+        return config.featureCommands_PrivateMessageEnabled();
+    }
+
+    @Override
     public void handleInputOrSubmit(String[] args, ChatboxInput ev) {
         CommandsChatConfig config = feature.getConfig();
         if (!config.featureCommands_PrivateMessageEnabled())

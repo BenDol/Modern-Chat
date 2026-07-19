@@ -56,6 +56,7 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
     private final List<String> history = new ArrayList<>();
     private int navIndex = -1;
     private String stashedDraft = null; // draft before navigation started
+    private String suppressedInput = null; // one-shot ChatboxInput echo to skip (client thread)
 
     @Inject private Client client;
     @Inject private ClientThread clientThread;
@@ -101,6 +102,7 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         resetNavState();
         saveHistory();
         history.clear();
+        suppressedInput = null;
     }
 
     @Override
@@ -158,6 +160,11 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
 
     @Subscribe
     public void onChatboxInput(ChatboxInput ev) {
+        String suppressed = suppressedInput;
+        suppressedInput = null;
+        if (suppressed != null && suppressed.equals(ev.getValue()))
+            return; // echo of a prefix send already recorded with its typed form
+
         addHistory(ev.getValue());
     }
 
@@ -174,7 +181,13 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
         if (StringUtil.isNullOrEmpty(e.getText()))
             return;
 
-        addHistory(e.getText());
+        // History state lives on the client thread; the prefix path posts from AWT
+        clientThread.invoke(() -> {
+            if (e.getSuppressedInput() != null)
+                suppressedInput = e.getSuppressedInput();
+
+            addHistory(e.getText());
+        });
     }
 
     private void addHistory(String text) {
@@ -187,7 +200,7 @@ public class MessageHistoryChatFeature extends AbstractChatFeature<MessageHistor
             int commandIndex = msg.indexOf(' ');
             if (commandIndex != -1) {
                 String cmd = msg.substring(0, commandIndex);
-                if (commandsChatFeature.isCommand(cmd.startsWith("/") ? cmd : "/" + cmd)) {
+                if (commandsChatFeature.isCommandEnabled(cmd.startsWith("/") ? cmd : "/" + cmd)) {
                     // Skip slash commands if configured
                     if (!config.featureMessageHistory_IncludeCommands()) {
                         resetNavState(); // still reset after a send

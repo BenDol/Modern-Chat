@@ -8,6 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 public class ReplyChatCommand extends AbstractChatCommand {
 
     @Override
+    public boolean isEnabled(CommandsChatConfig config) {
+        return config.featureCommands_ReplyEnabled();
+    }
+
+    @Override
     public void handleInput(String[] args) {
         CommandsChatConfig config = feature.getConfig();
         if (!config.featureCommands_ReplyEnabled())

@@ -16,6 +16,11 @@ public class GroupIronmanChatCommand extends AbstractChatCommand {
     @Inject private MessageService messageService;
 
     @Override
+    public boolean isEnabled(CommandsChatConfig config) {
+        return config.featureCommands_GroupChatEnabled();
+    }
+
+    @Override
     public void handleSubmit(String[] args, ChatboxInput ev) {
         CommandsChatConfig config = feature.getConfig();
         if (!config.featureCommands_GroupChatEnabled())
