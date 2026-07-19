@@ -41,6 +41,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -96,6 +97,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private ChannelFilterState channelFilterState;
 	@Inject private MessageFilterService messageFilterService;
 	@Inject private ChatColorsService chatColorsService;
+	@Inject private ChatIconManager chatIconManager;
 
 	private final ModernChatConfig mainConfig;
 
@@ -272,7 +274,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			return; // Message blocked by chat filter plugin
 		}
 
-        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage, chatIconManager);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages

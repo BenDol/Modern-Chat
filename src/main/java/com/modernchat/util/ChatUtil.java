@@ -5,12 +5,22 @@ import com.modernchat.common.ChatMode;
 import com.modernchat.common.MessageLine;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.FriendsChatManager;
+import net.runelite.api.FriendsChatMember;
+import net.runelite.api.FriendsChatRank;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MessageNode;
 import net.runelite.api.Player;
+import net.runelite.api.clan.ClanChannel;
+import net.runelite.api.clan.ClanChannelMember;
+import net.runelite.api.clan.ClanID;
+import net.runelite.api.clan.ClanRank;
+import net.runelite.api.clan.ClanSettings;
+import net.runelite.api.clan.ClanTitle;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.widgets.Widget;
 import lombok.Value;
+import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
@@ -44,7 +54,8 @@ public class ChatUtil
     public static class SenderReceiver {
         String senderName;
         String receiverName;
-        int senderIconId; // -1 if none
+        int senderIconId; // -1 if none (first icon when multiple)
+        List<Integer> senderIconIds; // all icons in order, empty if none
     }
 
     @Value
@@ -164,6 +175,14 @@ public class ChatUtil
         return m.find() ? Integer.parseInt(m.group(1)) : -1;
     }
 
+    public static List<Integer> extractIconIds(@Nullable String name) {
+        if (name == null || name.isEmpty()) return List.of();
+        List<Integer> ids = new ArrayList<>();
+        Matcher m = IMG_TAG_PATTERN.matcher(name);
+        while (m.find()) ids.add(Integer.parseInt(m.group(1)));
+        return ids;
+    }
+
     public static boolean isPrivateMessage(ChatMessageType t) {
         return t == ChatMessageType.PRIVATECHAT
             || t == ChatMessageType.PRIVATECHATOUT
@@ -278,8 +297,8 @@ public class ChatUtil
         String name = msg.getName();
         ChatMessageType type = msg.getType();
 
-        // Extract icon ID from the raw name *before* stripping tags
-        int senderIconId = -1;
+        // Extract icon IDs from the raw name *before* stripping tags
+        List<Integer> senderIconIds = List.of();
 
         if (type == ChatMessageType.PRIVATECHATOUT) {
             // For outgoing PMs, the "name" is the receiver - no sender icon
@@ -287,21 +306,21 @@ public class ChatUtil
             senderName = "You";
         }
         else if (type == ChatMessageType.PRIVATECHAT) {
-            // For incoming PMs, the "name" is the sender - extract their icon
-            senderIconId = extractIconId(name);
+            // For incoming PMs, the "name" is the sender - extract their icons
+            senderIconIds = extractIconIds(name);
             receiverName = localPlayerName;
             senderName = name != null ? Text.removeTags(name) : null;
         }
         else if (ChatUtil.isClanMessage(type) || ChatUtil.isFriendsChatMessage(type)) {
-            senderIconId = extractIconId(name);
+            senderIconIds = extractIconIds(name);
             senderName = name != null ? Text.removeTags(name) : null;
         }
         else if (senderName == null) {
-            senderIconId = extractIconId(name);
+            senderIconIds = extractIconIds(name);
             senderName = name != null ? Text.removeTags(name) : null;
         }
         else {
-            senderIconId = extractIconId(senderName);
+            senderIconIds = extractIconIds(senderName);
             senderName = Text.removeTags(senderName);
         }
 
@@ -309,7 +328,8 @@ public class ChatUtil
             receiverName = localPlayerName;
         }
 
-        return new SenderReceiver(senderName, receiverName, senderIconId);
+        int senderIconId = senderIconIds.isEmpty() ? -1 : senderIconIds.get(0);
+        return new SenderReceiver(senderName, receiverName, senderIconId, senderIconIds);
     }
 
     public static String getCustomPrefix(ChatMessage msg) {
@@ -324,6 +344,72 @@ public class ChatUtil
             return msg.getSender() != null ? "(" + msg.getSender() + ") " : "";
         }
         return "";
+    }
+
+    /**
+     * Resolve the clan/friends chat rank icon for a message sender, or -1 if none.
+     * The game injects rank icons at widget-build time, so they never arrive in the
+     * ChatMessage name - we have to look the rank up from the relevant channel.
+     */
+    public static int getRankIconId(ChatMessageType type, @Nullable String senderName, Client client, ChatIconManager chatIconManager) {
+        // Only friends chat and clan messages carry rank icons - bail out on cheap
+        // enum compares before doing any name normalization work
+        boolean friendsChat = isFriendsChatMessage(type);
+        boolean clanChat = isClanMessage(type);
+        if (!friendsChat && !clanChat)
+            return -1;
+
+        if (StringUtil.isNullOrEmpty(senderName))
+            return -1;
+
+        // Chat names carry non-breaking spaces - normalize before member lookups
+        String cleanName = Text.toJagexName(senderName);
+        if (cleanName.isEmpty())
+            return -1;
+
+        if (friendsChat) {
+            FriendsChatManager friendsChatManager = client.getFriendsChatManager();
+            if (friendsChatManager == null)
+                return -1;
+            FriendsChatMember member = friendsChatManager.findByName(cleanName);
+            if (member == null)
+                return -1;
+            FriendsChatRank rank = member.getRank();
+            if (rank == null || rank == FriendsChatRank.UNRANKED)
+                return -1;
+            return chatIconManager.getIconNumber(rank);
+        }
+
+        ClanChannel channel;
+        ClanSettings settings;
+        switch (toChatMode(type)) {
+            case CLAN_MAIN:
+                channel = client.getClanChannel();
+                settings = client.getClanSettings();
+                break;
+            case CLAN_GUEST:
+                channel = client.getGuestClanChannel();
+                settings = client.getGuestClanSettings();
+                break;
+            case CLAN_GIM:
+                channel = client.getClanChannel(ClanID.GROUP_IRONMAN);
+                settings = client.getClanSettings(ClanID.GROUP_IRONMAN);
+                break;
+            default:
+                return -1;
+        }
+        if (channel == null || settings == null)
+            return -1;
+        ClanChannelMember member = channel.findMember(cleanName);
+        if (member == null)
+            return -1;
+        ClanRank rank = member.getRank();
+        if (rank == null)
+            return -1;
+        ClanTitle title = settings.titleForRank(rank);
+        if (title == null)
+            return -1;
+        return chatIconManager.getIconNumber(title);
     }
 
     public static int getModImageId(String msg) {
@@ -362,6 +448,10 @@ public class ChatUtil
         ChatMessageType.NPC_SAY
     );
 
+    public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer, @Nullable String filteredMessage) {
+        return createMessageLine(e, client, requireLocalPlayer, filteredMessage, null);
+    }
+
     /**
      * Create a MessageLine from a ChatMessage, optionally using a filtered message text.
      *
@@ -369,8 +459,10 @@ public class ChatUtil
      * @param client the game client
      * @param requireLocalPlayer whether to require local player info
      * @param filteredMessage optional filtered message text (from chat filter plugins), or null to use original
+     * @param chatIconManager optional icon manager used to render clan/friends chat rank icons, or null to skip
      */
-    public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer, @Nullable String filteredMessage) {
+    public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer,
+                                                          @Nullable String filteredMessage, @Nullable ChatIconManager chatIconManager) {
         Player localPlayer = client.getLocalPlayer();
         if (localPlayer == null && requireLocalPlayer)
             return null;
@@ -404,6 +496,17 @@ public class ChatUtil
         ChatMessageBuilder builder = new ChatMessageBuilder();
 
         if (!StringUtil.isNullOrEmpty(senderName)) {
+            // Rank icon (clan/friends chat) renders first, before account-type icons.
+            if (chatIconManager != null) {
+                int rankIconId = getRankIconId(type, senderName, client, chatIconManager);
+                if (rankIconId > -1)
+                    builder.img(rankIconId);
+            }
+            // Render account-type icons (ironman, leagues, etc.) before the sender name.
+            // senderName itself stays tag-free - it is used for tab keys and target names.
+            for (int iconId : senderReceiver.getSenderIconIds()) {
+                builder.img(iconId);
+            }
             builder.append(senderName, false).append(": ");
         }
 
