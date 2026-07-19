@@ -23,6 +23,12 @@ public class KeyRemappingKeyListener implements KeyListener {
         if (!service.isEnabled())
             return;
 
+        // A typed-key chat open is queued on the client thread; leave keystrokes
+        // alone so they reach ToggleChatFeature's seed buffer unmodified instead
+        // of being remapped to camera/F-keys.
+        if (service.isChatOpenPending())
+            return;
+
         if (!service.chatboxFocused()) {
             return;
         }

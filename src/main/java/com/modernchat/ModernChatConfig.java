@@ -1276,6 +1276,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.featureToggle_OpenOnTypedKeys,
+        name = "Open Chat On / : !",
+        description = "Open the chat with the pressed character pre-typed in the input box when /, : or ! is pressed while the chat is hidden or unfocused",
+        position = 2,
+        section = toggleChatSection
+    )
+    @Override
+    default boolean featureToggle_OpenOnTypedKeys() {
+        return false;
+    }
+
+    @ConfigItem(
         keyName = Keys.featureToggle_AutoHideOnSend,
         name = "Auto-hide on send",
         description = "Hide chat automatically after sending a message",

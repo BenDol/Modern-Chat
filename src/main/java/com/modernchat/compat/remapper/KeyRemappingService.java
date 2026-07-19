@@ -53,6 +53,7 @@ public class KeyRemappingService implements ChatService {
 
     private KeyRemappingKeyListener keyListener;
     private volatile boolean typing = false;
+    private volatile boolean chatOpenPending = false;
     private boolean enabled = false;
 
     // Camera remap config
@@ -104,6 +105,7 @@ public class KeyRemappingService implements ChatService {
         }
 
         typing = false;
+        chatOpenPending = false;
 
         log.debug("KeyRemappingService shut down");
     }
@@ -114,6 +116,19 @@ public class KeyRemappingService implements ChatService {
 
     public boolean isTyping() {
         return typing;
+    }
+
+    public boolean isChatOpenPending() {
+        return chatOpenPending;
+    }
+
+    /**
+     * Set synchronously on the AWT thread while ToggleChatFeature has a chat open
+     * queued on the client thread, so remapping can't remap or swallow keystrokes
+     * typed in the gap before the chat input takes focus.
+     */
+    public void setChatOpenPending(boolean pending) {
+        chatOpenPending = pending;
     }
 
     public void lockChat() {
