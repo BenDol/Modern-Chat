@@ -780,7 +780,7 @@ public class MessageContainer extends Overlay
             }
         }
 
-        RichLine parsed = parseRich(messageToRender, baseColor, type, rl.getTimestamp(), prefix);
+        RichLine parsed = parseRich(messageToRender, baseColor, type, rl.getTimestamp(), prefix, rl.getSender());
         rl.getSegs().clear();
         rl.getSegs().addAll(parsed.getSegs());
         rl.setNodeValueSnapshot(effectiveText);

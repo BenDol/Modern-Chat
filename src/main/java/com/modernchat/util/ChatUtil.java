@@ -508,7 +508,7 @@ public class ChatUtil
             if (chatIconManager != null) {
                 int rankIconId = getRankIconId(type, senderName, client, chatIconManager);
                 if (rankIconId > -1)
-                    builder.img(rankIconId);
+                    senderBuilder.img(rankIconId);
             }
             // Render account-type icons (ironman, leagues, etc.) before the sender name.
             // senderName itself stays tag-free - it is used for tab keys and target names.
