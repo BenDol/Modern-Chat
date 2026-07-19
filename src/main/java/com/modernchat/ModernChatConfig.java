@@ -1060,6 +1060,19 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return new Color(0, 0, 0, 0); // Fully transparent = use line color
     }
 
+    @ConfigItem(
+        keyName = Keys.featureRedesign_NameColor,
+        name = "Name Color",
+        description = "Color for sender names in chat messages. Set fully transparent to use message color. Applies to new messages.",
+        position = 47,
+        section = modernChatStyleSection
+    )
+    @Alpha
+    @Override
+    default Color featureRedesign_NameColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use message color
+    }
+
     /* ------------ General Settings ------------ */
 
     @Override default Color getWelcomeColor() { return general_WelcomeChatColor(); }
@@ -1729,6 +1742,19 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Alpha
     @Override
     default Color featurePeek_TypePrefixColor() {
+        return new Color(0, 0, 0, 0); // Fully transparent = use fallback
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_NameColor,
+        name = "Name Color",
+        description = "Color for sender names in chat messages. Set fully transparent to use Modern Design color, or message color if that is also transparent. Applies to new messages.",
+        position = 26,
+        section = peekOverlaySection
+    )
+    @Alpha
+    @Override
+    default Color featurePeek_NameColor() {
         return new Color(0, 0, 0, 0); // Fully transparent = use fallback
     }
 

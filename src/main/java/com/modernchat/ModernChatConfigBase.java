@@ -194,11 +194,13 @@ public interface ModernChatConfigBase extends
         String featurePeek_SuppressFadeAtGE = "featurePeek_SuppressFadeAtGE";
         String featurePeek_TimestampColor = "featurePeek_TimestampColor";
         String featurePeek_TypePrefixColor = "featurePeek_TypePrefixColor";
+        String featurePeek_NameColor = "featurePeek_NameColor";
         String featurePeek_SourceTabIndicatorColor = "featurePeek_SourceTabIndicatorColor";
 
         // Timestamp and type prefix colors
         String featureRedesign_TimestampColor = "featureRedesign_TimestampColor";
         String featureRedesign_TypePrefixColor = "featureRedesign_TypePrefixColor";
+        String featureRedesign_NameColor = "featureRedesign_NameColor";
 
         // Commands
         String featureCommands_Enabled = "featureCommands_Enabled";
@@ -320,6 +322,7 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_MSG_SCROLL_THUMB_COLOR(Keys.featureRedesign_MessageContainer_ScrollbarThumbColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_MessageContainer_ScrollbarThumbColor),
         FEATURE_REDESIGN_TIMESTAMP_COLOR(Keys.featureRedesign_TimestampColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TimestampColor),
         FEATURE_REDESIGN_TYPE_PREFIX_COLOR(Keys.featureRedesign_TypePrefixColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_TypePrefixColor),
+        FEATURE_REDESIGN_NAME_COLOR(Keys.featureRedesign_NameColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_NameColor),
 
         // ---- Filters ----
         FILTERS_ENABLED(Keys.filters_Enabled, Kind.BOOL, ModernChatConfigBase::filters_Enabled),
@@ -379,6 +382,7 @@ public interface ModernChatConfigBase extends
         PEEK_FADE_DURATION(Keys.featurePeek_FadeDuration, Kind.INT, ModernChatConfigBase::featurePeek_FadeDuration),
         PEEK_TIMESTAMP_COLOR(Keys.featurePeek_TimestampColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TimestampColor),
         PEEK_TYPE_PREFIX_COLOR(Keys.featurePeek_TypePrefixColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TypePrefixColor),
+        PEEK_NAME_COLOR(Keys.featurePeek_NameColor, Kind.COLOR, ModernChatConfigBase::featurePeek_NameColor),
 
         // ---- Commands ----
         CMD_ENABLED(Keys.featureCommands_Enabled, Kind.BOOL, ModernChatConfigBase::featureCommands_Enabled),
@@ -462,9 +466,11 @@ public interface ModernChatConfigBase extends
 
     Color featureRedesign_TimestampColor();
     Color featureRedesign_TypePrefixColor();
+    Color featureRedesign_NameColor();
 
     Color featurePeek_TimestampColor();
     Color featurePeek_TypePrefixColor();
+    Color featurePeek_NameColor();
     Color featurePeek_SourceTabIndicatorColor();
 
     static JsonObject buildJsonFromConfig(ModernChatConfigBase c) {
@@ -615,6 +621,7 @@ public interface ModernChatConfigBase extends
         @Override public Color featureRedesign_MessageContainer_ScrollbarThumbColor() { return getColor(Keys.featureRedesign_MessageContainer_ScrollbarThumbColor, DEFAULTS.featureRedesign_MessageContainer_ScrollbarThumbColor()); }
         @Override public Color featureRedesign_TimestampColor() { return getColor(Keys.featureRedesign_TimestampColor, DEFAULTS.featureRedesign_TimestampColor()); }
         @Override public Color featureRedesign_TypePrefixColor() { return getColor(Keys.featureRedesign_TypePrefixColor, DEFAULTS.featureRedesign_TypePrefixColor()); }
+        @Override public Color featureRedesign_NameColor() { return getColor(Keys.featureRedesign_NameColor, DEFAULTS.featureRedesign_NameColor()); }
 
         // Filters
         @Override public boolean filters_Enabled() { return getBool(Keys.filters_Enabled, DEFAULTS.filters_Enabled()); }
@@ -676,6 +683,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featurePeek_SuppressFadeAtGE() { return getBool(Keys.featurePeek_SuppressFadeAtGE, DEFAULTS.featurePeek_SuppressFadeAtGE()); }
         @Override public Color featurePeek_TimestampColor() { return getColor(Keys.featurePeek_TimestampColor, DEFAULTS.featurePeek_TimestampColor()); }
         @Override public Color featurePeek_TypePrefixColor() { return getColor(Keys.featurePeek_TypePrefixColor, DEFAULTS.featurePeek_TypePrefixColor()); }
+        @Override public Color featurePeek_NameColor() { return getColor(Keys.featurePeek_NameColor, DEFAULTS.featurePeek_NameColor()); }
         @Override public Color featurePeek_SourceTabIndicatorColor() { return getColor(Keys.featurePeek_SourceTabIndicatorColor, DEFAULTS.featurePeek_SourceTabIndicatorColor()); }
 
         // Commands
