@@ -73,6 +73,7 @@ public class MessageContainer extends Overlay
     private static final int SCROLL_TO_BOTTOM_SENTINEL = Integer.MAX_VALUE;
     /** Max recent lines walked per container when re-checking MessageNodes for edits */
     public static final int MAX_REFRESH_LINES = 50;
+    public static final long EDIT_REFRESH_WINDOW_MS = 15_000L;
     /** RuneLite's default game-message highlight (ChatColorConfig #EF1020), used when unconfigured */
     private static final Color RUNELITE_HIGHLIGHT_COLOR = new Color(0xEF, 0x10, 0x20);
     /** parseRich pushes a new line on <br>, which would corrupt an in-place rebuild */
@@ -603,6 +604,7 @@ public class MessageContainer extends Overlay
         if (!hasTrackedLines(liveOnly))
             return;
 
+        final long now = System.currentTimeMillis();
         int walked = 0;
         Iterator<RichLine> it = lines.descendingIterator();
         while (it.hasNext() && walked < MAX_REFRESH_LINES) {
@@ -614,6 +616,13 @@ public class MessageContainer extends Overlay
             if (liveOnly && !rl.isLiveUpdating())
                 continue;
 
+            // Plugin edits (Chat Commands lookups) land within seconds of the message; once
+            // the window expires the line stops being swept so idle ticks cost nothing. The
+            // expiring sweep below is still a full check, so edits that happened while this
+            // container was hidden are applied on the first sweep after it becomes visible.
+            // Live-updating lines (system update timer) never expire.
+            final boolean expired = !rl.isLiveUpdating() && now - rl.getTimestamp() > EDIT_REFRESH_WINDOW_MS;
+
             MessageNode node = nodeLookup.apply(rl.getMessageNodeId());
             if (node == null) {
                 // Node evicted from the client buffers; ids are never re-added, so untrack
@@ -624,10 +633,11 @@ public class MessageContainer extends Overlay
 
             String rlFormat = node.getRuneLiteFormatMessage();
             String effective = rlFormat != null ? rlFormat : node.getValue();
-            if (effective == null || effective.equals(rl.getNodeValueSnapshot()))
-                continue;
+            if (effective != null && !effective.equals(rl.getNodeValueSnapshot()))
+                rebuildTrackedLine(rl, node, effective);
 
-            rebuildTrackedLine(rl, node, effective);
+            if (expired)
+                untrackLine(rl);
         }
     }
 

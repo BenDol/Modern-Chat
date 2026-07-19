@@ -434,8 +434,9 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Subscribe
 	public void onGameTick(GameTick e) {
-		// Only re-checks lines matching a live-updating pattern (system update timer, issue #14)
-		chatOverlay.refreshTrackedLines(true);
+		// Full sweep per tick (BUILD_CHATBOX never fires for the hidden chatbox); the shared
+		// sweep dedupes when the redesign feature already ran it this cycle
+		chatOverlay.refreshTrackedLines(false);
 	}
 
 	@Subscribe

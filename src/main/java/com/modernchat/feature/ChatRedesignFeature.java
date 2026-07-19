@@ -532,8 +532,10 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Subscribe
     public void onGameTick(GameTick tick) {
         overlay.inputTick();
-        // Only re-checks lines matching a live-updating pattern (system update timer, issue #14)
-        overlay.refreshTrackedLines(true);
+        // Full sweep per tick: the client never rebuilds the hidden chatbox, so BUILD_CHATBOX
+        // does not fire for plugin edits (Chat Commands) while Modern Chat is active. Cost is
+        // bounded by the per-line edit window; idle ticks exit on the tracked-line counters.
+        overlay.refreshTrackedLines(false);
     }
 
     @Subscribe(priority = -3) // run after ChatMessageManager
