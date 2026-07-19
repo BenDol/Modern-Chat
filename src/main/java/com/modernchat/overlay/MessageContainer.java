@@ -124,12 +124,17 @@ public class MessageContainer extends Overlay
 
     /**
      * The container is treated as transparent when chrome is disabled (no backdrop drawn) or
-     * when the configured backdrop color is more than half-transparent. ForceRecolor uses this
-     * to choose between its opaque and transparent palettes for the matched group.
+     * when the configured backdrop color is more than half-transparent. ForceRecolor and
+     * Chat Colors use this to choose between their opaque and transparent palettes.
      */
     public boolean isTransparentBackdrop() {
         if (!chromeEnabled) return true;
-        Color backdrop = config != null ? config.getBackdropColor() : null;
+        return isTransparentBackdrop(config != null ? config.getBackdropColor() : null);
+    }
+
+    // Assumes chrome is enabled (a backdrop is actually drawn); callers without a container
+    // instance cannot apply the chromeEnabled short-circuit of the instance method above.
+    public static boolean isTransparentBackdrop(Color backdrop) {
         return backdrop == null || backdrop.getAlpha() < 128;
     }
 
@@ -462,7 +467,7 @@ public class MessageContainer extends Overlay
                 c = config.getPrivateColor();
                 break;
             case WELCOME:
-                c = Color.WHITE;
+                c = config.getWelcomeColor();
                 break;
             default:
                 c = config.getSystemColor();

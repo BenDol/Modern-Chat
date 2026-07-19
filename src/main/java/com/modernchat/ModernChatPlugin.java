@@ -24,6 +24,7 @@ import com.modernchat.feature.NotificationChatFeature;
 import com.modernchat.feature.PeekChatFeature;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.feature.command.CommandsChatFeature;
+import com.modernchat.service.ChatColorsService;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ForceRecolorService;
@@ -121,6 +122,7 @@ public class ModernChatPlugin extends Plugin {
     @Inject private SpamFilterService spamFilterService;
 	@Inject private ForceRecolorService forceRecolorService;
 	@Inject private RsnHiderService rsnHiderService;
+	@Inject private ChatColorsService chatColorsService;
 	@Inject private MessageFilterService messageFilterService;
 	@Inject private KeyRemappingService keyRemappingService;
 	@Inject private WidgetBucket widgetBucket;
@@ -165,6 +167,7 @@ public class ModernChatPlugin extends Plugin {
 		imageService.startUp();
 		forceRecolorService.startUp();
 		rsnHiderService.startUp();
+		chatColorsService.startUp();
 		messageFilterService.startUp();
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/modernchat/images/icon.png");
@@ -243,6 +246,7 @@ public class ModernChatPlugin extends Plugin {
 		imageService.shutDown();
 		forceRecolorService.shutDown();
 		rsnHiderService.shutDown();
+		chatColorsService.shutDown();
 		messageFilterService.shutDown();
 		keyRemappingService.shutDown();
 

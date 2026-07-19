@@ -20,6 +20,7 @@ import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatPeekOverlay;
 import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
+import com.modernchat.service.ChatColorsService;
 import com.modernchat.service.MessageFilterService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.StringUtil;
@@ -93,6 +94,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private ConfigManager configManager;
 	@Inject private ChannelFilterState channelFilterState;
 	@Inject private MessageFilterService messageFilterService;
+	@Inject private ChatColorsService chatColorsService;
 
 	private final ModernChatConfig mainConfig;
 
@@ -122,7 +124,6 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public int featurePeek_OffsetY() { return config.featurePeek_OffsetY(); }
 			@Override public int featurePeek_MarginRight() { return config.featurePeek_MarginRight(); }
 			@Override public int featurePeek_MarginBottom() { return config.featurePeek_MarginBottom(); }
-			@Override public Color getPublicColor() { return config.general_PublicChatColor(); }
 			@Override public boolean featurePeek_PrefixChatTypes() { return config.featurePeek_PrefixChatTypes(); }
 			@Override public boolean featurePeek_FadeEnabled() { return config.featurePeek_FadeEnabled(); }
 			@Override public int featurePeek_FadeDelay() { return config.featurePeek_FadeDelay(); }
@@ -131,13 +132,19 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_SuppressFadeAtGE() { return config.featurePeek_SuppressFadeAtGE(); }
 			@Override public boolean featurePeek_ShowNpcMessages() { return config.featurePeek_ShowNpcMessages(); }
 
-			public Color featurePeek_FriendsChatColor() { return config.general_FriendsChatColor(); }
-			public Color featurePeek_ClanChatColor() { return config.general_ClanChatColor(); }
-			public Color featurePeek_PrivateChatColor() { return config.general_PrivateChatColor(); }
-			public Color featurePeek_SystemChatColor() { return config.general_SystemChatColor(); }
-			public Color featurePeek_TradeChatColor() { return config.general_TradeChatColor(); }
-			public Color featurePeek_WelcomeChatColor() { return config.general_WelcomeChatColor(); }
+			// Chat Colors has no welcome message color; fall back to Modern Chat's general welcome color
+			@Override public Color getWelcomeColor() { return config.general_WelcomeChatColor(); }
+			@Override public Color getPublicColor() { return chatColorsOrDefault(ChatColorsService.Channel.PUBLIC, config.general_PublicChatColor()); }
+			@Override public Color getPrivateColor() { return chatColorsOrDefault(ChatColorsService.Channel.PRIVATE, config.general_PrivateChatColor()); }
+			@Override public Color getFriendColor() { return chatColorsOrDefault(ChatColorsService.Channel.FRIENDS, config.general_FriendsChatColor()); }
+			@Override public Color getClanColor() { return chatColorsOrDefault(ChatColorsService.Channel.CLAN, config.general_ClanChatColor()); }
+			@Override public Color getSystemColor() { return chatColorsOrDefault(ChatColorsService.Channel.SYSTEM, config.general_SystemChatColor()); }
+			@Override public Color getTradeColor() { return chatColorsOrDefault(ChatColorsService.Channel.TRADE, config.general_TradeChatColor()); }
 		};
+	}
+
+	private Color chatColorsOrDefault(ChatColorsService.Channel channel, Color fallback) {
+		return chatColorsService.getColorOrDefault(channel, mainConfig.featurePeek_BackgroundColor(), fallback);
 	}
 
 	protected MessageContainerConfig partitionConfig(PeekChatFeatureConfig cfg) {

@@ -24,6 +24,7 @@ import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatOverlayConfig;
 import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
+import com.modernchat.service.ChatColorsService;
 import com.modernchat.service.MessageFilterService;
 import com.modernchat.service.MessageService;
 import com.modernchat.util.ChatUtil;
@@ -155,6 +156,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private WidgetBucket widgetBucket;
     @Inject private MessageService messageService;
     @Inject private MessageFilterService messageFilterService;
+    @Inject private ChatColorsService chatColorsService;
     @Inject private NotificationService notificationService;
     @Inject private ChatOverlay overlay;
     @Inject private ChannelFilterState channelFilterState;
@@ -365,17 +367,22 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 @Override public Color getShadowColor() { return cfg.featureRedesign_MessageContainer_ShadowColor(); }
                 @Override public Color getScrollbarTrackColor() { return cfg.featureRedesign_MessageContainer_ScrollbarTrackColor(); }
                 @Override public Color getScrollbarThumbColor() { return cfg.featureRedesign_MessageContainer_ScrollbarThumbColor(); }
+                // Chat Colors has no welcome message color, so it always uses the general color
                 @Override public Color getWelcomeColor() { return mainConfig.general_WelcomeChatColor(); }
-                @Override public Color getPublicColor() { return mainConfig.general_PublicChatColor(); }
-                @Override public Color getPrivateColor() { return mainConfig.general_PrivateChatColor(); }
-                @Override public Color getFriendColor() { return mainConfig.general_FriendsChatColor(); }
-                @Override public Color getClanColor() { return mainConfig.general_ClanChatColor(); }
-                @Override public Color getSystemColor() { return mainConfig.general_SystemChatColor(); }
-                @Override public Color getTradeColor() { return mainConfig.general_TradeChatColor(); }
+                @Override public Color getPublicColor() { return chatColorsOrDefault(ChatColorsService.Channel.PUBLIC, mainConfig.general_PublicChatColor()); }
+                @Override public Color getPrivateColor() { return chatColorsOrDefault(ChatColorsService.Channel.PRIVATE, mainConfig.general_PrivateChatColor()); }
+                @Override public Color getFriendColor() { return chatColorsOrDefault(ChatColorsService.Channel.FRIENDS, mainConfig.general_FriendsChatColor()); }
+                @Override public Color getClanColor() { return chatColorsOrDefault(ChatColorsService.Channel.CLAN, mainConfig.general_ClanChatColor()); }
+                @Override public Color getSystemColor() { return chatColorsOrDefault(ChatColorsService.Channel.SYSTEM, mainConfig.general_SystemChatColor()); }
+                @Override public Color getTradeColor() { return chatColorsOrDefault(ChatColorsService.Channel.TRADE, mainConfig.general_TradeChatColor()); }
                 @Override public Color getTimestampColor() { return cfg.featureRedesign_TimestampColor(); }
                 @Override public Color getTypePrefixColor() { return cfg.featureRedesign_TypePrefixColor(); }
             };
         };
+    }
+
+    private Color chatColorsOrDefault(ChatColorsService.Channel channel, Color fallback) {
+        return chatColorsService.getColorOrDefault(channel, mainConfig.featureRedesign_MessageContainer_BackdropColor(), fallback);
     }
 
     @Override

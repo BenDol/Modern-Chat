@@ -149,6 +149,7 @@ public interface ModernChatConfigBase extends
         String general_ChatWithMenuEnabled = "general_ChatWithMenuEnabled";
         String featureRedesign_ShowReportButton = "featureRedesign_ShowReportButton";
         String featureRedesign_ShowSessionTimer = "featureRedesign_ShowSessionTimer";
+        String general_UseChatColorsPlugin = "general_UseChatColorsPlugin";
         String general_PublicChatColor = "general_PublicChatColor";
         String general_FriendsChatColor = "general_FriendsChatColor";
         String general_ClanChatColor = "general_ClanChatColor";
@@ -335,6 +336,7 @@ public interface ModernChatConfigBase extends
         GENERAL_CHAT_WITH_MENU_ENABLED(Keys.general_ChatWithMenuEnabled, Kind.BOOL, ModernChatConfigBase::general_ChatWithMenuEnabled),
         FEATURE_REDESIGN_SHOW_REPORT_BUTTON(Keys.featureRedesign_ShowReportButton, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowReportButton),
         FEATURE_REDESIGN_SHOW_SESSION_TIMER(Keys.featureRedesign_ShowSessionTimer, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowSessionTimer),
+        GENERAL_USE_CHAT_COLORS_PLUGIN(Keys.general_UseChatColorsPlugin, Kind.BOOL, ModernChatConfigBase::general_UseChatColorsPlugin),
         GENERAL_PUBLIC_COLOR(Keys.general_PublicChatColor, Kind.COLOR, ModernChatConfigBase::general_PublicChatColor),
         GENERAL_FRIENDS_COLOR(Keys.general_FriendsChatColor, Kind.COLOR, ModernChatConfigBase::general_FriendsChatColor),
         GENERAL_CLAN_COLOR(Keys.general_ClanChatColor, Kind.COLOR, ModernChatConfigBase::general_ClanChatColor),
@@ -449,6 +451,7 @@ public interface ModernChatConfigBase extends
     boolean general_ChatWithMenuEnabled();
     boolean featureRedesign_ShowReportButton();
     boolean featureRedesign_ShowSessionTimer();
+    boolean general_UseChatColorsPlugin();
     Color general_PublicChatColor();
     Color general_FriendsChatColor();
     Color general_ClanChatColor();
@@ -628,6 +631,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean general_ChatWithMenuEnabled() { return getBool(Keys.general_ChatWithMenuEnabled, DEFAULTS.general_ChatWithMenuEnabled()); }
         @Override public boolean featureRedesign_ShowReportButton() { return getBool(Keys.featureRedesign_ShowReportButton, DEFAULTS.featureRedesign_ShowReportButton()); }
         @Override public boolean featureRedesign_ShowSessionTimer() { return getBool(Keys.featureRedesign_ShowSessionTimer, DEFAULTS.featureRedesign_ShowSessionTimer()); }
+        @Override public boolean general_UseChatColorsPlugin() { return getBool(Keys.general_UseChatColorsPlugin, DEFAULTS.general_UseChatColorsPlugin()); }
         @Override public Color general_PublicChatColor() { return getColor(Keys.general_PublicChatColor, DEFAULTS.general_PublicChatColor()); }
         @Override public Color general_FriendsChatColor() { return getColor(Keys.general_FriendsChatColor, DEFAULTS.general_FriendsChatColor()); }
         @Override public Color general_ClanChatColor() { return getColor(Keys.general_ClanChatColor, DEFAULTS.general_ClanChatColor()); }
