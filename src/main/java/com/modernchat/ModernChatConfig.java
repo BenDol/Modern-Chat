@@ -2,6 +2,7 @@ package com.modernchat;
 
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.InputColorMode;
 import com.modernchat.common.Sfx;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
@@ -459,10 +460,24 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.featureRedesign_InputColorMode,
+        name = "Input Color Mode",
+        description = "Which parts of the input line use the target channel's chat color: " +
+                      "PREFIX colors the player name, TEXT colors the typed message, BOTH colors both, " +
+                      "OFF uses the static input colors below for everything",
+        position = 12,
+        section = modernChatStyleSection
+    )
+    @Override
+    default InputColorMode featureRedesign_InputColorMode() {
+        return InputColorMode.PREFIX;
+    }
+
+    @ConfigItem(
         keyName = Keys.featureRedesign_InputPrefixColor,
         name = "Input Prefix Color",
         description = "Color for the input prefix name",
-        position = 12,
+        position = 13,
         section = modernChatStyleSection
     )
     @Alpha
@@ -475,7 +490,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_InputBackgroundColor,
         name = "Input Background Color",
         description = "Background color for the input field",
-        position = 13,
+        position = 14,
         section = modernChatStyleSection
     )
     @Alpha
@@ -488,7 +503,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_InputBorderColor,
         name = "Input Border Color",
         description = "Border color for the input field",
-        position = 14,
+        position = 15,
         section = modernChatStyleSection
     )
     @Alpha
@@ -501,7 +516,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_InputShadowColor,
         name = "Input Shadow Color",
         description = "Shadow color for the input field",
-        position = 15,
+        position = 16,
         section = modernChatStyleSection
     )
     @Alpha
@@ -514,7 +529,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_InputTextColor,
         name = "Input Text Color",
         description = "Text color for the input field",
-        position = 16,
+        position = 17,
         section = modernChatStyleSection
     )
     @Alpha
@@ -527,7 +542,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_InputCaretColor,
         name = "Input Caret Color",
         description = "Caret (cursor) color for the input field",
-        position = 17,
+        position = 18,
         section = modernChatStyleSection
     )
     @Alpha
@@ -540,7 +555,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabBarBackgroundColor,
         name = "Tab Bar Background Color",
         description = "Background color for the tab bar",
-        position = 18,
+        position = 19,
         section = modernChatStyleSection
     )
     @Alpha
@@ -553,7 +568,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabColor,
         name = "Tab Color",
         description = "Color for inactive tabs in the tab bar",
-        position = 19,
+        position = 20,
         section = modernChatStyleSection
     )
     @Alpha
@@ -566,7 +581,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabSelectedColor,
         name = "Tab Selected Color",
         description = "Color for the selected tab in the tab bar",
-        position = 20,
+        position = 21,
         section = modernChatStyleSection
     )
     @Alpha
@@ -579,7 +594,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabBorderColor,
         name = "Tab Border Color",
         description = "Border color for the tab bar",
-        position = 21,
+        position = 22,
         section = modernChatStyleSection
     )
     @Alpha
@@ -592,7 +607,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabBorderSelectedColor,
         name = "Tab Border Selected Color",
         description = "Border color for the selected tab in the tab bar",
-        position = 22,
+        position = 23,
         section = modernChatStyleSection
     )
     @Alpha
@@ -605,7 +620,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabTextColor,
         name = "Tab Text Color",
         description = "Text color for tabs in the tab bar",
-        position = 23,
+        position = 24,
         section = modernChatStyleSection
     )
     @Alpha
@@ -618,7 +633,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabUnreadPulseToColor,
         name = "Unread Pulse To Color",
         description = "Color to pulse to when a tab has unread messages",
-        position = 24,
+        position = 25,
         section = modernChatStyleSection
     )
     @Alpha
@@ -631,7 +646,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabUnreadPulseFromColor,
         name = "Unread Pulse From Color",
         description = "Color to pulse from when a tab has unread messages",
-        position = 25,
+        position = 26,
         section = modernChatStyleSection
     )
     @Alpha
@@ -644,7 +659,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabNotificationColor,
         name = "Tab Notification Color",
         description = "Color for the tab notification (e.g. when a new message arrives)",
-        position = 26,
+        position = 27,
         section = modernChatStyleSection
     )
     @Alpha
@@ -657,7 +672,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabNotificationTextColor,
         name = "Tab Notification Text Color",
         description = "Text color for the tab notification",
-        position = 27,
+        position = 28,
         section = modernChatStyleSection
     )
     @Alpha
@@ -670,7 +685,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabCloseButtonColor,
         name = "Tab Close Button Color",
         description = "Color for the tab close button",
-        position = 28,
+        position = 29,
         section = modernChatStyleSection
     )
     @Alpha
@@ -683,7 +698,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TabCloseButtonTextColor,
         name = "Tab Close Text Color",
         description = "Text color for the tab close button",
-        position = 29,
+        position = 30,
         section = modernChatStyleSection
     )
     @Alpha
@@ -696,7 +711,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_FilterButtonColor,
         name = "Filter Button Color",
         description = "Color for the filter button icon",
-        position = 30,
+        position = 31,
         section = modernChatStyleSection
     )
     @Alpha
@@ -709,7 +724,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_FilterPopupBackgroundColor,
         name = "Filter Popup Background",
         description = "Background color for the filter popup",
-        position = 31,
+        position = 32,
         section = modernChatStyleSection
     )
     @Alpha
@@ -722,7 +737,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_FilterPopupBorderColor,
         name = "Filter Popup Border",
         description = "Border color for the filter popup",
-        position = 32,
+        position = 33,
         section = modernChatStyleSection
     )
     @Alpha
@@ -735,7 +750,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_FilterPopupTextColor,
         name = "Filter Popup Text",
         description = "Text color for filter popup labels",
-        position = 33,
+        position = 34,
         section = modernChatStyleSection
     )
     @Alpha
@@ -748,7 +763,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_FilterPopupCheckboxColor,
         name = "Filter Popup Checkbox",
         description = "Background color for filter popup checkboxes",
-        position = 34,
+        position = 35,
         section = modernChatStyleSection
     )
     @Alpha
@@ -761,7 +776,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_FilterPopupCheckmarkColor,
         name = "Filter Popup Checkmark",
         description = "Checkmark color for filter popup checkboxes",
-        position = 35,
+        position = 36,
         section = modernChatStyleSection
     )
     @Alpha
@@ -774,7 +789,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_ReportButtonFontSize,
         name = "Report Button Font Size",
         description = "Font size for the report / session timer button text (-1 = use input font size)",
-        position = 36,
+        position = 37,
         section = modernChatStyleSection
     )
     @Range(min = -1, max = 48)
@@ -788,7 +803,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_ReportButtonColor,
         name = "Report Button Color",
         description = "Background color for the report / session timer button",
-        position = 31,
+        position = 38,
         section = modernChatStyleSection
     )
     @Alpha
@@ -801,7 +816,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_ReportButtonTextColor,
         name = "Report Button Text Color",
         description = "Text color for the report / session timer button",
-        position = 32,
+        position = 39,
         section = modernChatStyleSection
     )
     @Alpha
@@ -814,7 +829,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_OffsetX,
         name = "Message Offset X",
         description = "Horizontal offset for the message container",
-        position = 30,
+        position = 40,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -827,7 +842,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_OffsetY,
         name = "Message Offset Y",
         description = "Vertical offset for the message container",
-        position = 31,
+        position = 41,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -840,7 +855,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_Margin,
         name = "Message Margin",
         description = "Margin around the message container",
-        position = 32,
+        position = 42,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -853,7 +868,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_PaddingTop,
         name = "Message Padding Top",
         description = "Padding at the top of the message container",
-        position = 33,
+        position = 43,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -866,7 +881,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_PaddingLeft,
         name = "Message Padding Left",
         description = "Padding at the left of the message container",
-        position = 34,
+        position = 44,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -879,7 +894,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_PaddingBottom,
         name = "Message Padding Bottom",
         description = "Padding at the bottom of the message container",
-        position = 35,
+        position = 45,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -892,7 +907,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_PaddingRight,
         name = "Message Padding Right",
         description = "Padding at the right of the message container",
-        position = 36,
+        position = 46,
         section = modernChatStyleSection
     )
     @Range(min = -500, max = 500)
@@ -905,7 +920,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_LineSpacing,
         name = "Message Spacing",
         description = "Spacing between lines in the message container",
-        position = 37,
+        position = 47,
         section = modernChatStyleSection
     )
     @Range(max = 100)
@@ -918,7 +933,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_ScrollStep,
         name = "Message Scroll Step",
         description = "Number of lines to scroll when using the mouse wheel",
-        position = 38,
+        position = 48,
         section = modernChatStyleSection
     )
     @Range(max = 120)
@@ -931,7 +946,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_TextShadow,
         name = "Message Text Shadow",
         description = "Shadow effect for text in the message container",
-        position = 39,
+        position = 49,
         section = modernChatStyleSection
     )
     @Range(max = 32)
@@ -944,7 +959,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_TextOutline,
         name = "Message Text Outline",
         description = "Outline thickness for message text (0 = off, uses drop shadow instead)",
-        position = 40,
+        position = 50,
         section = modernChatStyleSection
     )
     @Range(max = 10)
@@ -958,7 +973,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_BackdropColor,
         name = "Message Backdrop Color",
         description = "Color for the message container backdrop",
-        position = 40,
+        position = 51,
         section = modernChatStyleSection
     )
     @Alpha
@@ -971,7 +986,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_BorderColor,
         name = "Message Border Color",
         description = "Color for the message container border",
-        position = 41,
+        position = 52,
         section = modernChatStyleSection
     )
     @Alpha
@@ -984,7 +999,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_ShadowColor,
         name = "Message Shadow Color",
         description = "Shadow color for the message container",
-        position = 42,
+        position = 53,
         section = modernChatStyleSection
     )
     @Alpha
@@ -997,7 +1012,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_ScrollbarTrackColor,
         name = "Scrollbar Track Color",
         description = "Color for the scrollbar track in the message container",
-        position = 43,
+        position = 54,
         section = modernChatStyleSection
     )
     @Alpha
@@ -1010,7 +1025,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_MessageContainer_ScrollbarThumbColor,
         name = "Scrollbar Thumb Color",
         description = "Color for the scrollbar thumb in the message container",
-        position = 44,
+        position = 55,
         section = modernChatStyleSection
     )
     @Alpha
@@ -1023,7 +1038,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TimestampColor,
         name = "Timestamp Color",
         description = "Color for message timestamps. Set fully transparent to use line color.",
-        position = 45,
+        position = 56,
         section = modernChatStyleSection
     )
     @Alpha
@@ -1036,7 +1051,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_TypePrefixColor,
         name = "Type Prefix Color",
         description = "Color for message type prefixes ([Clan], [System], etc.). Set fully transparent to use line color.",
-        position = 46,
+        position = 57,
         section = modernChatStyleSection
     )
     @Alpha

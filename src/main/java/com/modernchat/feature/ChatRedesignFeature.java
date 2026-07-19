@@ -7,6 +7,7 @@ import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.InputColorMode;
 import com.modernchat.common.MessageLine;
 import com.modernchat.common.NotificationService;
 import com.modernchat.common.WidgetBucket;
@@ -88,6 +89,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         Color featureRedesign_BackdropColor();
         Color featureRedesign_BorderColor();
         int featureRedesign_InputFontSize();
+        InputColorMode featureRedesign_InputColorMode();
         Color featureRedesign_InputPrefixColor();
         Color featureRedesign_InputBackgroundColor();
         Color featureRedesign_InputBorderColor();
@@ -197,6 +199,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public int featureRedesign_InputFontSize() { return cfg.featureRedesign_InputFontSize(); }
             @Override public Color featureRedesign_BackdropColor() { return cfg.featureRedesign_BackdropColor(); }
             @Override public Color featureRedesign_BorderColor() { return cfg.featureRedesign_BorderColor(); }
+            @Override public InputColorMode featureRedesign_InputColorMode() { return cfg.featureRedesign_InputColorMode(); }
             @Override public Color featureRedesign_InputPrefixColor() { return cfg.featureRedesign_InputPrefixColor(); }
             @Override public Color featureRedesign_InputBackgroundColor() { return cfg.featureRedesign_InputBackgroundColor(); }
             @Override public Color featureRedesign_InputBorderColor() { return cfg.featureRedesign_InputBorderColor(); }
@@ -277,6 +280,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public int getInputFontSize() { return cfg.featureRedesign_InputFontSize(); }
             @Override public Color getBackdropColor() { return cfg.featureRedesign_BackdropColor(); }
             @Override public Color getBorderColor() { return cfg.featureRedesign_BorderColor(); }
+            @Override public InputColorMode getInputColorMode() { return cfg.featureRedesign_InputColorMode(); }
             @Override public Color getInputPrefixColor() { return cfg.featureRedesign_InputPrefixColor(); }
             @Override public Color getInputBackgroundColor() { return cfg.featureRedesign_InputBackgroundColor(); }
             @Override public Color getInputBorderColor() { return cfg.featureRedesign_InputBorderColor(); }

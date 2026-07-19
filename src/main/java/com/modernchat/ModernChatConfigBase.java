@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.FontStyle;
+import com.modernchat.common.InputColorMode;
 import com.modernchat.common.Sfx;
 import com.modernchat.feature.ChatRedesignFeature;
 import com.modernchat.feature.ExampleChatFeature;
@@ -86,6 +87,7 @@ public interface ModernChatConfigBase extends
         // Colors (outer)
         String featureRedesign_BackdropColor = "featureRedesign_BackdropColor";
         String featureRedesign_BorderColor = "featureRedesign_BorderColor";
+        String featureRedesign_InputColorMode = "featureRedesign_InputColorMode";
         String featureRedesign_InputPrefixColor = "featureRedesign_InputPrefixColor";
         String featureRedesign_InputBackgroundColor = "featureRedesign_InputBackgroundColor";
         String featureRedesign_InputBorderColor = "featureRedesign_InputBorderColor";
@@ -266,6 +268,7 @@ public interface ModernChatConfigBase extends
         // ---- Colors (outer) ----
         FEATURE_REDESIGN_BACKDROP_COLOR(Keys.featureRedesign_BackdropColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_BackdropColor),
         FEATURE_REDESIGN_BORDER_COLOR(Keys.featureRedesign_BorderColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_BorderColor),
+        FEATURE_REDESIGN_INPUT_COLOR_MODE(Keys.featureRedesign_InputColorMode, InputColorMode.class, ModernChatConfigBase::featureRedesign_InputColorMode),
         FEATURE_REDESIGN_INPUT_PREFIX_COLOR(Keys.featureRedesign_InputPrefixColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_InputPrefixColor),
         FEATURE_REDESIGN_INPUT_BG_COLOR(Keys.featureRedesign_InputBackgroundColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_InputBackgroundColor),
         FEATURE_REDESIGN_INPUT_BORDER_COLOR(Keys.featureRedesign_InputBorderColor, Kind.COLOR, ModernChatConfigBase::featureRedesign_InputBorderColor),
@@ -557,6 +560,7 @@ public interface ModernChatConfigBase extends
         // Colors (outer)
         @Override public Color featureRedesign_BackdropColor() { return getColor(Keys.featureRedesign_BackdropColor, DEFAULTS.featureRedesign_BackdropColor()); }
         @Override public Color featureRedesign_BorderColor() { return getColor(Keys.featureRedesign_BorderColor, DEFAULTS.featureRedesign_BorderColor()); }
+        @Override public InputColorMode featureRedesign_InputColorMode() { return getEnum(Keys.featureRedesign_InputColorMode, DEFAULTS.featureRedesign_InputColorMode(), InputColorMode.class); }
         @Override public Color featureRedesign_InputPrefixColor() { return getColor(Keys.featureRedesign_InputPrefixColor, DEFAULTS.featureRedesign_InputPrefixColor()); }
         @Override public Color featureRedesign_InputBackgroundColor() { return getColor(Keys.featureRedesign_InputBackgroundColor, DEFAULTS.featureRedesign_InputBackgroundColor()); }
         @Override public Color featureRedesign_InputBorderColor() { return getColor(Keys.featureRedesign_InputBorderColor, DEFAULTS.featureRedesign_InputBorderColor()); }
