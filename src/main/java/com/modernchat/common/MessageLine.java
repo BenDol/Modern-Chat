@@ -22,4 +22,10 @@ public class MessageLine
     boolean collapsed;
     /** Icon ID from the sender's name tag (e.g. ironman icon), or -1 if none */
     int senderIconId;
+    /** Id of the MessageNode this line was captured from, or -1 when no node is available */
+    int messageNodeId;
+    /** The node's effective text (RuneLite format message if set, else value) at capture time */
+    @Nullable String nodeValueSnapshot;
+    /** Composed sender part (icons + name + ": ") reused when rebuilding the line text */
+    @Nullable String senderPrefix;
 }

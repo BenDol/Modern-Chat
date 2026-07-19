@@ -159,16 +159,22 @@ public class ClientUtil
         return false;
     }
 
-    public static MessageNode findMessageNode(Client client, int id) {
-        // The identifier on chat menu entries is the MessageNode id
+    /**
+     * Builds an id -> MessageNode index of every chat line the client currently retains,
+     * in a single pass over the chat line buffers. Ids absent from the index have been
+     * evicted and are never re-added.
+     */
+    public static Map<Integer, MessageNode> buildMessageNodeIndex(Client client) {
+        Map<Integer, MessageNode> index = new HashMap<>();
         for (ChatLineBuffer buf : client.getChatLineMap().values()) {
             if (buf == null) continue;
             for (MessageNode n : buf.getLines()) {
-                if (n != null && n.getId() == id)
-                    return n;
+                if (n != null) {
+                    index.put(n.getId(), n);
+                }
             }
         }
-        return null;
+        return index;
     }
 
     public static void clearChatInput(Client client, ClientThread clientThread, Runnable callback) {

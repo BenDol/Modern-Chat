@@ -504,6 +504,9 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 if (!overlay.isLegacyShowing()) {
                     overlay.hideLegacyChat(false);
                 }
+                // Other plugins (e.g. Chat Commands) edit MessageNodes and then call
+                // refreshChat(), which rebuilds the chatbox - re-read our tracked lines
+                overlay.refreshTrackedLines(false);
             });
         }
     }
@@ -551,6 +554,10 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Subscribe
     public void onGameTick(GameTick tick) {
         overlay.inputTick();
+        // Full sweep per tick: the client never rebuilds the hidden chatbox, so BUILD_CHATBOX
+        // does not fire for plugin edits (Chat Commands) while Modern Chat is active. Cost is
+        // bounded by the per-line edit window; idle ticks exit on the tracked-line counters.
+        overlay.refreshTrackedLines(false);
     }
 
     @Subscribe(priority = -3) // run after ChatMessageManager

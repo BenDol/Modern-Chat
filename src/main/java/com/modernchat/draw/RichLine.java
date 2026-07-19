@@ -23,6 +23,15 @@ public final class RichLine
      *  lines inherit the current overlay fade instead of reviving it */
     private long fadeStartOverrideMs;
 
+    /** Id of the MessageNode this line was captured from, or -1 when untracked */
+    private int messageNodeId = -1;
+    /** The node's effective text when this line was last (re)built, for change detection */
+    private String nodeValueSnapshot;
+    /** Composed sender part (icons + name + ": ") reused when rebuilding the line text */
+    private String senderPrefix;
+    /** True when the snapshot matches a live-updating pattern (e.g. system update timer) */
+    private boolean liveUpdating;
+
     // Cached values for performance
     private List<VisualLine> lineCache = null;
 
