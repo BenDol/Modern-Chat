@@ -81,6 +81,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.util.ColorUtil;
+import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.Text;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -104,6 +105,8 @@ import java.awt.image.BufferedImage;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
@@ -112,6 +115,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Singleton
@@ -244,6 +249,32 @@ public class ChatOverlay extends OverlayPanel
     // Report button / session timer
     private final Rectangle reportButtonBounds = new Rectangle();
     @Setter private volatile Instant loginTime = null;
+
+    // Combat achievement lookup
+    private static final String WIKI_SEARCH_URL = "https://oldschool.runescape.wiki/w/Special:Search?search=";
+
+    /**
+     * Matches combat achievement broadcasts, both the local "Congratulations, you've completed
+     * a hard combat task: ..." phrasing and the clan "Player has completed a hard combat task: ..."
+     * variant, capturing the task name.
+     */
+    private static final Pattern COMBAT_TASK_PATTERN = Pattern.compile(
+        "completed an? (?:easy|medium|hard|elite|master|grandmaster) combat task:\\s*(.+)",
+        Pattern.CASE_INSENSITIVE);
+
+    /** Strips surrounding quotes left over from broadcast formatting. */
+    private static final Pattern QUOTE_TRIM = Pattern.compile("^[\"']+|[\"']+$");
+
+    /**
+     * Message types combat achievement broadcasts arrive as: the local completion
+     * message is a GAMEMESSAGE and clan broadcasts are clan system messages.
+     * Player-typed types (public/private/clan chat) must not trigger the lookup entry.
+     */
+    private static final EnumSet<ChatMessageType> COMBAT_TASK_BROADCAST_TYPES = EnumSet.of(
+        ChatMessageType.GAMEMESSAGE,
+        ChatMessageType.CLAN_MESSAGE,
+        ChatMessageType.CLAN_GUEST_MESSAGE,
+        ChatMessageType.CLAN_GIM_MESSAGE);
 
     public ChatOverlay() {
     }
@@ -1502,6 +1533,19 @@ public class ChatOverlay extends OverlayPanel
                 .setType(MenuAction.RUNELITE)
                 .onClick(me -> copyToClipboard(rowText));
 
+            // Only broadcast-capable lines can be combat achievement messages;
+            // player-typed text (public/private/clan chat) must not trigger the entry
+            final String taskName = COMBAT_TASK_BROADCAST_TYPES.contains(hit.getLine().getType())
+                ? extractCombatTaskName(spamKey)
+                : null;
+            if (taskName != null) {
+                rootMenu.createMenuEntry(1)
+                    .setOption("Lookup task")
+                    .setTarget(ColorUtil.wrapWithColorTag(taskName, Color.ORANGE))
+                    .setType(MenuAction.RUNELITE)
+                    .onClick(me -> LinkBrowser.browse(WIKI_SEARCH_URL + URLEncoder.encode(taskName, StandardCharsets.UTF_8)));
+            }
+
             // Spam filter menu options
             boolean isMarkedSpam = spamFilterService.isMarkedSpam(spamKey);
             boolean isMarkedHam = spamFilterService.isMarkedHam(spamKey);
@@ -2220,6 +2264,21 @@ public class ChatOverlay extends OverlayPanel
             }
         }
         return fallback;
+    }
+
+    /** Returns the task name from a combat achievement line, or null if the line isn't one. */
+    private static @Nullable String extractCombatTaskName(@Nullable String text) {
+        if (text == null)
+            return null;
+        Matcher m = COMBAT_TASK_PATTERN.matcher(Text.removeTags(text));
+        if (!m.find())
+            return null;
+        String name = m.group(1).trim();
+        if (name.endsWith("."))
+            name = name.substring(0, name.length() - 1);
+        // Strip surrounding quotes left over from broadcast formatting
+        name = QUOTE_TRIM.matcher(name).replaceAll("").trim();
+        return name.isEmpty() ? null : name;
     }
 
     private void copyToClipboard(String s) {
