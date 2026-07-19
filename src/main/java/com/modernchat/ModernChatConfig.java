@@ -1090,7 +1090,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featureRedesign_NameColor,
         name = "Name Color",
         description = "Color for sender names in chat messages. Set fully transparent to use message color. Applies to new messages.",
-        position = 47,
+        position = 58,
         section = modernChatStyleSection
     )
     @Alpha
@@ -1787,7 +1787,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_NameColor,
         name = "Name Color",
         description = "Color for sender names in chat messages. Set fully transparent to use Modern Design color, or message color if that is also transparent. Applies to new messages.",
-        position = 26,
+        position = 28,
         section = peekOverlaySection
     )
     @Alpha
@@ -1813,7 +1813,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_LineSpacing,
         name = "Message Spacing",
         description = "Extra vertical space between lines in the peek overlay",
-        position = 26,
+        position = 27,
         section = peekOverlaySection
     )
     @Range(min = 0, max = 10)
