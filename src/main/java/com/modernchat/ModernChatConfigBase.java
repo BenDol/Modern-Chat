@@ -177,6 +177,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_FontSize  = "featurePeek_FontSize";
         String featurePeek_TextShadow = "featurePeek_TextShadow";
         String featurePeek_TextOutline = "featurePeek_TextOutline";
+        String featurePeek_LineSpacing = "featurePeek_LineSpacing";
         String featurePeek_OffsetX = "featurePeek_OffsetX";
         String featurePeek_OffsetY = "featurePeek_OffsetY";
         String featurePeek_Padding = "featurePeek_Padding";
@@ -360,6 +361,7 @@ public interface ModernChatConfigBase extends
         PEEK_FONT_SIZE(Keys.featurePeek_FontSize, Kind.INT, ModernChatConfigBase::featurePeek_FontSize),
         PEEK_TEXT_SHADOW(Keys.featurePeek_TextShadow, Kind.INT, ModernChatConfigBase::featurePeek_TextShadow),
         PEEK_TEXT_OUTLINE(Keys.featurePeek_TextOutline, Kind.INT, ModernChatConfigBase::featurePeek_TextOutline),
+        PEEK_LINE_SPACING(Keys.featurePeek_LineSpacing, Kind.INT, ModernChatConfigBase::featurePeek_LineSpacing),
         PEEK_OFFSET_X(Keys.featurePeek_OffsetX, Kind.INT, ModernChatConfigBase::featurePeek_OffsetX),
         PEEK_OFFSET_Y(Keys.featurePeek_OffsetY, Kind.INT, ModernChatConfigBase::featurePeek_OffsetY),
         PEEK_PADDING(Keys.featurePeek_Padding, Kind.INT, ModernChatConfigBase::featurePeek_Padding),
@@ -650,6 +652,7 @@ public interface ModernChatConfigBase extends
         @Override public int featurePeek_FontSize() { return getInt(Keys.featurePeek_FontSize, DEFAULTS.featurePeek_FontSize()); }
         @Override public int featurePeek_TextShadow() { return getInt(Keys.featurePeek_TextShadow, DEFAULTS.featurePeek_TextShadow()); }
         @Override public int featurePeek_TextOutline() { return getInt(Keys.featurePeek_TextOutline, DEFAULTS.featurePeek_TextOutline()); }
+        @Override public int featurePeek_LineSpacing() { return getInt(Keys.featurePeek_LineSpacing, DEFAULTS.featurePeek_LineSpacing()); }
         @Override public int featurePeek_OffsetX() { return getInt(Keys.featurePeek_OffsetX, DEFAULTS.featurePeek_OffsetX()); }
         @Override public int featurePeek_OffsetY() { return getInt(Keys.featurePeek_OffsetY, DEFAULTS.featurePeek_OffsetY()); }
         @Override public int featurePeek_Padding() { return getInt(Keys.featurePeek_Padding, DEFAULTS.featurePeek_Padding()); }

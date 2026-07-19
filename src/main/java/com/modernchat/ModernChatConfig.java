@@ -1706,6 +1706,20 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return new Color(0, 200, 255, 200); // Cyan highlight
     }
 
+    @ConfigItem(
+        keyName = Keys.featurePeek_LineSpacing,
+        name = "Message Spacing",
+        description = "Extra vertical space between lines in the peek overlay",
+        position = 26,
+        section = peekOverlaySection
+    )
+    @Range(min = 0, max = 10)
+    @Units(Units.PIXELS)
+    @Override
+    default int featurePeek_LineSpacing() {
+        return 0;
+    }
+
     /* ------------ Feature: Commands ------------ */
 
     @ConfigItem(
