@@ -47,6 +47,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.EnumComposition;
 import net.runelite.api.FriendsChatManager;
 import net.runelite.api.FriendsChatRank;
 import net.runelite.api.GameState;
@@ -1600,6 +1601,16 @@ public class ChatOverlay extends OverlayPanel
                     .onClick(me -> LinkBrowser.browse(WIKI_SEARCH_URL + URLEncoder.encode(taskName, StandardCharsets.UTF_8)));
             }
 
+            if (hit.getLine().getType() == ChatMessageType.BROADCAST) {
+                final String newspostUrl = resolveNewspostUrl(hit.getLine());
+                if (newspostUrl != null) {
+                    rootMenu.createMenuEntry(1)
+                        .setOption("Open newspost")
+                        .setType(MenuAction.RUNELITE)
+                        .onClick(me -> LinkBrowser.browse(newspostUrl));
+                }
+            }
+
             // Spam filter menu options
             boolean isMarkedSpam = spamFilterService.isMarkedSpam(spamKey);
             boolean isMarkedHam = spamFilterService.isMarkedHam(spamKey);
@@ -2495,6 +2506,27 @@ public class ChatOverlay extends OverlayPanel
         // Strip surrounding quotes left over from broadcast formatting
         name = QUOTE_TRIM.matcher(name).replaceAll("").trim();
         return name.isEmpty() ? null : name;
+    }
+
+    /**
+     * Resolves the newspost URL of a broadcast line from its MessageNode's raw value
+     * ("display text|c"), or null when the line carries no resolvable url code.
+     */
+    private @Nullable String resolveNewspostUrl(RichLine rl) {
+        if (rl == null || rl.getMessageNodeId() < 0)
+            return null;
+        MessageNode node = ClientUtil.buildMessageNodeIndex(client).get(rl.getMessageNodeId());
+        if (node == null)
+            return null;
+        int index = ChatUtil.getBroadcastUrlIndex(node.getValue());
+        if (index < 0)
+            return null;
+        EnumComposition urlEnum = client.getEnum(ChatUtil.BROADCAST_URL_ENUM_ID);
+        if (urlEnum == null)
+            return null;
+        // A missing key yields the enum's default string, not a URL
+        String url = urlEnum.getStringValue(index);
+        return url != null && url.startsWith("http") ? url : null;
     }
 
     private void copyToClipboard(String s) {
