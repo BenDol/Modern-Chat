@@ -91,6 +91,10 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		boolean featurePeek_SuppressFadeAtGE();
 	}
 
+	/** rebuildpmbox lays each of the 5 line slots out as 4 dynamic children of the pm container */
+	private static final int PM_LINE_SLOTS = 5;
+	private static final int PM_CHILDREN_PER_SLOT = 4;
+
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
 	@Inject private OverlayManager overlayManager;
@@ -104,6 +108,12 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private ChatIconManager chatIconManager;
 
 	private final ModernChatConfig mainConfig;
+
+	private boolean pmChildrenHidden = false;
+	// Bit masks of exactly what applySelectivePmHide put into hidden state, so restore only
+	// un-hides those and leaves script-hidden children alone (dynamic child index, op slot)
+	private int hiddenChildMask;
+	private int hiddenOpMask;
 
 	@Inject
 	public PeekChatFeature(ModernChatConfig config, EventBus eventBus) {
@@ -486,18 +496,16 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			pmWidget.setHidden(hide);
 	}
 
-	/** rebuildpmbox lays each of the 5 line slots out as 4 dynamic children of the pm container */
-	private static final int PM_LINE_SLOTS = 5;
-	private static final int PM_CHILDREN_PER_SLOT = 4;
-
-	private boolean pmChildrenHidden = false;
-
 	private void applySelectivePmHide(Widget pmWidget) {
 		Widget[] children = pmWidget.getChildren();
+		int childMask = 0;
+		int opMask = 0;
 		for (int slot = 0; slot < PM_LINE_SLOTS; slot++) {
 			// The slot's op component (PM1..PM5) carries the line's right-click actions
 			Widget opWidget = client.getWidget(InterfaceID.PM_CHAT, slot + 1);
 			boolean hide = !isBannerSlot(opWidget, children, slot);
+			if (hide)
+				opMask |= 1 << slot;
 			if (opWidget != null && opWidget.isSelfHidden() != hide)
 				opWidget.setHidden(hide);
 			if (children == null)
@@ -505,28 +513,41 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			int base = slot * PM_CHILDREN_PER_SLOT;
 			for (int i = base; i < base + PM_CHILDREN_PER_SLOT && i < children.length; i++) {
 				Widget child = children[i];
-				if (child != null && child.isSelfHidden() != hide)
+				if (child == null)
+					continue;
+				// Record intent (not the setHidden call), so restore covers children we
+				// meant to hide even on ticks where they were already hidden
+				if (hide)
+					childMask |= 1 << i;
+				if (child.isSelfHidden() != hide)
 					child.setHidden(hide);
 			}
 		}
+		hiddenChildMask = childMask;
+		hiddenOpMask = opMask;
 		pmChildrenHidden = true;
 	}
 
 	private void restorePmChildren(Widget pmWidget) {
 		Widget[] children = pmWidget.getChildren();
 		if (children != null) {
-			int managed = PM_LINE_SLOTS * PM_CHILDREN_PER_SLOT;
-			for (int i = 0; i < managed && i < children.length; i++) {
+			for (int i = 0; i < children.length && i < Integer.SIZE; i++) {
+				if ((hiddenChildMask & (1 << i)) == 0)
+					continue;
 				Widget child = children[i];
 				if (child != null && child.isSelfHidden())
 					child.setHidden(false);
 			}
 		}
 		for (int slot = 0; slot < PM_LINE_SLOTS; slot++) {
+			if ((hiddenOpMask & (1 << slot)) == 0)
+				continue;
 			Widget opWidget = client.getWidget(InterfaceID.PM_CHAT, slot + 1);
 			if (opWidget != null && opWidget.isSelfHidden())
 				opWidget.setHidden(false);
 		}
+		hiddenChildMask = 0;
+		hiddenOpMask = 0;
 		pmChildrenHidden = false;
 	}
 
@@ -555,8 +576,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			Widget child = children[i];
 			if (child == null)
 				continue;
-			String text = child.getText();
-			if (text != null && text.startsWith(ChatUtil.SYSTEM_UPDATE_PREFIX))
+			if (ChatUtil.isLiveUpdatingText(child.getText()))
 				return true;
 		}
 		return false;

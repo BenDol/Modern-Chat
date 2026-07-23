@@ -552,10 +552,6 @@ public class ChatUtil
      * Broadcast values instead carry a trailing newspost url code ("display text|c") which is
      * dropped from the rendered text.
      */
-    public static String composeLineText(@Nullable String senderPrefix, String msg) {
-        return composeLineText(senderPrefix, msg, null);
-    }
-
     public static String composeLineText(@Nullable String senderPrefix, String msg, @Nullable ChatMessageType type) {
         ChatMessageBuilder builder = new ChatMessageBuilder();
         if (!StringUtil.isNullOrEmpty(senderPrefix)) {
@@ -594,20 +590,21 @@ public class ChatUtil
     public static final String BROADCAST_URL_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
     public static final int BROADCAST_URL_ENUM_ID = 63;
 
-    /** Returns the newspost url-code index of a broadcast value, or -1 when it carries none. */
+    /**
+     * Returns the newspost url-code index of a broadcast value, or -1 when it carries none.
+     * The code is a single trailing char after a '|' ("display text|c"); anchoring on the last
+     * pipe keeps display texts that themselves contain a '|' intact.
+     */
     public static int getBroadcastUrlIndex(@Nullable String value) {
-        if (value == null)
+        if (value == null || value.length() < 2 || value.charAt(value.length() - 2) != '|')
             return -1;
-        int pipe = value.indexOf('|');
-        if (pipe < 0 || pipe + 2 != value.length())
-            return -1;
-        return BROADCAST_URL_ALPHABET.indexOf(value.charAt(pipe + 1));
+        return BROADCAST_URL_ALPHABET.indexOf(value.charAt(value.length() - 1));
     }
 
     /** Returns the display text of a broadcast value carrying a url code, or null otherwise. */
     public static @Nullable String getBroadcastDisplayText(@Nullable String value) {
         int index = getBroadcastUrlIndex(value);
-        return index >= 0 ? value.substring(0, value.indexOf('|')) : null;
+        return index >= 0 ? value.substring(0, value.length() - 2) : null;
     }
 
     /**

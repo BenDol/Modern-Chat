@@ -62,8 +62,8 @@ import net.runelite.api.VarClientStr;
 import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
-import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.CommandExecuted;
+import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
@@ -168,6 +168,9 @@ public class ChatOverlay extends OverlayPanel
     private final Rectangle tabsBarBounds = new Rectangle();
     @Getter private int lastTabBarHeight = 0;
     @Getter private boolean commandMode;
+    // Set the tick we decide to enter command mode; commandMode itself only flips at tick
+    // end alongside showLegacyChat, so a same-tick hideLegacyChat can't clear it first
+    private boolean pendingCommandMode;
 
     @Getter private final Map<String, MessageContainer> messageContainers = new ConcurrentHashMap<>();
     @Getter private final Map<String, MessageContainer> privateContainers = new ConcurrentHashMap<>();
@@ -422,6 +425,7 @@ public class ChatOverlay extends OverlayPanel
 
         lastViewport = null;
         commandMode = false;
+        pendingCommandMode = false;
         syncingInput = false;
         inputModeOverride = null;
 
@@ -2543,7 +2547,7 @@ public class ChatOverlay extends OverlayPanel
             return null;
         // A missing key yields the enum's default string, not a URL
         String url = urlEnum.getStringValue(index);
-        return url != null && url.startsWith("http") ? url : null;
+        return url != null && (url.startsWith("http://") || url.startsWith("https://")) ? url : null;
     }
 
     private void copyToClipboard(String s) {
@@ -2717,9 +2721,10 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void hideLegacyChat(boolean tryShowOverlay) {
+        boolean systemWidgetActive = ClientUtil.isSystemWidgetActive(client);
         log.debug("Hiding legacy chat (tryShowOverlay={}, systemWidgetActive={}, wasHidden={}, legacyShowing={}, commandMode={})",
-            tryShowOverlay, ClientUtil.isSystemWidgetActive(client), wasHidden, legacyShowing, commandMode);
-        if (ClientUtil.isSystemWidgetActive(client))
+            tryShowOverlay, systemWidgetActive, wasHidden, legacyShowing, commandMode);
+        if (systemWidgetActive)
             return;
 
         // Any end of a legacy-chat session exits command mode; individual exit events
@@ -2919,10 +2924,15 @@ public class ChatOverlay extends OverlayPanel
             ClientUtil.setChatInputText(client, input);
             eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
 
-            if (!commandMode && input.trim().startsWith("::")) {
-                commandMode = true;
+            if (!commandMode && !pendingCommandMode && input.trim().startsWith("::")) {
+                pendingCommandMode = true;
                 ChatProxy chatProxy = chatProxyProvider.get();
                 clientThread.invokeAtTickEnd(() -> {
+                    // Flip the flag atomically with the legacy-chat show so a same-tick
+                    // hideLegacyChat (BUILD_CHATBOX) can't clear it before the session starts
+                    commandMode = true;
+                    pendingCommandMode = false;
+
                     clearInputText(false);
                     String widgetInput = ClientUtil.getChatboxWidgetInput(client);
                     ClientUtil.setChatInputText(client,
