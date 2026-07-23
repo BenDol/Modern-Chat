@@ -68,6 +68,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		boolean featurePeek_ShowPrivateMessages();
 		boolean featurePeek_ShowTimestamp();
 		boolean featurePeek_HideSplitPrivateMessages();
+		boolean featurePeek_ShowBroadcasts();
 		Color featurePeek_BackgroundColor();
 		Color featurePeek_BorderColor();
 		FontStyle featurePeek_FontStyle();
@@ -90,6 +91,10 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		boolean featurePeek_SuppressFadeAtGE();
 	}
 
+	/** rebuildpmbox lays each of the 5 line slots out as 4 dynamic children of the pm container */
+	private static final int PM_LINE_SLOTS = 5;
+	private static final int PM_CHILDREN_PER_SLOT = 4;
+
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
 	@Inject private OverlayManager overlayManager;
@@ -103,6 +108,12 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private ChatIconManager chatIconManager;
 
 	private final ModernChatConfig mainConfig;
+
+	private boolean pmChildrenHidden = false;
+	// Bit masks of exactly what applySelectivePmHide put into hidden state, so restore only
+	// un-hides those and leaves script-hidden children alone (dynamic child index, op slot)
+	private int hiddenChildMask;
+	private int hiddenOpMask;
 
 	@Inject
 	public PeekChatFeature(ModernChatConfig config, EventBus eventBus) {
@@ -118,6 +129,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_ShowPrivateMessages() { return config.featurePeek_ShowPrivateMessages(); }
 			@Override public boolean featurePeek_ShowTimestamp() { return config.featurePeek_ShowTimestamp(); }
 			@Override public boolean featurePeek_HideSplitPrivateMessages() { return config.featurePeek_HideSplitPrivateMessages(); }
+			@Override public boolean featurePeek_ShowBroadcasts() { return config.featurePeek_ShowBroadcasts(); }
 			@Override public Color featurePeek_BackgroundColor() { return config.featurePeek_BackgroundColor(); }
 			@Override public Color featurePeek_BorderColor() { return config.featurePeek_BorderColor(); }
 			@Override public FontStyle featurePeek_FontStyle() { return config.featurePeek_FontStyle(); }
@@ -241,6 +253,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 		Widget pmWidget = widgetBucket.getPmWidget();
 		if (pmWidget != null) {
+			if (pmChildrenHidden)
+				restorePmChildren(pmWidget);
 			pmWidget.setHidden(false);
 		}
 	}
@@ -462,10 +476,110 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Subscribe
 	public void onPostClientTick(PostClientTick e) {
 		Widget pmWidget = widgetBucket.getPmWidget();
-		boolean visible = chatPeekOverlay == null || (chatPeekOverlay.canShow() && config.featurePeek_HideSplitPrivateMessages());
-		if (pmWidget != null && visible != pmWidget.isHidden()) {
-			pmWidget.setHidden(visible);
+		if (pmWidget == null)
+			return;
+
+		boolean hide = chatPeekOverlay == null || (chatPeekOverlay.canShow() && config.featurePeek_HideSplitPrivateMessages());
+		if (hide && config.featurePeek_ShowBroadcasts()) {
+			// Keep the split pm interface itself visible so broadcasts and the system
+			// update timer still render, and hide only the private message lines.
+			// Reasserted every tick because rebuildpmbox resets the children state.
+			if (pmWidget.isHidden())
+				pmWidget.setHidden(false);
+			applySelectivePmHide(pmWidget);
+			return;
 		}
+
+		if (pmChildrenHidden)
+			restorePmChildren(pmWidget);
+		if (hide != pmWidget.isHidden())
+			pmWidget.setHidden(hide);
+	}
+
+	private void applySelectivePmHide(Widget pmWidget) {
+		Widget[] children = pmWidget.getChildren();
+		int childMask = 0;
+		int opMask = 0;
+		for (int slot = 0; slot < PM_LINE_SLOTS; slot++) {
+			// The slot's op component (PM1..PM5) carries the line's right-click actions
+			Widget opWidget = client.getWidget(InterfaceID.PM_CHAT, slot + 1);
+			boolean hide = !isBannerSlot(opWidget, children, slot);
+			if (hide)
+				opMask |= 1 << slot;
+			if (opWidget != null && opWidget.isSelfHidden() != hide)
+				opWidget.setHidden(hide);
+			if (children == null)
+				continue;
+			int base = slot * PM_CHILDREN_PER_SLOT;
+			for (int i = base; i < base + PM_CHILDREN_PER_SLOT && i < children.length; i++) {
+				Widget child = children[i];
+				if (child == null)
+					continue;
+				// Record intent (not the setHidden call), so restore covers children we
+				// meant to hide even on ticks where they were already hidden
+				if (hide)
+					childMask |= 1 << i;
+				if (child.isSelfHidden() != hide)
+					child.setHidden(hide);
+			}
+		}
+		hiddenChildMask = childMask;
+		hiddenOpMask = opMask;
+		pmChildrenHidden = true;
+	}
+
+	private void restorePmChildren(Widget pmWidget) {
+		Widget[] children = pmWidget.getChildren();
+		if (children != null) {
+			for (int i = 0; i < children.length && i < Integer.SIZE; i++) {
+				if ((hiddenChildMask & (1 << i)) == 0)
+					continue;
+				Widget child = children[i];
+				if (child != null && child.isSelfHidden())
+					child.setHidden(false);
+			}
+		}
+		for (int slot = 0; slot < PM_LINE_SLOTS; slot++) {
+			if ((hiddenOpMask & (1 << slot)) == 0)
+				continue;
+			Widget opWidget = client.getWidget(InterfaceID.PM_CHAT, slot + 1);
+			if (opWidget != null && opWidget.isSelfHidden())
+				opWidget.setHidden(false);
+		}
+		hiddenChildMask = 0;
+		hiddenOpMask = 0;
+		pmChildrenHidden = false;
+	}
+
+	/**
+	 * A slot is banner-ish when its op component carries the broadcast "Clear history"
+	 * action (opbase "Notification"), or when its text children are the system update
+	 * countdown; split pm lines carry actions like "Message"/"Add friend"/"Report".
+	 */
+	private static boolean isBannerSlot(Widget opWidget, Widget[] children, int slot) {
+		if (opWidget != null) {
+			String[] actions = opWidget.getActions();
+			if (actions != null) {
+				for (String action : actions) {
+					if ("Clear history".equals(action))
+						return true;
+				}
+			}
+			String opbase = opWidget.getName();
+			if (opbase != null && opbase.contains("Notification"))
+				return true;
+		}
+		if (children == null)
+			return false;
+		int base = slot * PM_CHILDREN_PER_SLOT;
+		for (int i = base; i < base + PM_CHILDREN_PER_SLOT && i < children.length; i++) {
+			Widget child = children[i];
+			if (child == null)
+				continue;
+			if (ChatUtil.isLiveUpdatingText(child.getText()))
+				return true;
+		}
+		return false;
 	}
 
 	@Subscribe

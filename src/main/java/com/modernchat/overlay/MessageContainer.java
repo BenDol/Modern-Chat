@@ -759,7 +759,7 @@ public class MessageContainer extends Overlay
                 translated = translated + suffix;
         }
 
-        String rendered = ChatUtil.composeLineText(rl.getSenderPrefix(), translated);
+        String rendered = ChatUtil.composeLineText(rl.getSenderPrefix(), translated, type);
 
         String messageToRender = rendered;
         if (forceRecolorService != null) {

@@ -174,6 +174,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_FollowChatBox = "featurePeek_FollowChatBox";
         String featurePeek_ShowPrivateMessages = "featurePeek_ShowPrivateMessages";
         String featurePeek_HideSplitPrivateMessages = "featurePeek_HideSplitPrivateMessages";
+        String featurePeek_ShowBroadcasts = "featurePeek_ShowBroadcasts";
         String featurePeek_ShowTimestamp = "featurePeek_ShowTimestamp";
         String featurePeek_PrefixChatTypes = "featurePeek_PrefixChatTypes";
         String featurePeek_ShowNpcMessages = "featurePeek_ShowNpcMessages";
@@ -367,6 +368,7 @@ public interface ModernChatConfigBase extends
         PEEK_FOLLOW_CHATBOX(Keys.featurePeek_FollowChatBox, Kind.BOOL, ModernChatConfigBase::featurePeek_FollowChatBox),
         PEEK_SHOW_PM(Keys.featurePeek_ShowPrivateMessages, Kind.BOOL, ModernChatConfigBase::featurePeek_ShowPrivateMessages),
         PEEK_HIDE_SPLIT_PM(Keys.featurePeek_HideSplitPrivateMessages, Kind.BOOL, ModernChatConfigBase::featurePeek_HideSplitPrivateMessages),
+        PEEK_SHOW_BROADCASTS(Keys.featurePeek_ShowBroadcasts, Kind.BOOL, ModernChatConfigBase::featurePeek_ShowBroadcasts),
         PEEK_SHOW_TIMESTAMP(Keys.featurePeek_ShowTimestamp, Kind.BOOL, ModernChatConfigBase::featurePeek_ShowTimestamp),
         PEEK_PREFIX_TYPES(Keys.featurePeek_PrefixChatTypes, Kind.BOOL, ModernChatConfigBase::featurePeek_PrefixChatTypes),
         PEEK_SHOW_NPC(Keys.featurePeek_ShowNpcMessages, Kind.BOOL, ModernChatConfigBase::featurePeek_ShowNpcMessages),
@@ -669,6 +671,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featurePeek_FollowChatBox() { return getBool(Keys.featurePeek_FollowChatBox, DEFAULTS.featurePeek_FollowChatBox()); }
         @Override public boolean featurePeek_ShowPrivateMessages() { return getBool(Keys.featurePeek_ShowPrivateMessages, DEFAULTS.featurePeek_ShowPrivateMessages()); }
         @Override public boolean featurePeek_HideSplitPrivateMessages() { return getBool(Keys.featurePeek_HideSplitPrivateMessages, DEFAULTS.featurePeek_HideSplitPrivateMessages()); }
+        @Override public boolean featurePeek_ShowBroadcasts() { return getBool(Keys.featurePeek_ShowBroadcasts, DEFAULTS.featurePeek_ShowBroadcasts()); }
         @Override public boolean featurePeek_ShowTimestamp() { return getBool(Keys.featurePeek_ShowTimestamp, DEFAULTS.featurePeek_ShowTimestamp()); }
         @Override public boolean featurePeek_PrefixChatTypes() { return getBool(Keys.featurePeek_PrefixChatTypes, DEFAULTS.featurePeek_PrefixChatTypes()); }
         @Override public boolean featurePeek_ShowNpcMessages() { return getBool(Keys.featurePeek_ShowNpcMessages, DEFAULTS.featurePeek_ShowNpcMessages()); }

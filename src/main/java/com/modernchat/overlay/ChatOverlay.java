@@ -47,8 +47,10 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.EnumComposition;
 import net.runelite.api.FriendsChatManager;
 import net.runelite.api.FriendsChatRank;
+import net.runelite.api.GameState;
 import net.runelite.api.Menu;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
@@ -60,6 +62,7 @@ import net.runelite.api.VarClientStr;
 import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
@@ -165,6 +168,9 @@ public class ChatOverlay extends OverlayPanel
     private final Rectangle tabsBarBounds = new Rectangle();
     @Getter private int lastTabBarHeight = 0;
     @Getter private boolean commandMode;
+    // Set the tick we decide to enter command mode; commandMode itself only flips at tick
+    // end alongside showLegacyChat, so a same-tick hideLegacyChat can't clear it first
+    private boolean pendingCommandMode;
 
     @Getter private final Map<String, MessageContainer> messageContainers = new ConcurrentHashMap<>();
     @Getter private final Map<String, MessageContainer> privateContainers = new ConcurrentHashMap<>();
@@ -419,6 +425,7 @@ public class ChatOverlay extends OverlayPanel
 
         lastViewport = null;
         commandMode = false;
+        pendingCommandMode = false;
         syncingInput = false;
         inputModeOverride = null;
 
@@ -1503,8 +1510,21 @@ public class ChatOverlay extends OverlayPanel
     private void onScriptCallbackEvent(ScriptCallbackEvent event) {
         if (commandMode) {
             if (event.getEventName().equals("chatDefaultReturn")) {
+                commandMode = false;
                 clientThread.invoke(() -> hideLegacyChat());
             }
+        }
+    }
+
+    @Subscribe
+    public void onCommandExecuted(CommandExecuted e) {
+        log.debug("Command executed: {} (commandMode={})", e.getCommand(), commandMode);
+        // A :: command submitted in the legacy chat fires CommandExecuted but never
+        // ChatboxInput or chatDefaultReturn, so command mode must exit here or the
+        // legacy chat stays showing and the toggle key stops working
+        if (commandMode) {
+            commandMode = false;
+            clientThread.invoke(() -> hideLegacyChat());
         }
     }
 
@@ -1550,6 +1570,7 @@ public class ChatOverlay extends OverlayPanel
     @Subscribe
     public void onChatboxInput(ChatboxInput e) {
         if (commandMode) {
+            commandMode = false;
             clientThread.invoke(() -> hideLegacyChat());
         }
     }
@@ -1597,6 +1618,16 @@ public class ChatOverlay extends OverlayPanel
                     .setTarget(ColorUtil.wrapWithColorTag(taskName, Color.ORANGE))
                     .setType(MenuAction.RUNELITE)
                     .onClick(me -> LinkBrowser.browse(WIKI_SEARCH_URL + URLEncoder.encode(taskName, StandardCharsets.UTF_8)));
+            }
+
+            if (hit.getLine().getType() == ChatMessageType.BROADCAST) {
+                final String newspostUrl = resolveNewspostUrl(hit.getLine());
+                if (newspostUrl != null) {
+                    rootMenu.createMenuEntry(1)
+                        .setOption("Open newspost")
+                        .setType(MenuAction.RUNELITE)
+                        .onClick(me -> LinkBrowser.browse(newspostUrl));
+                }
             }
 
             // Spam filter menu options
@@ -1891,12 +1922,14 @@ public class ChatOverlay extends OverlayPanel
             return; // no change
 
         if (!hidden && legacyShowing) {
-            log.debug("Attempted to show ModernChat while legacy chat is showing, hiding legacy chat first");
+            log.debug("Attempted to show ModernChat while legacy chat is showing");
             return;
         }
 
-        if (!hidden && ClientUtil.isSystemWidgetActive(client))
+        if (!hidden && ClientUtil.isSystemWidgetActive(client)) {
+            log.debug("Attempted to show ModernChat while a system widget is active");
             return;
+        }
 
         this.hidden = hidden;
 
@@ -2496,6 +2529,27 @@ public class ChatOverlay extends OverlayPanel
         return name.isEmpty() ? null : name;
     }
 
+    /**
+     * Resolves the newspost URL of a broadcast line from its MessageNode's raw value
+     * ("display text|c"), or null when the line carries no resolvable url code.
+     */
+    private @Nullable String resolveNewspostUrl(RichLine rl) {
+        if (rl == null || rl.getMessageNodeId() < 0)
+            return null;
+        MessageNode node = ClientUtil.buildMessageNodeIndex(client).get(rl.getMessageNodeId());
+        if (node == null)
+            return null;
+        int index = ChatUtil.getBroadcastUrlIndex(node.getValue());
+        if (index < 0)
+            return null;
+        EnumComposition urlEnum = client.getEnum(ChatUtil.BROADCAST_URL_ENUM_ID);
+        if (urlEnum == null)
+            return null;
+        // A missing key yields the enum's default string, not a URL
+        String url = urlEnum.getStringValue(index);
+        return url != null && (url.startsWith("http://") || url.startsWith("https://")) ? url : null;
+    }
+
     private void copyToClipboard(String s) {
         Toolkit.getDefaultToolkit().getSystemClipboard()
             .setContents(new StringSelection(s == null ? "" : s), null);
@@ -2570,6 +2624,11 @@ public class ChatOverlay extends OverlayPanel
         if (chatboxParent == null)
             return;
 
+        // This method re-applies modes every call while unrendered; only a real size
+        // delta may queue the split pm reanchor or it would run every client tick
+        boolean sizeChanged = chatViewport.getOriginalWidth() != width || chatViewport.getOriginalHeight() != height
+            || chatboxParent.getOriginalWidth() != width || chatboxParent.getOriginalHeight() != height;
+
         chatViewport.setOriginalHeight(height);
         chatViewport.setOriginalWidth(width);
 
@@ -2587,6 +2646,9 @@ public class ChatOverlay extends OverlayPanel
             messageContainer.dirty();
 
         eventBus.post(new ChatResizedEvent(width, height));
+
+        if (sizeChanged)
+            reanchorSplitPmBox();
     }
 
     public void resetChatbox() {
@@ -2594,9 +2656,11 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void resetChatbox(boolean resetSize) {
+        boolean sizeChanged = false;
         if (resetSize) {
             Widget chatViewport = widgetBucket.getChatboxViewportWidget();
             if (chatViewport != null && !chatViewport.isHidden()) {
+                sizeChanged = chatViewport.getOriginalHeight() != 165 || chatViewport.getOriginalWidth() != 519;
                 chatViewport.setOriginalHeight(165);
                 chatViewport.setOriginalWidth(519);
                 chatViewport.revalidate();
@@ -2605,6 +2669,8 @@ public class ChatOverlay extends OverlayPanel
 
         Widget chatboxParent = widgetBucket.getChatParentWidget();
         if (chatboxParent != null) {
+            if (chatboxParent.getOriginalHeight() != 0 || chatboxParent.getOriginalWidth() != 0)
+                sizeChanged = true;
             chatboxParent.setOriginalHeight(0);
             chatboxParent.setOriginalWidth(0);
             chatboxParent.setHeightMode(WidgetSizeMode.MINUS);
@@ -2618,6 +2684,21 @@ public class ChatOverlay extends OverlayPanel
             messageContainer.dirty();
 
         lastViewport = null;
+
+        if (sizeChanged)
+            reanchorSplitPmBox();
+    }
+
+    /**
+     * The split pm box (game broadcasts and the system update timer) bakes its
+     * y-position relative to the chatbox parent height at rebuild time, and
+     * refreshChat() never re-runs that layout - only SPLITPM_CHANGED does.
+     */
+    private void reanchorSplitPmBox() {
+        clientThread.invokeAtTickEnd(() -> {
+            if (client.getGameState() == GameState.LOGGED_IN)
+                client.runScript(ScriptID.SPLITPM_CHANGED);
+        });
     }
 
     public void showLegacyChat() {
@@ -2640,8 +2721,17 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void hideLegacyChat(boolean tryShowOverlay) {
-        if (ClientUtil.isSystemWidgetActive(client))
+        boolean systemWidgetActive = ClientUtil.isSystemWidgetActive(client);
+        log.debug("Hiding legacy chat (tryShowOverlay={}, systemWidgetActive={}, wasHidden={}, legacyShowing={}, commandMode={})",
+            tryShowOverlay, systemWidgetActive, wasHidden, legacyShowing, commandMode);
+        if (systemWidgetActive)
             return;
+
+        // Any end of a legacy-chat session exits command mode; individual exit events
+        // (ChatboxInput, chatDefaultReturn, CommandExecuted) are unreliable - e.g. a
+        // command submit can surface only as MessageLayerClosed - and a stuck
+        // commandMode blocks the toggle key until plugin restart
+        commandMode = false;
 
         legacyShowing = false;
         resizeChatbox(desiredChatWidth, desiredChatHeight);
@@ -2834,10 +2924,15 @@ public class ChatOverlay extends OverlayPanel
             ClientUtil.setChatInputText(client, input);
             eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
 
-            if (!commandMode && input.trim().startsWith("::")) {
-                commandMode = true;
+            if (!commandMode && !pendingCommandMode && input.trim().startsWith("::")) {
+                pendingCommandMode = true;
                 ChatProxy chatProxy = chatProxyProvider.get();
                 clientThread.invokeAtTickEnd(() -> {
+                    // Flip the flag atomically with the legacy-chat show so a same-tick
+                    // hideLegacyChat (BUILD_CHATBOX) can't clear it before the session starts
+                    commandMode = true;
+                    pendingCommandMode = false;
+
                     clearInputText(false);
                     String widgetInput = ClientUtil.getChatboxWidgetInput(client);
                     ClientUtil.setChatInputText(client,

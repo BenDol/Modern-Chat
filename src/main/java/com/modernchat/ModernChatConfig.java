@@ -1146,7 +1146,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Units(Units.PIXELS)
     @Override
     default int general_AnchorPrivateChatOffsetY() {
-        return 0;
+        return 30;
     }
 
     @ConfigItem(
@@ -1495,6 +1495,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default boolean featurePeek_HideSplitPrivateMessages() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_ShowBroadcasts,
+        name = "Show Broadcasts",
+        description = "Keep game broadcasts and the system update timer visible above the peek overlay while the chat is hidden",
+        position = 29,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_ShowBroadcasts() {
         return true;
     }
 

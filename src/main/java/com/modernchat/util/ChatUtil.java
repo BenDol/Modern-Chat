@@ -519,7 +519,7 @@ public class ChatUtil
         }
 
         String senderPrefix = senderBuilder.build();
-        String text = composeLineText(senderPrefix, msg);
+        String text = composeLineText(senderPrefix, msg, type);
 
         // Generate duplicate key from name + original message (for collapse detection)
         String duplicateKey = e.getName() + ":" + originalMsg;
@@ -549,11 +549,21 @@ public class ChatUtil
      * Compose the rendered line text from an already-composed sender prefix (icons + name + ": ",
      * may be null or empty) and the raw message body. Splits off mod icon params ("IMG:x|message")
      * the same way message capture does, so refreshed lines render identically to captured ones.
+     * Broadcast values instead carry a trailing newspost url code ("display text|c") which is
+     * dropped from the rendered text.
      */
-    public static String composeLineText(@Nullable String senderPrefix, String msg) {
+    public static String composeLineText(@Nullable String senderPrefix, String msg, @Nullable ChatMessageType type) {
         ChatMessageBuilder builder = new ChatMessageBuilder();
         if (!StringUtil.isNullOrEmpty(senderPrefix)) {
             builder.append(senderPrefix, false);
+        }
+
+        if (type == ChatMessageType.BROADCAST) {
+            String display = getBroadcastDisplayText(msg);
+            if (display != null) {
+                builder.append(display, false);
+                return builder.build();
+            }
         }
 
         String message = msg;
@@ -570,6 +580,31 @@ public class ChatUtil
 
         builder.append(message, false);
         return builder.build();
+    }
+
+    /**
+     * Clickable broadcast values are "display text|c" (cs2 proc chat_broadcast_parseurl):
+     * the char after the first pipe is looked up in this alphabet and the resulting index
+     * keys the newspost URL game enum (BROADCAST_URL_ENUM_ID, which has no EnumID constant).
+     */
+    public static final String BROADCAST_URL_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
+    public static final int BROADCAST_URL_ENUM_ID = 63;
+
+    /**
+     * Returns the newspost url-code index of a broadcast value, or -1 when it carries none.
+     * The code is a single trailing char after a '|' ("display text|c"); anchoring on the last
+     * pipe keeps display texts that themselves contain a '|' intact.
+     */
+    public static int getBroadcastUrlIndex(@Nullable String value) {
+        if (value == null || value.length() < 2 || value.charAt(value.length() - 2) != '|')
+            return -1;
+        return BROADCAST_URL_ALPHABET.indexOf(value.charAt(value.length() - 1));
+    }
+
+    /** Returns the display text of a broadcast value carrying a url code, or null otherwise. */
+    public static @Nullable String getBroadcastDisplayText(@Nullable String value) {
+        int index = getBroadcastUrlIndex(value);
+        return index >= 0 ? value.substring(0, value.length() - 2) : null;
     }
 
     /**

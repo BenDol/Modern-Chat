@@ -319,6 +319,9 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
             return;
         }
 
+		log.debug("Toggle key pressed (systemWidgetActive={}, commandMode={}, hidden={}, legacy={})",
+			chatProxy.isSystemWidgetActive(), chatProxy.isCommandMode(), chatProxy.isHidden(), chatProxy.isLegacy());
+
 		// Don't toggle when a system widget is active (dialog, "Enter amount:", etc.)
 		// This prevents the deferred toggle from firing after the system input closes.
 		if (chatProxy.isSystemWidgetActive()) {
@@ -335,6 +338,7 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			// If we are currently typing in a system prompt,
 			// do not toggle chat visibility.
 			if (ClientUtil.isSystemWidgetActive(client)) {
+				log.debug("Toggle aborted, system widget active");
 				cancelDeferredHide();
 				return;
 			}
