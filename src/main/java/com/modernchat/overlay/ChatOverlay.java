@@ -63,6 +63,7 @@ import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.MenuOpened;
+import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
@@ -1505,8 +1506,20 @@ public class ChatOverlay extends OverlayPanel
     private void onScriptCallbackEvent(ScriptCallbackEvent event) {
         if (commandMode) {
             if (event.getEventName().equals("chatDefaultReturn")) {
+                commandMode = false;
                 clientThread.invoke(() -> hideLegacyChat());
             }
+        }
+    }
+
+    @Subscribe
+    public void onCommandExecuted(CommandExecuted e) {
+        // A :: command submitted in the legacy chat fires CommandExecuted but never
+        // ChatboxInput or chatDefaultReturn, so command mode must exit here or the
+        // legacy chat stays showing and the toggle key stops working
+        if (commandMode) {
+            commandMode = false;
+            clientThread.invoke(() -> hideLegacyChat());
         }
     }
 
@@ -1552,6 +1565,7 @@ public class ChatOverlay extends OverlayPanel
     @Subscribe
     public void onChatboxInput(ChatboxInput e) {
         if (commandMode) {
+            commandMode = false;
             clientThread.invoke(() -> hideLegacyChat());
         }
     }
