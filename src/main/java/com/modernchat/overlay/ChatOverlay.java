@@ -49,6 +49,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.FriendsChatManager;
 import net.runelite.api.FriendsChatRank;
+import net.runelite.api.GameState;
 import net.runelite.api.Menu;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
@@ -2570,6 +2571,11 @@ public class ChatOverlay extends OverlayPanel
         if (chatboxParent == null)
             return;
 
+        // This method re-applies modes every call while unrendered; only a real size
+        // delta may queue the split pm reanchor or it would run every client tick
+        boolean sizeChanged = chatViewport.getOriginalWidth() != width || chatViewport.getOriginalHeight() != height
+            || chatboxParent.getOriginalWidth() != width || chatboxParent.getOriginalHeight() != height;
+
         chatViewport.setOriginalHeight(height);
         chatViewport.setOriginalWidth(width);
 
@@ -2587,6 +2593,9 @@ public class ChatOverlay extends OverlayPanel
             messageContainer.dirty();
 
         eventBus.post(new ChatResizedEvent(width, height));
+
+        if (sizeChanged)
+            reanchorSplitPmBox();
     }
 
     public void resetChatbox() {
@@ -2594,9 +2603,11 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void resetChatbox(boolean resetSize) {
+        boolean sizeChanged = false;
         if (resetSize) {
             Widget chatViewport = widgetBucket.getChatboxViewportWidget();
             if (chatViewport != null && !chatViewport.isHidden()) {
+                sizeChanged = chatViewport.getOriginalHeight() != 165 || chatViewport.getOriginalWidth() != 519;
                 chatViewport.setOriginalHeight(165);
                 chatViewport.setOriginalWidth(519);
                 chatViewport.revalidate();
@@ -2605,6 +2616,8 @@ public class ChatOverlay extends OverlayPanel
 
         Widget chatboxParent = widgetBucket.getChatParentWidget();
         if (chatboxParent != null) {
+            if (chatboxParent.getOriginalHeight() != 0 || chatboxParent.getOriginalWidth() != 0)
+                sizeChanged = true;
             chatboxParent.setOriginalHeight(0);
             chatboxParent.setOriginalWidth(0);
             chatboxParent.setHeightMode(WidgetSizeMode.MINUS);
@@ -2618,6 +2631,21 @@ public class ChatOverlay extends OverlayPanel
             messageContainer.dirty();
 
         lastViewport = null;
+
+        if (sizeChanged)
+            reanchorSplitPmBox();
+    }
+
+    /**
+     * The split pm box (game broadcasts and the system update timer) bakes its
+     * y-position relative to the chatbox parent height at rebuild time, and
+     * refreshChat() never re-runs that layout - only SPLITPM_CHANGED does.
+     */
+    private void reanchorSplitPmBox() {
+        clientThread.invokeAtTickEnd(() -> {
+            if (client.getGameState() == GameState.LOGGED_IN)
+                client.runScript(ScriptID.SPLITPM_CHANGED);
+        });
     }
 
     public void showLegacyChat() {
