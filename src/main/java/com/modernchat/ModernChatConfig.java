@@ -1499,6 +1499,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.featurePeek_ShowBroadcasts,
+        name = "Show Broadcasts",
+        description = "Keep game broadcasts and the system update timer visible above the peek overlay while the chat is hidden",
+        position = 29,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_ShowBroadcasts() {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = Keys.featurePeek_ShowTimestamp,
         name = "Show Timestamp",
         description = "Show timestamps in the peek overlay",
