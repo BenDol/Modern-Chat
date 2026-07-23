@@ -1514,6 +1514,7 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onCommandExecuted(CommandExecuted e) {
+        log.debug("Command executed: {} (commandMode={})", e.getCommand(), commandMode);
         // A :: command submitted in the legacy chat fires CommandExecuted but never
         // ChatboxInput or chatDefaultReturn, so command mode must exit here or the
         // legacy chat stays showing and the toggle key stops working
@@ -1917,12 +1918,14 @@ public class ChatOverlay extends OverlayPanel
             return; // no change
 
         if (!hidden && legacyShowing) {
-            log.debug("Attempted to show ModernChat while legacy chat is showing, hiding legacy chat first");
+            log.debug("Attempted to show ModernChat while legacy chat is showing");
             return;
         }
 
-        if (!hidden && ClientUtil.isSystemWidgetActive(client))
+        if (!hidden && ClientUtil.isSystemWidgetActive(client)) {
+            log.debug("Attempted to show ModernChat while a system widget is active");
             return;
+        }
 
         this.hidden = hidden;
 
@@ -2714,8 +2717,16 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void hideLegacyChat(boolean tryShowOverlay) {
+        log.debug("Hiding legacy chat (tryShowOverlay={}, systemWidgetActive={}, wasHidden={}, legacyShowing={}, commandMode={})",
+            tryShowOverlay, ClientUtil.isSystemWidgetActive(client), wasHidden, legacyShowing, commandMode);
         if (ClientUtil.isSystemWidgetActive(client))
             return;
+
+        // Any end of a legacy-chat session exits command mode; individual exit events
+        // (ChatboxInput, chatDefaultReturn, CommandExecuted) are unreliable - e.g. a
+        // command submit can surface only as MessageLayerClosed - and a stuck
+        // commandMode blocks the toggle key until plugin restart
+        commandMode = false;
 
         legacyShowing = false;
         resizeChatbox(desiredChatWidth, desiredChatHeight);
