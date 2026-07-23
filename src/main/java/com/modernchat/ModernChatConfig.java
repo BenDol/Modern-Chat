@@ -1146,7 +1146,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Units(Units.PIXELS)
     @Override
     default int general_AnchorPrivateChatOffsetY() {
-        return 0;
+        return 30;
     }
 
     @ConfigItem(
