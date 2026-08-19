@@ -3,6 +3,7 @@ package com.modernchat;
 import com.modernchat.service.ProfileService;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.LinkBrowser;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -14,7 +15,6 @@ import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
-import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
@@ -147,13 +147,7 @@ public class ModernChatPanel extends PluginPanel
             if (!Files.exists(dir))
                 Files.createDirectories(dir);
 
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().open(dir.toFile());
-            } else {
-                JOptionPane.showMessageDialog(this,
-                    "Profiles directory:\n" + dir.toAbsolutePath(),
-                    "Modern Chat", JOptionPane.INFORMATION_MESSAGE);
-            }
+            LinkBrowser.open(dir.toAbsolutePath().toString());
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                 "Unable to open folder:\n" + ex.getMessage(),
