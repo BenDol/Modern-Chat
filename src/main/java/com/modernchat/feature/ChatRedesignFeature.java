@@ -366,6 +366,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 @Override public Color getPrivateColor() { return mainConfig.general_PrivateChatColor(); }
                 @Override public Color getFriendColor() { return mainConfig.general_FriendsChatColor(); }
                 @Override public Color getClanColor() { return mainConfig.general_ClanChatColor(); }
+                @Override public Color getClanGuestColor() { return mainConfig.getClanGuestColor(); }
                 @Override public Color getSystemColor() { return mainConfig.general_SystemChatColor(); }
                 @Override public Color getTradeColor() { return mainConfig.general_TradeChatColor(); }
                 @Override public Color getTimestampColor() { return cfg.featureRedesign_TimestampColor(); }

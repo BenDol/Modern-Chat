@@ -131,12 +131,13 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_UnfadeOnCollapsed() { return config.featurePeek_UnfadeOnCollapsed(); }
 			@Override public boolean featurePeek_ShowNpcMessages() { return config.featurePeek_ShowNpcMessages(); }
 
-			public Color featurePeek_FriendsChatColor() { return config.general_FriendsChatColor(); }
-			public Color featurePeek_ClanChatColor() { return config.general_ClanChatColor(); }
-			public Color featurePeek_PrivateChatColor() { return config.general_PrivateChatColor(); }
-			public Color featurePeek_SystemChatColor() { return config.general_SystemChatColor(); }
-			public Color featurePeek_TradeChatColor() { return config.general_TradeChatColor(); }
-			public Color featurePeek_WelcomeChatColor() { return config.general_WelcomeChatColor(); }
+			@Override public Color getWelcomeColor() { return config.getWelcomeColor(); }
+			@Override public Color getPrivateColor() { return config.getPrivateColor(); }
+			@Override public Color getFriendColor() { return config.getFriendColor(); }
+			@Override public Color getClanColor() { return config.getClanColor(); }
+			@Override public Color getClanGuestColor() { return config.getClanGuestColor(); }
+			@Override public Color getSystemColor() { return config.getSystemColor(); }
+			@Override public Color getTradeColor() { return config.getTradeColor(); }
 		};
 	}
 
@@ -175,6 +176,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Color getPrivateColor() { return cfg.getPrivateColor(); }
 			@Override public Color getFriendColor() { return cfg.getFriendColor(); }
 			@Override public Color getClanColor() { return cfg.getClanColor(); }
+			@Override public Color getClanGuestColor() { return cfg.getClanGuestColor(); }
 			@Override public Color getSystemColor() { return cfg.getSystemColor(); }
 			@Override public Color getTradeColor() { return cfg.getTradeColor(); }
 			@Override public Color getTimestampColor() {

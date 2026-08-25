@@ -150,6 +150,7 @@ public interface ModernChatConfigBase extends
         String general_PublicChatColor = "general_PublicChatColor";
         String general_FriendsChatColor = "general_FriendsChatColor";
         String general_ClanChatColor = "general_ClanChatColor";
+        String general_ClanGuestChatColor = "general_ClanGuestChatColor";
         String general_PrivateChatColor = "general_PrivateChatColor";
         String general_SystemChatColor = "general_SystemChatColor";
         String general_WelcomeChatColor = "general_WelcomeChatColor";
@@ -334,6 +335,7 @@ public interface ModernChatConfigBase extends
         GENERAL_PUBLIC_COLOR(Keys.general_PublicChatColor, Kind.COLOR, ModernChatConfigBase::general_PublicChatColor),
         GENERAL_FRIENDS_COLOR(Keys.general_FriendsChatColor, Kind.COLOR, ModernChatConfigBase::general_FriendsChatColor),
         GENERAL_CLAN_COLOR(Keys.general_ClanChatColor, Kind.COLOR, ModernChatConfigBase::general_ClanChatColor),
+        GENERAL_CLAN_GUEST_COLOR(Keys.general_ClanGuestChatColor, Kind.COLOR, ModernChatConfigBase::general_ClanGuestChatColor),
         GENERAL_PRIVATE_COLOR(Keys.general_PrivateChatColor, Kind.COLOR, ModernChatConfigBase::general_PrivateChatColor),
         GENERAL_SYSTEM_COLOR(Keys.general_SystemChatColor, Kind.COLOR, ModernChatConfigBase::general_SystemChatColor),
         GENERAL_WELCOME_COLOR(Keys.general_WelcomeChatColor, Kind.COLOR, ModernChatConfigBase::general_WelcomeChatColor),
@@ -447,6 +449,7 @@ public interface ModernChatConfigBase extends
     Color general_PublicChatColor();
     Color general_FriendsChatColor();
     Color general_ClanChatColor();
+    Color general_ClanGuestChatColor();
     Color general_PrivateChatColor();
     Color general_SystemChatColor();
     Color general_WelcomeChatColor();
@@ -625,6 +628,7 @@ public interface ModernChatConfigBase extends
         @Override public Color general_PublicChatColor() { return getColor(Keys.general_PublicChatColor, DEFAULTS.general_PublicChatColor()); }
         @Override public Color general_FriendsChatColor() { return getColor(Keys.general_FriendsChatColor, DEFAULTS.general_FriendsChatColor()); }
         @Override public Color general_ClanChatColor() { return getColor(Keys.general_ClanChatColor, DEFAULTS.general_ClanChatColor()); }
+        @Override public Color general_ClanGuestChatColor() { return getColor(Keys.general_ClanGuestChatColor, DEFAULTS.general_ClanGuestChatColor()); }
         @Override public Color general_PrivateChatColor() { return getColor(Keys.general_PrivateChatColor, DEFAULTS.general_PrivateChatColor()); }
         @Override public Color general_SystemChatColor() { return getColor(Keys.general_SystemChatColor, DEFAULTS.general_SystemChatColor()); }
         @Override public Color general_WelcomeChatColor() { return getColor(Keys.general_WelcomeChatColor, DEFAULTS.general_WelcomeChatColor()); }
