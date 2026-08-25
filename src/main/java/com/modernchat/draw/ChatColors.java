@@ -24,6 +24,10 @@ public interface ChatColors
         return new Color(0x80C0FF);
     }
 
+    default Color getClanGuestColor() {
+        return getClanColor();
+    }
+
     default Color getSystemColor() {
         return new Color(0xCFCFCF);
     }

@@ -41,6 +41,7 @@ public class ChatColorsService implements ChatService {
         // Friends chat keeps legacy "ClanChat" key names; it predates the modern clan system
         FRIENDS("opaqueClanChatMessage", "transparentClanChatMessage"),
         CLAN("opaqueClanMessage", "transparentClanMessage"),
+        CLAN_GUEST("opaqueClanGuestMessage", "transparentClanGuestMessage"),
         SYSTEM("opaqueGameMessage", "transparentGameMessage"),
         TRADE("opaqueTradeChatMessage", "transparentTradeChatMessage");
 

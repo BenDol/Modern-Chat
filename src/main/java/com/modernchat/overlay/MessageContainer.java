@@ -509,9 +509,11 @@ public class MessageContainer extends Overlay
                 c = config.getFriendColor();
                 break;
             case CLAN_MAIN:
-            case CLAN_GUEST:
             case CLAN_GIM:
                 c = config.getClanColor();
+                break;
+            case CLAN_GUEST:
+                c = config.getClanGuestColor();
                 break;
             case PRIVATE:
                 c = config.getPrivateColor();
@@ -531,8 +533,10 @@ public class MessageContainer extends Overlay
                 c = config.getFriendColor();
                 break;
             case CLAN_CHAT:
-            case CLAN_GUEST_CHAT:
                 c = config.getClanColor();
+                break;
+            case CLAN_GUEST_CHAT:
+                c = config.getClanGuestColor();
                 break;
             case PRIVATECHATOUT:
             case PRIVATECHAT:

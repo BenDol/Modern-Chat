@@ -157,6 +157,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Color getPrivateColor() { return chatColorsOrDefault(ChatColorsService.Channel.PRIVATE, config.general_PrivateChatColor()); }
 			@Override public Color getFriendColor() { return chatColorsOrDefault(ChatColorsService.Channel.FRIENDS, config.general_FriendsChatColor()); }
 			@Override public Color getClanColor() { return chatColorsOrDefault(ChatColorsService.Channel.CLAN, config.general_ClanChatColor()); }
+			@Override public Color getClanGuestColor() { return chatColorsOrDefault(ChatColorsService.Channel.CLAN_GUEST, config.getClanGuestColor()); }
 			@Override public Color getSystemColor() { return chatColorsOrDefault(ChatColorsService.Channel.SYSTEM, config.general_SystemChatColor()); }
 			@Override public Color getTradeColor() { return chatColorsOrDefault(ChatColorsService.Channel.TRADE, config.general_TradeChatColor()); }
 		};
@@ -201,6 +202,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Color getPrivateColor() { return cfg.getPrivateColor(); }
 			@Override public Color getFriendColor() { return cfg.getFriendColor(); }
 			@Override public Color getClanColor() { return cfg.getClanColor(); }
+			@Override public Color getClanGuestColor() { return cfg.getClanGuestColor(); }
 			@Override public Color getSystemColor() { return cfg.getSystemColor(); }
 			@Override public Color getTradeColor() { return cfg.getTradeColor(); }
 			@Override public Color getTimestampColor() {
