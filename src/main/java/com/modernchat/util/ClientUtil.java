@@ -48,14 +48,19 @@ public class ClientUtil
      * and fall back to the event point when it's unavailable.
      */
     public static Point getMouseCanvasPoint(Client client, MouseEvent e) {
-        if (!client.isStretchedEnabled())
+        return getMouseCanvasPoint(client.isStretchedEnabled(), client.getMouseCanvasPosition(), e);
+    }
+
+    static Point getMouseCanvasPoint(boolean stretched, net.runelite.api.Point canvasPos, MouseEvent e) {
+        if (!stretched)
             return e.getPoint();
 
-        net.runelite.api.Point p = client.getMouseCanvasPosition();
-        if (p == null)
+        // (-1,-1) is the client's off-canvas sentinel (e.g. mid-drag past the canvas
+        // edge); hit-testing against it would snap drags, so treat it as unavailable
+        if (canvasPos == null || (canvasPos.getX() == -1 && canvasPos.getY() == -1))
             return e.getPoint();
 
-        return new Point(p.getX(), p.getY());
+        return new Point(canvasPos.getX(), canvasPos.getY());
     }
 
     /**
