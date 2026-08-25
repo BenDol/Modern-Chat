@@ -17,6 +17,7 @@ import com.modernchat.service.FontService;
 import com.modernchat.service.ForceRecolorService;
 import com.modernchat.service.ImageService;
 import com.modernchat.util.ChatUtil;
+import com.modernchat.util.ClientUtil;
 import com.modernchat.util.ColorUtil;
 import com.modernchat.util.FormatUtil;
 import com.modernchat.util.GeometryUtil;
@@ -1030,9 +1031,11 @@ public class MessageContainer extends Overlay
             if (!config.isScrollable())
                 return e;
 
-            if (lastViewport == null || !lastViewport.contains(e.getPoint()))
+            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+
+            if (lastViewport == null || !lastViewport.contains(p))
                 return e;
-            if (msgViewport.isEmpty() || !msgViewport.contains(e.getPoint()))
+            if (msgViewport.isEmpty() || !msgViewport.contains(p))
                 return e;
 
             final int viewportH = Math.max(1, msgViewport.height);
@@ -1066,12 +1069,15 @@ public class MessageContainer extends Overlay
         public MouseEvent mousePressed(MouseEvent e) {
             if (!isEnabled() || isHidden() || !canShow())
                 return e;
-            if (lastViewport == null || !lastViewport.contains(e.getPoint()))
+
+            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+
+            if (lastViewport == null || !lastViewport.contains(p))
                 return e;
 
-            if (thumb.contains(e.getPoint())) {
+            if (thumb.contains(p)) {
                 dragging = true;
-                dragOffsetY = e.getY() - thumb.y;
+                dragOffsetY = p.y - thumb.y;
                 e.consume(); // consume press
                 return e;
             }
@@ -1084,7 +1090,7 @@ public class MessageContainer extends Overlay
                 return e;
 
             int thumbTravel = trackHeight - thumb.height;
-            int newThumbY = clamp(e.getY() - dragOffsetY, trackTop, trackTop + thumbTravel);
+            int newThumbY = clamp(ClientUtil.getMouseCanvasPoint(client, e).y - dragOffsetY, trackTop, trackTop + thumbTravel);
             double p = thumbTravel == 0 ? 0.0 : (newThumbY - trackTop) / (double) thumbTravel;
 
             scrollOffsetPx = (int) Math.round(maxScroll * p);
