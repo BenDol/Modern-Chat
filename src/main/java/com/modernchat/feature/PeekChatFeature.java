@@ -109,11 +109,13 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	private final ModernChatConfig mainConfig;
 
-	private boolean pmChildrenHidden = false;
+	// Written every tick from onPostClientTick (client thread) and read from shutDown,
+	// which the config-changed path dispatches on the EDT, so they need safe publication
+	private volatile boolean pmChildrenHidden = false;
 	// Bit masks of exactly what applySelectivePmHide put into hidden state, so restore only
 	// un-hides those and leaves script-hidden children alone (dynamic child index, op slot)
-	private int hiddenChildMask;
-	private int hiddenOpMask;
+	private volatile int hiddenChildMask;
+	private volatile int hiddenOpMask;
 
 	@Inject
 	public PeekChatFeature(ModernChatConfig config, EventBus eventBus) {
@@ -253,12 +255,17 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 		overlayManager.remove(chatPeekOverlay);
 
-		Widget pmWidget = widgetBucket.getPmWidget();
-		if (pmWidget != null) {
-			if (pmChildrenHidden)
-				restorePmChildren(pmWidget);
-			pmWidget.setHidden(false);
-		}
+		// Widget access must happen on the client thread; shutDown is also reached from
+		// the config-changed path, which RuneLite dispatches on the EDT. invoke() still
+		// runs inline when we are already on the client thread.
+		clientThread.invoke(() -> {
+			Widget pmWidget = widgetBucket.getPmWidget();
+			if (pmWidget != null) {
+				if (pmChildrenHidden)
+					restorePmChildren(pmWidget);
+				pmWidget.setHidden(false);
+			}
+		});
 	}
 
 	@Subscribe

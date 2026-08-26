@@ -50,8 +50,9 @@ public class ForceRecolorService implements ChatService {
     private volatile boolean allMessageTypes = false;
     private volatile String recolorStyle = "NONE";
 
-    // Cached game-message highlight colors from RuneLite's Chat Color plugin (textrecolor
-    // group, ChatColorConfig). Kept independent of the ForceRecolor plugin state.
+    // Cached game-message highlight colors from RuneLite's Chat Color settings
+    // (ChatColorConfig, group textrecolor - core client config, not a toggleable plugin).
+    // Kept independent of the ForceRecolor plugin state.
     private volatile Color opaqueGameMessageHighlight = null;
     private volatile Color transparentGameMessageHighlight = null;
 
@@ -85,6 +86,8 @@ public class ForceRecolorService implements ChatService {
         groupPatterns.clear();
         opaqueColors.clear();
         transparentColors.clear();
+        opaqueGameMessageHighlight = null;
+        transparentGameMessageHighlight = null;
     }
 
     @Subscribe
@@ -172,7 +175,7 @@ public class ForceRecolorService implements ChatService {
 
     /**
      * Returns the user's configured game-message highlight color from RuneLite's Chat Color
-     * plugin config, or null when unset (callers fall back to RuneLite's #EF1020 default).
+     * settings (ChatColorConfig), or null when unset (callers fall back to RuneLite's #EF1020 default).
      */
     public @Nullable Color getGameMessageHighlight(boolean transparent) {
         return transparent ? transparentGameMessageHighlight : opaqueGameMessageHighlight;

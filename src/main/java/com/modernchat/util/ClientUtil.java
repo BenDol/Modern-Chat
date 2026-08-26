@@ -163,6 +163,8 @@ public class ClientUtil
      * Builds an id -> MessageNode index of every chat line the client currently retains,
      * in a single pass over the chat line buffers. Ids absent from the index have been
      * evicted and are never re-added.
+     * <p>
+     * MUST be on client thread.
      */
     public static Map<Integer, MessageNode> buildMessageNodeIndex(Client client) {
         Map<Integer, MessageNode> index = new HashMap<>();

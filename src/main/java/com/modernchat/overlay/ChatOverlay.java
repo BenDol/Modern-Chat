@@ -167,10 +167,12 @@ public class ChatOverlay extends OverlayPanel
     @Getter private final Map<ChatMode, String> defaultTabNames = new ConcurrentHashMap<>();
     private final Rectangle tabsBarBounds = new Rectangle();
     @Getter private int lastTabBarHeight = 0;
-    @Getter private boolean commandMode;
+    // Written on the client thread but read and cleared from the AWT key threads
+    // (InputKeys, ToggleChatFeature via ChatProxy), so both need safe publication
+    @Getter private volatile boolean commandMode;
     // Set the tick we decide to enter command mode; commandMode itself only flips at tick
     // end alongside showLegacyChat, so a same-tick hideLegacyChat can't clear it first
-    private boolean pendingCommandMode;
+    private volatile boolean pendingCommandMode;
 
     @Getter private final Map<String, MessageContainer> messageContainers = new ConcurrentHashMap<>();
     @Getter private final Map<String, MessageContainer> privateContainers = new ConcurrentHashMap<>();

@@ -552,7 +552,10 @@ public class ChatUtil
      * Broadcast values instead carry a trailing newspost url code ("display text|c") which is
      * dropped from the rendered text.
      */
-    public static String composeLineText(@Nullable String senderPrefix, String msg, @Nullable ChatMessageType type) {
+    public static String composeLineText(@Nullable String senderPrefix, @Nullable String msg, @Nullable ChatMessageType type) {
+        if (msg == null)
+            msg = "";
+
         ChatMessageBuilder builder = new ChatMessageBuilder();
         if (!StringUtil.isNullOrEmpty(senderPrefix)) {
             builder.append(senderPrefix, false);
@@ -584,8 +587,9 @@ public class ChatUtil
 
     /**
      * Clickable broadcast values are "display text|c" (cs2 proc chat_broadcast_parseurl):
-     * the char after the first pipe is looked up in this alphabet and the resulting index
+     * the char after the trailing pipe is looked up in this alphabet and the resulting index
      * keys the newspost URL game enum (BROADCAST_URL_ENUM_ID, which has no EnumID constant).
+     * We parse end-anchored on purpose - see getBroadcastUrlIndex.
      */
     public static final String BROADCAST_URL_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
     public static final int BROADCAST_URL_ENUM_ID = 63;
