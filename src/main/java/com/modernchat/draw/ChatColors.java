@@ -12,6 +12,10 @@ public interface ChatColors
         return Color.WHITE;
     }
 
+    default Color getPublicUsernameColor() {
+        return new Color(0, 0, 0, 0);
+    }
+
     default Color getPrivateColor() {
         return new Color(0xFF80FF);
     }

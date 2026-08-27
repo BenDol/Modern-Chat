@@ -148,6 +148,7 @@ public interface ModernChatConfigBase extends
         String featureRedesign_ShowReportButton = "featureRedesign_ShowReportButton";
         String featureRedesign_ShowSessionTimer = "featureRedesign_ShowSessionTimer";
         String general_PublicChatColor = "general_PublicChatColor";
+        String general_PublicUsernameColor = "general_PublicUsernameColor";
         String general_FriendsChatColor = "general_FriendsChatColor";
         String general_ClanChatColor = "general_ClanChatColor";
         String general_PrivateChatColor = "general_PrivateChatColor";
@@ -182,6 +183,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_Padding = "featurePeek_Padding";
         String featurePeek_MarginRight = "featurePeek_MarginRight";
         String featurePeek_MarginBottom = "featurePeek_MarginBottom";
+        String featurePeek_MessageSpacing = "featurePeek_MessageSpacing";
         String featurePeek_FadeEnabled = "featurePeek_FadeEnabled";
         String featurePeek_FadeDelay = "featurePeek_FadeDelay";
         String featurePeek_FadeDuration = "featurePeek_FadeDuration";
@@ -191,6 +193,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_TimestampColor = "featurePeek_TimestampColor";
         String featurePeek_TypePrefixColor = "featurePeek_TypePrefixColor";
         String featurePeek_SourceTabIndicatorColor = "featurePeek_SourceTabIndicatorColor";
+        String featurePeek_ShowCurrentTab = "featurePeek_ShowCurrentTab";
 
         // Timestamp and type prefix colors
         String featureRedesign_TimestampColor = "featureRedesign_TimestampColor";
@@ -332,6 +335,7 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_SHOW_REPORT_BUTTON(Keys.featureRedesign_ShowReportButton, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowReportButton),
         FEATURE_REDESIGN_SHOW_SESSION_TIMER(Keys.featureRedesign_ShowSessionTimer, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowSessionTimer),
         GENERAL_PUBLIC_COLOR(Keys.general_PublicChatColor, Kind.COLOR, ModernChatConfigBase::general_PublicChatColor),
+        GENERAL_PUBLIC_USERNAME_COLOR(Keys.general_PublicUsernameColor, Kind.COLOR, ModernChatConfigBase::general_PublicUsernameColor),
         GENERAL_FRIENDS_COLOR(Keys.general_FriendsChatColor, Kind.COLOR, ModernChatConfigBase::general_FriendsChatColor),
         GENERAL_CLAN_COLOR(Keys.general_ClanChatColor, Kind.COLOR, ModernChatConfigBase::general_ClanChatColor),
         GENERAL_PRIVATE_COLOR(Keys.general_PrivateChatColor, Kind.COLOR, ModernChatConfigBase::general_PrivateChatColor),
@@ -366,6 +370,7 @@ public interface ModernChatConfigBase extends
         PEEK_PADDING(Keys.featurePeek_Padding, Kind.INT, ModernChatConfigBase::featurePeek_Padding),
         PEEK_MARGIN_RIGHT(Keys.featurePeek_MarginRight, Kind.INT, ModernChatConfigBase::featurePeek_MarginRight),
         PEEK_MARGIN_BOTTOM(Keys.featurePeek_MarginBottom, Kind.INT, ModernChatConfigBase::featurePeek_MarginBottom),
+        PEEK_MESSAGE_SPACING(Keys.featurePeek_MessageSpacing, Kind.INT, ModernChatConfigBase::featurePeek_MessageSpacing),
         PEEK_FADE_ENABLED(Keys.featurePeek_FadeEnabled, Kind.BOOL, ModernChatConfigBase::featurePeek_FadeEnabled),
         PEEK_FADE_DELAY(Keys.featurePeek_FadeDelay, Kind.INT, ModernChatConfigBase::featurePeek_FadeDelay),
         PEEK_FADE_DURATION(Keys.featurePeek_FadeDuration, Kind.INT, ModernChatConfigBase::featurePeek_FadeDuration),
@@ -445,6 +450,7 @@ public interface ModernChatConfigBase extends
     boolean featureRedesign_ShowReportButton();
     boolean featureRedesign_ShowSessionTimer();
     Color general_PublicChatColor();
+    Color general_PublicUsernameColor();
     Color general_FriendsChatColor();
     Color general_ClanChatColor();
     Color general_PrivateChatColor();
@@ -455,6 +461,7 @@ public interface ModernChatConfigBase extends
     Color featureRedesign_TimestampColor();
     Color featureRedesign_TypePrefixColor();
 
+    int featurePeek_MessageSpacing();
     Color featurePeek_TimestampColor();
     Color featurePeek_TypePrefixColor();
     Color featurePeek_SourceTabIndicatorColor();
@@ -623,6 +630,7 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureRedesign_ShowReportButton() { return getBool(Keys.featureRedesign_ShowReportButton, DEFAULTS.featureRedesign_ShowReportButton()); }
         @Override public boolean featureRedesign_ShowSessionTimer() { return getBool(Keys.featureRedesign_ShowSessionTimer, DEFAULTS.featureRedesign_ShowSessionTimer()); }
         @Override public Color general_PublicChatColor() { return getColor(Keys.general_PublicChatColor, DEFAULTS.general_PublicChatColor()); }
+        @Override public Color general_PublicUsernameColor() { return getColor(Keys.general_PublicUsernameColor, DEFAULTS.general_PublicUsernameColor()); }
         @Override public Color general_FriendsChatColor() { return getColor(Keys.general_FriendsChatColor, DEFAULTS.general_FriendsChatColor()); }
         @Override public Color general_ClanChatColor() { return getColor(Keys.general_ClanChatColor, DEFAULTS.general_ClanChatColor()); }
         @Override public Color general_PrivateChatColor() { return getColor(Keys.general_PrivateChatColor, DEFAULTS.general_PrivateChatColor()); }
@@ -657,6 +665,7 @@ public interface ModernChatConfigBase extends
         @Override public int featurePeek_Padding() { return getInt(Keys.featurePeek_Padding, DEFAULTS.featurePeek_Padding()); }
         @Override public int featurePeek_MarginRight() { return getInt(Keys.featurePeek_MarginRight, DEFAULTS.featurePeek_MarginRight()); }
         @Override public int featurePeek_MarginBottom() { return getInt(Keys.featurePeek_MarginBottom, DEFAULTS.featurePeek_MarginBottom()); }
+        @Override public int featurePeek_MessageSpacing() { return getInt(Keys.featurePeek_MessageSpacing, DEFAULTS.featurePeek_MessageSpacing()); }
         @Override public boolean featurePeek_FadeEnabled() { return getBool(Keys.featurePeek_FadeEnabled, DEFAULTS.featurePeek_FadeEnabled()); }
         @Override public int featurePeek_FadeDelay() { return getInt(Keys.featurePeek_FadeDelay, DEFAULTS.featurePeek_FadeDelay()); }
         @Override public int featurePeek_FadeDuration() { return getInt(Keys.featurePeek_FadeDuration, DEFAULTS.featurePeek_FadeDuration()); }
@@ -666,6 +675,7 @@ public interface ModernChatConfigBase extends
         @Override public Color featurePeek_TimestampColor() { return getColor(Keys.featurePeek_TimestampColor, DEFAULTS.featurePeek_TimestampColor()); }
         @Override public Color featurePeek_TypePrefixColor() { return getColor(Keys.featurePeek_TypePrefixColor, DEFAULTS.featurePeek_TypePrefixColor()); }
         @Override public Color featurePeek_SourceTabIndicatorColor() { return getColor(Keys.featurePeek_SourceTabIndicatorColor, DEFAULTS.featurePeek_SourceTabIndicatorColor()); }
+        @Override public boolean featurePeek_ShowCurrentTab() { return getBool(Keys.featurePeek_ShowCurrentTab, DEFAULTS.featurePeek_ShowCurrentTab()); }
 
         // Commands
         @Override public boolean featureCommands_Enabled() { return getBool(Keys.featureCommands_Enabled, DEFAULTS.featureCommands_Enabled()); }

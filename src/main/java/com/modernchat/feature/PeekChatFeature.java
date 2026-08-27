@@ -11,9 +11,11 @@ import com.modernchat.draw.ChatColors;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
 import com.modernchat.draw.RichLine;
+import com.modernchat.draw.Tab;
 import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.event.SetPeekSourceEvent;
+import com.modernchat.event.TabChangeEvent;
 import com.modernchat.event.TabClosedEvent;
 import com.modernchat.overlay.ChannelFilterState;
 import com.modernchat.overlay.ChatOverlay;
@@ -74,6 +76,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		int featurePeek_OffsetY();
 		int featurePeek_MarginRight();
 		int featurePeek_MarginBottom();
+		int featurePeek_MessageSpacing();
 		boolean featurePeek_PrefixChatTypes();
 		boolean featurePeek_ShowNpcMessages();
 		boolean featurePeek_FadeEnabled();
@@ -81,7 +84,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		int featurePeek_FadeDuration();
 		String featurePeek_SourceTabKey();
 		boolean featurePeek_SuppressFadeAtGE();
-		boolean featurePeek_UnfadeOnCollapsed();
+		boolean featurePeek_ShowCurrentTab();
 	}
 
 	@Inject private Client client;
@@ -121,7 +124,9 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public int featurePeek_OffsetY() { return config.featurePeek_OffsetY(); }
 			@Override public int featurePeek_MarginRight() { return config.featurePeek_MarginRight(); }
 			@Override public int featurePeek_MarginBottom() { return config.featurePeek_MarginBottom(); }
+			@Override public int featurePeek_MessageSpacing() { return config.featurePeek_MessageSpacing(); }
 			@Override public Color getPublicColor() { return config.general_PublicChatColor(); }
+			@Override public Color getPublicUsernameColor() { return config.general_PublicUsernameColor(); }
 			@Override public boolean featurePeek_PrefixChatTypes() { return config.featurePeek_PrefixChatTypes(); }
 			@Override public boolean featurePeek_FadeEnabled() { return config.featurePeek_FadeEnabled(); }
 			@Override public int featurePeek_FadeDelay() { return config.featurePeek_FadeDelay(); }
@@ -130,6 +135,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_SuppressFadeAtGE() { return config.featurePeek_SuppressFadeAtGE(); }
 			@Override public boolean featurePeek_UnfadeOnCollapsed() { return config.featurePeek_UnfadeOnCollapsed(); }
 			@Override public boolean featurePeek_ShowNpcMessages() { return config.featurePeek_ShowNpcMessages(); }
+			@Override public boolean featurePeek_ShowCurrentTab() { return config.featurePeek_ShowCurrentTab(); }
 
 			public Color featurePeek_FriendsChatColor() { return config.general_FriendsChatColor(); }
 			public Color featurePeek_ClanChatColor() { return config.general_ClanChatColor(); }
@@ -158,7 +164,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Point getOffset() { return new Point(cfg.featurePeek_OffsetX(), cfg.featurePeek_OffsetY()); }
 			@Override public Margin getMargin() { return new Margin(0, cfg.featurePeek_MarginBottom(), 0, cfg.featurePeek_MarginRight()); }
 			@Override public Padding getPadding() { return new Padding(cfg.featurePeek_Padding()); }
-			@Override public int getLineSpacing() { return super.getLineSpacing(); }
+			@Override public int getLineSpacing() { return cfg.featurePeek_MessageSpacing(); }
 			@Override public int getScrollStep() { return 0; }
 			@Override public int getScrollbarWidth() { return 0; }
 			@Override public FontStyle getLineFontStyle() { return cfg.featurePeek_FontStyle(); }
@@ -172,6 +178,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Color getScrollbarThumbColor() { return super.getScrollbarThumbColor(); }
 			@Override public Color getWelcomeColor() { return cfg.getWelcomeColor(); }
 			@Override public Color getPublicColor() { return cfg.getPublicColor(); }
+			@Override public Color getUsernameColor() { return cfg.getPublicUsernameColor(); }
 			@Override public Color getPrivateColor() { return cfg.getPrivateColor(); }
 			@Override public Color getFriendColor() { return cfg.getFriendColor(); }
 			@Override public Color getClanColor() { return cfg.getClanColor(); }
@@ -204,6 +211,13 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		chatPeekOverlay.startUp(partitionConfig(config), ChatMode.PUBLIC, false);
 
 		overlayManager.add(chatPeekOverlay);
+
+		if (config.featurePeek_ShowCurrentTab()) {
+			// Populate peek overlay with initial active tab
+			Tab activeTab = chatOverlay.getActiveTab();
+			String initialTabKey = activeTab != null ? activeTab.getKey() : "ALL";
+			populateFromTabContainer(initialTabKey);
+		}
 	}
 
 	@Override
@@ -290,7 +304,18 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	}
 
 	private boolean shouldShowMessageForPeekSource(MessageLine line) {
-		String sourceKey = config.featurePeek_SourceTabKey();
+		String sourceKey = null;
+		if (config.featurePeek_ShowCurrentTab()) {
+			// Use the currently active chat tab as the source
+			Tab activeTab = chatOverlay.getActiveTab();
+			if (activeTab != null) {
+				sourceKey = activeTab.getKey();
+			}
+		} else {
+			// Use the configured peek source tab
+			sourceKey = config.featurePeek_SourceTabKey();
+		}
+
 		if (StringUtil.isNullOrEmpty(sourceKey)) {
 			return true; // Show all messages when no source is set
 		}
@@ -298,7 +323,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		ChatMessageType type = line.getType();
 		ChatMode sourceChatMode = getSourceChatMode(sourceKey);
 
-		// First check if message passes the source tab's channel filters
+		// First check if message passes the source tab
 		if (!channelFilterState.shouldShowMessage(type, sourceChatMode)) {
 			return false;
 		}
@@ -378,16 +403,24 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			case "TRADE":
 			case "ALL":
 			default:
-				// ALL, GAME, TRADE tabs use PUBLIC mode's filters (or null for global)
-				return null;
+				// ALL, GAME, TRADE tabs use PUBLIC mode
+				return ChatMode.PUBLIC;
 		}
 	}
 
 	private void setPeekSource(String tabKey) {
-		configManager.setConfiguration(ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featurePeek_SourceTabKey,
-			tabKey == null ? "" : tabKey);
+		String effectiveTabKey = tabKey;
+		if (config.featurePeek_ShowCurrentTab()) {
+			// If showing current tab, force sourceKey to active tab and don't save to config
+			Tab activeTab = chatOverlay.getActiveTab();
+			effectiveTabKey = activeTab != null ? activeTab.getKey() : "ALL";
+		} else {
+			// Otherwise, use provided tabKey and save to config
+			configManager.setConfiguration(ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featurePeek_SourceTabKey,
+				tabKey == null ? "" : tabKey);
+		}
 		chatPeekOverlay.clearMessages();
-		populateFromTabContainer(tabKey);
+		populateFromTabContainer(effectiveTabKey);
 		chatPeekOverlay.resetFade();
 	}
 
@@ -403,6 +436,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			container = chatOverlay.getGameContainer();
 		} else if (tabKey.equals("TRADE")) {
 			container = chatOverlay.getTradeContainer();
+		} else if (tabKey.equals("PUBLIC")) {
+			container = chatOverlay.getPublicContainer();
 		} else if (tabKey.startsWith("private_")) {
 			String target = tabKey.substring("private_".length());
 			container = chatOverlay.getPrivateContainers().get(target);
@@ -413,8 +448,21 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 		if (container != null) {
 			for (RichLine rl : container.getLines()) {
-				chatPeekOverlay.copyLine(rl);
+				// Apply peek source filters when populating from existing container
+				if (shouldShowMessageForPeekSource(ChatUtil.toMessageLine(rl))) {
+					chatPeekOverlay.copyLine(rl);
+				}
 			}
+		}
+	}
+
+	@Subscribe
+	public void onTabChangeEvent(TabChangeEvent e) {
+		if (config.featurePeek_ShowCurrentTab()) {
+			// Repopulate peek overlay when active tab changes
+			chatPeekOverlay.clearMessages();
+			populateFromTabContainer(e.getNewTab().getKey());
+			chatPeekOverlay.resetFade();
 		}
 	}
 

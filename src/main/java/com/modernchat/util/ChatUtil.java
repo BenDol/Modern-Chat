@@ -3,6 +3,8 @@ package com.modernchat.util;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.MessageLine;
+import com.modernchat.draw.RichLine;
+import com.modernchat.draw.TextSegment;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
@@ -475,5 +477,26 @@ public class ChatUtil
 
     public static boolean isIgnoredMessage(String line, ChatMessageType type) {
         return line.endsWith(ChatUtil.COMMAND_MODE_MESSAGE) && ChatUtil.isModernChatMessage(line);
+    }
+
+    public static MessageLine toMessageLine(RichLine rl) {
+        StringBuilder textBuilder = new StringBuilder();
+        for (TextSegment segment : rl.getSegs()) {
+            textBuilder.append(segment.getText());
+        }
+        // Re-extract sender icon from sender name if available
+        int senderIcon = extractIconId(rl.getSender());
+
+        return new MessageLine(
+            textBuilder.toString(),
+            rl.getType(),
+            rl.getTimestamp(),
+            rl.getSender(),
+            rl.getReceiver(),
+            "", // Prefix is not directly stored in RichLine, using empty string for now
+            rl.getDuplicateKey(),
+            rl.isCollapsed(),
+            senderIcon
+        );
     }
 }

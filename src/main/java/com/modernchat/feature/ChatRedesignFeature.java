@@ -363,6 +363,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 @Override public Color getScrollbarThumbColor() { return cfg.featureRedesign_MessageContainer_ScrollbarThumbColor(); }
                 @Override public Color getWelcomeColor() { return mainConfig.general_WelcomeChatColor(); }
                 @Override public Color getPublicColor() { return mainConfig.general_PublicChatColor(); }
+                @Override public Color getUsernameColor() { return mainConfig.general_PublicUsernameColor(); }
                 @Override public Color getPrivateColor() { return mainConfig.general_PrivateChatColor(); }
                 @Override public Color getFriendColor() { return mainConfig.general_FriendsChatColor(); }
                 @Override public Color getClanColor() { return mainConfig.general_ClanChatColor(); }
