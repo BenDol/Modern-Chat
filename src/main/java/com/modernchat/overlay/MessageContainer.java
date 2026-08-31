@@ -464,7 +464,7 @@ public class MessageContainer extends Overlay
                 c = config.getPrivateColor();
                 break;
             case WELCOME:
-                c = Color.WHITE;
+                c = config.getWelcomeColor();
                 break;
             default:
                 c = config.getSystemColor();
