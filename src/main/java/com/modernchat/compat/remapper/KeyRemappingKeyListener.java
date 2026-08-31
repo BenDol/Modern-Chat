@@ -106,7 +106,12 @@ public class KeyRemappingKeyListener implements KeyListener {
                 case KeyEvent.VK_ENTER:
                 case KeyEvent.VK_SLASH:
                 case KeyEvent.VK_COLON:
-                    service.unlockChat();
+                    // Don't unlock while a dialog, chatbox prompt or the bank pin
+                    // keypad owns the keypress - Enter means continue/submit there,
+                    // not an explicit request to open chat. Unlocking here left the
+                    // chat input enabled once the interface closed (#43).
+                    if (!service.isDialogOpen())
+                        service.unlockChat();
                     break;
             }
         } else {

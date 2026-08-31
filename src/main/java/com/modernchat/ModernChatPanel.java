@@ -14,9 +14,10 @@ import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
-import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.nio.file.Files;
@@ -34,7 +35,7 @@ public class ModernChatPanel extends PluginPanel
     private final JLabel activeLabel = new JLabel("Active: (none)");
     private final JButton selectBtn = new JButton("Select");
     private final JButton reloadBtn = new JButton("Reload");
-    private final JButton openFolderBtn = new JButton("Open Folder");
+    private final JButton copyPathBtn = new JButton("Copy Path");
     private final JButton saveBtn = new JButton("Save");
     private final JButton saveAsBtn = new JButton("Save As");
 
@@ -77,12 +78,13 @@ public class ModernChatPanel extends PluginPanel
         inner.add(saveBtn);
         inner.add(saveAsBtn);
         inner.add(reloadBtn);
-        inner.add(openFolderBtn);
+        inner.add(copyPathBtn);
         buttons.add(inner, BorderLayout.SOUTH);
 
         selectBtn.addActionListener(ae -> setActiveFromSelection());
         reloadBtn.addActionListener(ae -> loadProfilesIntoList());
-        openFolderBtn.addActionListener(ae -> openProfilesFolder());
+        copyPathBtn.setToolTipText("Copy the profiles folder path to your clipboard");
+        copyPathBtn.addActionListener(ae -> copyProfilesFolderPath());
         saveBtn.addActionListener(ae -> saveCurrentSettingsToProfile());
         saveAsBtn.addActionListener(ae -> saveCurrentSettingsAsNewProfile());
 
@@ -141,24 +143,31 @@ public class ModernChatPanel extends PluginPanel
         list.setSelectedValue(active, true);
     }
 
-    private void openProfilesFolder() {
+    private void copyProfilesFolderPath() {
+        Path dir;
         try {
-            var dir = profileService.getProfilesDir();
+            dir = profileService.getProfilesDir();
             if (!Files.exists(dir))
                 Files.createDirectories(dir);
-
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().open(dir.toFile());
-            } else {
-                JOptionPane.showMessageDialog(this,
-                    "Profiles directory:\n" + dir.toAbsolutePath(),
-                    "Modern Chat", JOptionPane.INFORMATION_MESSAGE);
-            }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
-                "Unable to open folder:\n" + ex.getMessage(),
+                "Unable to access the profiles folder:\n" + ex.getMessage(),
                 "Modern Chat", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+
+        String path = dir.toAbsolutePath().toString();
+        String message;
+        try {
+            Toolkit.getDefaultToolkit().getSystemClipboard()
+                .setContents(new StringSelection(path), null);
+            message = "Profiles folder path (copied to clipboard):\n" + path;
+        } catch (Exception ex) {
+            // clipboard can be unavailable or locked by another process
+            message = "Profiles folder path:\n" + path;
+        }
+        JOptionPane.showMessageDialog(this, message,
+            "Modern Chat", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void saveCurrentSettingsToProfile() {

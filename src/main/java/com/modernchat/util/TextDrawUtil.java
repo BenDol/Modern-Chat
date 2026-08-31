@@ -8,7 +8,7 @@ public final class TextDrawUtil
     private TextDrawUtil() {}
 
     /**
-     * Draw text with either a diagonal drop shadow or a stamped outline.
+     * Draw text with a diagonal drop shadow, a stamped outline, or both.
      * <p>
      * When {@code outlineThickness > 0} the shadow color is stamped at every
      * integer offset within a square of half-side {@code outlineThickness}, then
@@ -18,6 +18,21 @@ public final class TextDrawUtil
      * {@code BasicStroke}-stroked-path approach — that combination tessellates
      * offset curves on every call and was the cause of severe FPS drops in the
      * peek overlay (which re-renders every frame).
+     * <p>
+     * When {@code shadowOffset > 0} is combined with an outline, the drop shadow
+     * of the outlined shape is stamped first (the same square of offsets shifted
+     * diagonally by the shadow offset, skipping positions the outline pass covers
+     * anyway), so both settings compose instead of the outline silently disabling
+     * the shadow. The effective shadow offset is clamped to
+     * {@code 2 * outlineThickness} in this mode: a larger offset would place the
+     * shadow square fully clear of the outline square, so the overlap skip would
+     * never fire and the shadow pass would add a full {@code (2t+1)^2} stamps.
+     * With the clamp the shadow pass adds at most
+     * {@code (2t+1)^2 - (2t+1-off)^2 <= (2t+1)^2 - 1} stamps.
+     * <p>
+     * The {@code (0, 0)} position is stamped only by the final foreground draw -
+     * the outline pass skips it on the assumption that the opaque foreground text
+     * covers it, matching the pre-existing outline behavior.
      * <p>
      * When {@code outlineThickness == 0} the legacy diagonal drop-shadow is used.
      *
@@ -38,6 +53,30 @@ public final class TextDrawUtil
         {
             g.setColor(shadowColor);
             final int t = outlineThickness;
+            // Clamp the effective offset so the shadow square always overlaps the
+            // outline square: for off <= 2t the overlap skip below removes the
+            // (2t+1-off)^2 positions the outline pass stamps anyway, capping the
+            // shadow pass at (2t+1)^2 - 1 stamps. Beyond 2t the squares are
+            // disjoint, the skip never fires, and a full (2t+1)^2 extra stamps
+            // would be drawn per call (config allows offsets far above 2t).
+            final int off = Math.min(shadowOffset, 2 * t);
+            if (off > 0)
+            {
+                // Drop shadow of the outlined shape: stamp the outline square
+                // shifted diagonally by the shadow offset. Positions the outline
+                // pass below stamps anyway are skipped so each spot is stamped
+                // once and the overlap costs nothing extra.
+                for (int dy = -t; dy <= t; dy++)
+                {
+                    for (int dx = -t; dx <= t; dx++)
+                    {
+                        final int sx = dx + off;
+                        final int sy = dy + off;
+                        if (Math.abs(sx) <= t && Math.abs(sy) <= t) continue;
+                        g.drawString(text, x + sx, y + sy);
+                    }
+                }
+            }
             for (int dy = -t; dy <= t; dy++)
             {
                 for (int dx = -t; dx <= t; dx++)

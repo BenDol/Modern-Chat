@@ -1,5 +1,7 @@
 package com.modernchat.overlay;
 
+import com.modernchat.util.ClientUtil;
+
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Client;
@@ -299,7 +301,7 @@ public class ResizePanel extends Overlay
         public MouseEvent mouseMoved(MouseEvent e) {
             if (!isResizable.get()) return e;
 
-            lastMovePoint = e.getPoint();
+            lastMovePoint = ClientUtil.getMouseCanvasPoint(client, e);
             if (isResizingAny()) {
                 // keep resize cursor consistent while dragging (guarded elsewhere)
                 return e;
@@ -312,12 +314,14 @@ public class ResizePanel extends Overlay
         @Override
         public MouseEvent mousePressed(MouseEvent e) {
             if (!isResizable.get()) return e;
-            if (lastPanel == null || !lastPanel.contains(e.getPoint())) return e;
+
+            Point p = ClientUtil.getMouseCanvasPoint(client, e);
+            if (lastPanel == null || !lastPanel.contains(p)) return e;
 
             // TOP
-            if (enableTop.get() && topHot.contains(e.getPoint())) {
+            if (enableTop.get() && topHot.contains(p)) {
                 resizingTop = true;
-                dragStartY = e.getY();
+                dragStartY = p.y;
                 startH = (heightOverride > 0 ? heightOverride : lastPanel.height);
                 setCanvasCursor(Cursor.N_RESIZE_CURSOR);
                 e.consume();
@@ -325,9 +329,9 @@ public class ResizePanel extends Overlay
             }
 
             // RIGHT
-            if (enableRight.get() && rightHot.contains(e.getPoint())) {
+            if (enableRight.get() && rightHot.contains(p)) {
                 resizingRight = true;
-                dragStartX = e.getX();
+                dragStartX = p.x;
                 startW = (widthOverride > 0 ? widthOverride : lastPanel.width);
                 setCanvasCursor(Cursor.E_RESIZE_CURSOR);
                 e.consume();
@@ -335,9 +339,9 @@ public class ResizePanel extends Overlay
             }
 
             // BOTTOM
-            if (enableBottom.get() && bottomHot.contains(e.getPoint())) {
+            if (enableBottom.get() && bottomHot.contains(p)) {
                 resizingBottom = true;
-                dragStartY = e.getY();
+                dragStartY = p.y;
                 startH = (heightOverride > 0 ? heightOverride : lastPanel.height);
                 setCanvasCursor(Cursor.S_RESIZE_CURSOR);
                 e.consume();
@@ -345,9 +349,9 @@ public class ResizePanel extends Overlay
             }
 
             // LEFT
-            if (enableLeft.get() && leftHot.contains(e.getPoint())) {
+            if (enableLeft.get() && leftHot.contains(p)) {
                 resizingLeft = true;
-                dragStartX = e.getX();
+                dragStartX = p.x;
                 startW = (widthOverride > 0 ? widthOverride : lastPanel.width);
                 setCanvasCursor(Cursor.W_RESIZE_CURSOR);
                 e.consume();
@@ -360,24 +364,26 @@ public class ResizePanel extends Overlay
         @Override
         public MouseEvent mouseDragged(MouseEvent e) {
             if (!isResizable.get()) return e;
-            lastMovePoint = e.getPoint();
+
+            Point p = ClientUtil.getMouseCanvasPoint(client, e);
+            lastMovePoint = p;
 
             if (!isResizingAny()) return e;
 
             if (resizingTop) {
-                int dy = e.getY() - dragStartY; // drag down -> increase height
+                int dy = p.y - dragStartY; // drag down -> increase height
                 heightOverride = Math.max(minHeight, startH - dy);
             }
             if (resizingRight) {
-                int dx = e.getX() - dragStartX; // drag right -> increase width
+                int dx = p.x - dragStartX; // drag right -> increase width
                 widthOverride = Math.max(minWidth, startW + dx);
             }
             if (resizingBottom) {
-                int dy = e.getY() - dragStartY; // drag down -> increase height
+                int dy = p.y - dragStartY; // drag down -> increase height
                 heightOverride = Math.max(minHeight, startH + dy);
             }
             if (resizingLeft) {
-                int dx = e.getX() - dragStartX; // drag right -> decrease width
+                int dx = p.x - dragStartX; // drag right -> decrease width
                 widthOverride = Math.max(minWidth, startW - dx);
             }
 
@@ -405,7 +411,7 @@ public class ResizePanel extends Overlay
                 resizingLeft = false;
 
                 // update cursor based on current hover
-                updateHoverCursor(e.getPoint());
+                updateHoverCursor(ClientUtil.getMouseCanvasPoint(client, e));
                 e.consume();
                 return e;
             }

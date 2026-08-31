@@ -126,6 +126,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -202,6 +203,9 @@ public class ChatOverlay extends OverlayPanel
 
     @Getter private Rectangle lastViewport = null;
 
+    // Debounce for the render() All-tab fallback so a bad state can't warn every frame
+    private boolean allTabFallbackAttempted = false;
+
     // Input box state
     private final Rectangle inputBounds = new Rectangle();
     @Getter private boolean inputFocused = false;
@@ -237,9 +241,12 @@ public class ChatOverlay extends OverlayPanel
     private static final int BADGE_SHRINK_PX = 4;  // shrink when thin
     private static final int BADGE_THIN_THRESHOLD = 120; // tab content width threshold
 
-    @Getter private boolean hidden = false;
+    @Getter private volatile boolean hidden = false;
     @Getter private boolean legacyShowing = false;
     @Getter private boolean wasHidden = false;
+
+    // Shared decider for message containers; runs on the AWT mouse thread
+    private final Function<MessageContainer, Boolean> containerCanShowDecider = c -> !isHidden();
 
     @Getter private int desiredChatWidth;
     @Getter private int desiredChatHeight;
@@ -362,6 +369,7 @@ public class ChatOverlay extends OverlayPanel
 
         messageContainers.forEach((mode, container) -> {
             container.setChromeEnabled(true);
+            container.setCanShowDecider(containerCanShowDecider);
             container.startUp(containerConfig, ChatMode.valueOf(mode));
         });
 
@@ -370,15 +378,18 @@ public class ChatOverlay extends OverlayPanel
         allContainer.setChromeEnabled(true);
         allContainer.setMaxLines(ALL_TAB_MAX_LINES);
         allContainer.setApplyChannelFilters(true);
+        allContainer.setCanShowDecider(containerCanShowDecider);
         allContainer.startUp(containerConfig, ChatMode.PUBLIC);
 
         // Initialize Game and Trade containers (read-only tabs)
         gameContainer = messageContainerProvider.get();
         gameContainer.setChromeEnabled(true);
+        gameContainer.setCanShowDecider(containerCanShowDecider);
         gameContainer.startUp(containerConfig, ChatMode.PUBLIC);
 
         tradeContainer = messageContainerProvider.get();
         tradeContainer.setChromeEnabled(true);
+        tradeContainer.setCanShowDecider(containerCanShowDecider);
         tradeContainer.startUp(containerConfig, ChatMode.PUBLIC);
 
         sweepContainers = null;
@@ -447,6 +458,15 @@ public class ChatOverlay extends OverlayPanel
 
         if (messageContainer == null) {
             selectTab(config.getDefaultChatMode());
+
+            // The default mode may have no tab (e.g. PUBLIC is replaced by the All tab),
+            // so fall back to the All tab rather than never rendering the overlay again.
+            // Only attempt once until refreshTabs runs again, so a pathological state
+            // can't warn every frame.
+            if (messageContainer == null && !allTabFallbackAttempted) {
+                allTabFallbackAttempted = true;
+                selectTabByKey(ALL_TAB_KEY);
+            }
 
             if (messageContainer == null)
                 return null;
@@ -1139,6 +1159,7 @@ public class ChatOverlay extends OverlayPanel
 
     public void refreshTabs() {
         tabsScrollPx = 0;
+        allTabFallbackAttempted = false;
 
         boolean isAutoClosePm = config.isAutoClosePrivateTab();
 
@@ -1456,6 +1477,28 @@ public class ChatOverlay extends OverlayPanel
         messageContainer.setAlpha(1f);
     }
 
+    private @Nullable MessageContainer containerForTab(@Nullable Tab tab) {
+        if (tab == null)
+            return null;
+
+        String key = tab.getKey();
+        if (key == null)
+            return null;
+
+        if (ALL_TAB_KEY.equals(key))
+            return allContainer;
+        if (GAME_TAB_KEY.equals(key))
+            return gameContainer;
+        if (TRADE_TAB_KEY.equals(key))
+            return tradeContainer;
+        if (tab.isPrivate()) {
+            String targetName = tab.getTargetName();
+            // ConcurrentHashMap rejects null keys
+            return targetName != null ? privateContainers.get(targetName) : null;
+        }
+        return messageContainers.get(key);
+    }
+
     public Color getInputPrefixColor() {
         // A sticky channel override is an explicit routing indicator, so its color wins
         // regardless of the input color mode
@@ -1707,7 +1750,11 @@ public class ChatOverlay extends OverlayPanel
             sub.createMenuEntry(index++)
                 .setOption("Clear messages")
                 .setType(MenuAction.RUNELITE)
-                .onClick(me -> clear());
+                .onClick(me -> {
+                    MessageContainer container = containerForTab(hovered);
+                    if (container != null)
+                        container.clearMessages();
+                });
 
             sub.createMenuEntry(index++)
                 .setOption("Move left")
@@ -1941,6 +1988,11 @@ public class ChatOverlay extends OverlayPanel
         if (hidden) {
             unfocusInput();
             resizePanel.resetCursor();
+            // Drop the cached viewport so the container's global mouse listener can't
+            // hit-test against a stale rect while the overlay is hidden; render()
+            // repopulates it when the overlay is shown again
+            if (messageContainer != null)
+                messageContainer.clearChatWidget();
         } else {
             focusInput();
         }
@@ -2467,6 +2519,7 @@ public class ChatOverlay extends OverlayPanel
         if (container == null) {
             container = messageContainerProvider.get();
             container.setPrivate(true);
+            container.setCanShowDecider(containerCanShowDecider);
             container.startUp(config.getMessageContainerConfig(), ChatMode.PRIVATE);
             privateContainers.put(targetName, container);
             sweepContainers = null;
@@ -2624,6 +2677,14 @@ public class ChatOverlay extends OverlayPanel
 
         Widget chatboxParent = widgetBucket.getChatParentWidget();
         if (chatboxParent == null)
+            return;
+
+        // Already at the requested size; skipping avoids refreshChat() retriggering
+        // BUILD_CHATBOX -> onScriptPostFired -> resizeChatbox in a rebuild loop.
+        if (chatViewport.getOriginalWidth() == width && chatViewport.getOriginalHeight() == height
+            && chatboxParent.getOriginalWidth() == width && chatboxParent.getOriginalHeight() == height
+            && chatboxParent.getWidthMode() == WidgetSizeMode.ABSOLUTE
+            && chatboxParent.getHeightMode() == WidgetSizeMode.ABSOLUTE)
             return;
 
         // This method re-applies modes every call while unrendered; only a real size
@@ -3011,7 +3072,7 @@ public class ChatOverlay extends OverlayPanel
                 && !e.isAltDown()
                 && !client.isMenuOpen()
                 && lastViewport != null
-                && lastViewport.contains(e.getPoint());
+                && lastViewport.contains(ClientUtil.getMouseCanvasPoint(client, e));
             if (shouldBlock && !clickThroughNotificationSent) {
                 notificationService.pushHelperNotification(new ChatMessageBuilder()
                     .append("Left-click did not pass through the chat because ")
@@ -3048,8 +3109,10 @@ public class ChatOverlay extends OverlayPanel
             if (!isEnabled() || isHidden())
                 return e;
 
+            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+
             // Scroll the tab bar when the cursor is over it
-            if (tabsBarBounds.contains(e.getPoint())) {
+            if (tabsBarBounds.contains(p)) {
                 final double rot = e.getPreciseWheelRotation(); // +ve = wheel down
                 final int step = e.isShiftDown() ? TAB_WHEEL_STEP * 2 : TAB_WHEEL_STEP;
                 tabsScrollPx += (int) Math.round(rot * step);   // down -> scroll right
@@ -3061,7 +3124,7 @@ public class ChatOverlay extends OverlayPanel
             // Warn once if scrolling is disabled but user tries to scroll in message area
             if (!config.getMessageContainerConfig().isScrollable()
                     && lastViewport != null
-                    && lastViewport.contains(e.getPoint())
+                    && lastViewport.contains(p)
                     && !scrollDisabledNotificationSent) {
                 notificationService.pushHelperNotification(new ChatMessageBuilder()
                     .append("Scrolling is disabled because ")
@@ -3088,9 +3151,10 @@ public class ChatOverlay extends OverlayPanel
             if (lastViewport == null)
                 return false;
 
+            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+
             // Handle filter dropdown clicks first (it's rendered on top)
             if (filterDropdown != null && filterDropdown.isVisible()) {
-                java.awt.Point p = e.getPoint();
                 DropdownItem<ChannelFilterType> item = filterDropdown.itemAt(p);
                 if (item != null && e.getButton() == MouseEvent.BUTTON1) {
                     // Toggle the filter
@@ -3111,7 +3175,7 @@ public class ChatOverlay extends OverlayPanel
                 return false;
             }
 
-            if (!lastViewport.contains(e.getPoint())) {
+            if (!lastViewport.contains(p)) {
                 // Close dropdown if clicking outside
                 if (filterDropdown != null && filterDropdown.isVisible()) {
                     filterDropdown.close();
@@ -3130,7 +3194,7 @@ public class ChatOverlay extends OverlayPanel
             }
 
             // Handle filter button click
-            if (shouldShowFilterButton() && filterButtonBounds.contains(e.getPoint())) {
+            if (shouldShowFilterButton() && filterButtonBounds.contains(p)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     if (filterDropdown == null || !filterDropdown.isVisible()) {
                         initFilterDropdown();
@@ -3144,18 +3208,18 @@ public class ChatOverlay extends OverlayPanel
             }
 
             // Handle report button click
-            if (mainConfig.featureRedesign_ShowReportButton() && reportButtonBounds.contains(e.getPoint())) {
+            if (mainConfig.featureRedesign_ShowReportButton() && reportButtonBounds.contains(p)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     // TODO: figure out how we can invoke the report display
                 }
             }
 
-            if (tabsBarBounds.contains(e.getPoint())) {
+            if (tabsBarBounds.contains(p)) {
                 for (Tab t : tabOrder) {
-                    if (!t.getBounds().contains(e.getPoint())) continue;
+                    if (!t.getBounds().contains(p)) continue;
 
                     // Close button (LMB only)
-                    if (t.isCloseable() && t.getCloseBounds().contains(e.getPoint())) {
+                    if (t.isCloseable() && t.getCloseBounds().contains(p)) {
                         if (e.getButton() != MouseEvent.BUTTON1)
                             return false;
 
@@ -3167,14 +3231,14 @@ public class ChatOverlay extends OverlayPanel
 
                     // Prepare drag/click (LEFT only); don't select yet
                     if (e.getButton() == MouseEvent.BUTTON1) {
-                        pressX = e.getX();
+                        pressX = p.x;
                         dragTab = t;
                         draggingTab = false;
                         didReorder = false;
                         pendingSelectTabKey = t.getKey();
 
                         Rectangle b = t.getBounds();
-                        dragOffsetX = e.getX() - b.x;
+                        dragOffsetX = p.x - b.x;
                         dragVisualX = b.x;
                         dragStartIndex = tabOrder.indexOf(t);
                         dragTargetIndex = dragStartIndex; // initial predicted drop index
@@ -3189,7 +3253,7 @@ public class ChatOverlay extends OverlayPanel
             }
 
             // Input focus + selection: LMB only
-            if (inputBounds.contains(e.getPoint())) {
+            if (inputBounds.contains(p)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     inputFocused = true;
 
@@ -3198,7 +3262,7 @@ public class ChatOverlay extends OverlayPanel
                     String prefix = getPlayerPrefix();
                     int prefixW = fm.stringWidth(prefix);
 
-                    int clickedIdx = indexFromMouseX(fm, e.getX(), inputBounds.x, inputBounds.width, prefixW);
+                    int clickedIdx = indexFromMouseX(fm, p.x, inputBounds.x, inputBounds.width, prefixW);
                     if (e.isShiftDown()) {
                         if (!hasSelection()) selAnchor = caret;
                         setCaretAndMaybeExtend(clickedIdx, true);
@@ -3214,7 +3278,7 @@ public class ChatOverlay extends OverlayPanel
                 }
                 return false;
             } else {
-                if (e.getButton() == MouseEvent.BUTTON1)
+                if (e.getButton() == MouseEvent.BUTTON1 && !config.isPreserveFocusOnOutsideClick())
                     inputFocused = false;
             }
             return false;
@@ -3236,13 +3300,15 @@ public class ChatOverlay extends OverlayPanel
             if (client.isMenuOpen())
                 return false;
 
+            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+
             // Selection drag
             if (selectingText && inputFocused) {
                 FontMetrics fm = getInputFontMetrics();
                 String prefix = getPlayerPrefix();
                 int prefixW = fm.stringWidth(prefix);
 
-                int idx = indexFromMouseX(fm, e.getX(), inputBounds.x, inputBounds.width, prefixW);
+                int idx = indexFromMouseX(fm, p.x, inputBounds.x, inputBounds.width, prefixW);
                 if (selAnchor == -1) selAnchor = caret;
                 caret = idx;
                 setSelectionRange(selAnchor, caret);
@@ -3253,13 +3319,13 @@ public class ChatOverlay extends OverlayPanel
             if (dragTab == null)
                 return false;
 
-            if (!draggingTab && Math.abs(e.getX() - pressX) >= DRAG_THRESHOLD_PX) {
+            if (!draggingTab && Math.abs(p.x - pressX) >= DRAG_THRESHOLD_PX) {
                 draggingTab = true;
             }
 
             if (draggingTab) {
                 // Tab visually follows the mouse
-                dragVisualX = e.getX() - dragOffsetX;
+                dragVisualX = p.x - dragOffsetX;
 
                 // Predict drop index from the dragged tabs current position,
                 // not the raw mouse X, this makes left/right drags feel symmetric.

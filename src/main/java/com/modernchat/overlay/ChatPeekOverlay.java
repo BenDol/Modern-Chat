@@ -78,7 +78,12 @@ public class ChatPeekOverlay extends MessageContainer
     }
 
     public boolean canAutoResetFade(ChatMessageType type, boolean isCollapsed) {
-        if (isCollapsed || type == ChatMessageType.AUTOTYPER || type == ChatMessageType.SPAM) {
+        if (type == ChatMessageType.AUTOTYPER || type == ChatMessageType.SPAM) {
+            return false;
+        }
+
+        // Collapsed (repeated) messages only block the fade reset when the user opted out
+        if (isCollapsed && !config.isUnfadeOnCollapsed()) {
             return false;
         }
 

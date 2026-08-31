@@ -167,16 +167,12 @@ public class WidgetBucket {
         chatParentWidget = null;
     }
     public Widget getChatboxViewportWidget() {
-        Widget viewportWidget = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT);
-        if (viewportWidget == null) {
-            viewportWidget = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT);
+        if (chatViewportWidget == null) {
+            chatViewportWidget = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT);
+            if (chatViewportWidget == null) {
+                chatViewportWidget = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT);
+            }
         }
-
-        if (viewportWidget == null) {
-            return null;
-        }
-
-        chatViewportWidget = viewportWidget;
         return chatViewportWidget;
     }
 

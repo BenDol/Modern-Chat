@@ -210,7 +210,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigItem(
         keyName = Keys.featureRedesign_PreserveFocusOnOutsideClick,
         name = "Preserve Focus On Outside Click",
-        description = "Keep chat input focused when clicking outside the chat area (only applies when 'Click Outside Closes' is disabled)",
+        description = "Keep chat input focused when clicking away from the input box, both within the chat area (including click-through clicks) and outside it (outside clicks close the chat instead when 'Click Outside Closes' is enabled)",
         position = 8,
         section = modernChatSection
     )
@@ -984,7 +984,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigItem(
         keyName = Keys.featureRedesign_MessageContainer_TextOutline,
         name = "Message Text Outline",
-        description = "Outline thickness for message text (0 = off, uses drop shadow instead)",
+        description = "Outline thickness for message text (0 = off; combines with the text shadow when both are set)",
         position = 50,
         section = modernChatStyleSection
     )
@@ -1631,7 +1631,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @ConfigItem(
         keyName = Keys.featurePeek_TextOutline,
         name = "Text Outline",
-        description = "Outline thickness for peek overlay text (0 = off, uses drop shadow instead)",
+        description = "Outline thickness for peek overlay text (0 = off; combines with the text shadow when both are set)",
         position = 12,
         section = peekOverlaySection
     )
@@ -1850,6 +1850,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default int featurePeek_LineSpacing() {
         return 0;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_UnfadeOnCollapsed,
+        name = "Unfade On Repeated Messages",
+        description = "Re-show the faded peek overlay when a collapsed/repeated message arrives (e.g. duplicate messages collapsed into 'message (2)' by the chat filter)",
+        position = 30,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_UnfadeOnCollapsed() {
+        return true;
     }
 
     /* ------------ Feature: Commands ------------ */

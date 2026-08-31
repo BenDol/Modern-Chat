@@ -11,7 +11,9 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.ScriptCallbackEvent;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.widgets.Widget;
@@ -41,6 +43,9 @@ import java.awt.event.KeyEvent;
 public class KeyRemappingService implements ChatService {
     private static final String CONFIG_GROUP = "keyremapping";
     private static final String PLUGIN_NAME = "Key Remapping";
+    // Low-frequency safety net (~500ms at 50 ticks/s) for interfaces that
+    // re-enable the chat input without firing the message layer scripts
+    private static final int RELOCK_BACKSTOP_TICKS = 25;
 
     @Inject private Client client;
     @Inject private ClientThread clientThread;
@@ -55,6 +60,18 @@ public class KeyRemappingService implements ChatService {
     private volatile boolean typing = false;
     private volatile boolean chatOpenPending = false;
     private boolean enabled = false;
+
+    // Reentrancy guard: our own MESSAGE_LAYER_CLOSE runScript calls fire
+    // ScriptPostFired synchronously, which would otherwise recurse back into
+    // relockChat() before the lock is observable. Client thread only.
+    private boolean relocking = false;
+    // Dirty flag gating the ClientTick relock backstop so steady-state ticks
+    // exit on a single boolean read. Set from the script/toggle event paths.
+    private volatile boolean relockCheckPending = false;
+    // Dialog state cached on the client thread so the AWT key listener never
+    // walks widgets off the client thread
+    private volatile boolean dialogOpen = false;
+    private int ticksSinceRelockCheck = 0;
 
     // Camera remap config
     @Getter private volatile boolean cameraRemap;
@@ -89,6 +106,10 @@ public class KeyRemappingService implements ChatService {
         keyManager.registerKeyListener(keyListener);
 
         refreshConfig();
+        relocking = false;
+        dialogOpen = false;
+        ticksSinceRelockCheck = 0;
+        relockCheckPending = true;
         enabled = true;
 
         log.debug("KeyRemappingService started");
@@ -106,6 +127,8 @@ public class KeyRemappingService implements ChatService {
 
         typing = false;
         chatOpenPending = false;
+        relockCheckPending = false;
+        dialogOpen = false;
 
         log.debug("KeyRemappingService shut down");
     }
@@ -114,6 +137,11 @@ public class KeyRemappingService implements ChatService {
         return enabled;
     }
 
+    /**
+     * Single source of truth for whether the vanilla chat input is allowed to
+     * be open: true only while the user has explicitly opened chat. The key
+     * listener, the script callbacks and the relock logic all consult this.
+     */
     public boolean isTyping() {
         return typing;
     }
@@ -137,8 +165,15 @@ public class KeyRemappingService implements ChatService {
 
         typing = false;
         clientThread.invoke(() -> {
-            client.runScript(ScriptID.MESSAGE_LAYER_CLOSE, 0, 0, 0);
-            ClientUtil.setChatboxWidgetInput(client, ClientUtil.PRESS_ENTER_TO_CHAT);
+            // Flag our own MESSAGE_LAYER_CLOSE so the synchronous
+            // ScriptPostFired it triggers is ignored by relockChat()
+            relocking = true;
+            try {
+                client.runScript(ScriptID.MESSAGE_LAYER_CLOSE, 0, 0, 0);
+                ClientUtil.setChatboxWidgetInput(client, ClientUtil.PRESS_ENTER_TO_CHAT);
+            } finally {
+                relocking = false;
+            }
         });
     }
 
@@ -148,6 +183,49 @@ public class KeyRemappingService implements ChatService {
 
         typing = true;
         clientThread.invoke(() -> client.runScript(ScriptID.MESSAGE_LAYER_CLOSE, 0, 1, 0));
+    }
+
+    /**
+     * Re-assert the chat lock when the client re-opens or rebuilds the vanilla chat
+     * input while the user has chat closed - dialogs, clue scrolls and vanilla chat
+     * tab switches all do this (#43). Fails open whenever the chatbox may be hosting
+     * a legitimate prompt. MUST be called on the client thread. The relocking guard
+     * makes the ScriptPostFired re-entry caused by our own MESSAGE_LAYER_CLOSE a
+     * no-op instead of unbounded recursion.
+     */
+    public void relockChat() {
+        if (relocking || !enabled || isTyping())
+            return;
+
+        if (!canRelockChat())
+            return;
+
+        relocking = true;
+        try {
+            client.runScript(ScriptID.MESSAGE_LAYER_CLOSE, 0, 0, 0);
+            ClientUtil.setChatboxWidgetInput(client, ClientUtil.PRESS_ENTER_TO_CHAT);
+        } finally {
+            relocking = false;
+        }
+    }
+
+    private boolean canRelockChat() {
+        // Cheapest decisive check first: already locked means nothing to do
+        if (ClientUtil.isChatLocked(client))
+            return false;
+        // Only touch the message layer while the plain chat input line is the live
+        // input; prompts (enter amount, searches, name inputs), dialogs and PM
+        // compose must keep working, so skip when any of them own the chatbox.
+        if (!ClientUtil.isChatInputEditable(client))
+            return false;
+        if (ClientUtil.isDialogOpen(client) || ClientUtil.isSystemWidgetActive(client))
+            return false;
+        if (ClientUtil.isPmComposeOpen(client))
+            return false;
+        if (chatProxy.isCommandMode())
+            return false;
+        // Covers the world map search, report interface and focused input fields
+        return chatboxFocused();
     }
 
     public void checkConflictingPlugin() {
@@ -183,6 +261,7 @@ public class KeyRemappingService implements ChatService {
         if (!enabled)
             return;
 
+        relockCheckPending = true;
         if (e.isHidden()) {
             lockChat();
         } else {
@@ -204,17 +283,52 @@ public class KeyRemappingService implements ChatService {
 
         switch (e.getEventName()) {
             case "setChatboxInput":
-                if (!typing) {
+                if (!isTyping()) {
                     ClientUtil.setChatboxWidgetInput(client, ClientUtil.PRESS_ENTER_TO_CHAT);
                 }
                 break;
             case "blockChatInput":
-                if (!typing) {
+                if (!isTyping()) {
                     int[] intStack = client.getIntStack();
                     intStack[client.getIntStackSize() - 1] = 1;
                 }
                 break;
         }
+    }
+
+    @Subscribe
+    public void onScriptPostFired(ScriptPostFired e) {
+        if (!enabled)
+            return;
+
+        switch (e.getScriptId()) {
+            case ScriptID.MESSAGE_LAYER_CLOSE:
+            case ScriptID.BUILD_CHATBOX:
+            case ScriptID.CHAT_TEXT_INPUT_REBUILD:
+                relockCheckPending = true;
+                relockChat();
+                break;
+        }
+    }
+
+    @Subscribe
+    public void onClientTick(ClientTick e) {
+        if (!enabled)
+            return;
+
+        // Refresh the cached dialog state for the AWT key listener
+        dialogOpen = computeDialogOpen();
+
+        // Relock backstop for interfaces that re-enable the chat input without
+        // running the message layer scripts (e.g. clue scrolls). Gated behind
+        // the dirty flag plus a low-frequency interval so steady-state ticks
+        // skip the varc/widget checks.
+        if (!relockCheckPending && ++ticksSinceRelockCheck < RELOCK_BACKSTOP_TICKS)
+            return;
+
+        relockCheckPending = false;
+        ticksSinceRelockCheck = 0;
+        relockChat();
     }
 
     private void refreshConfig() {
@@ -263,7 +377,15 @@ public class KeyRemappingService implements ChatService {
         log.debug("KeyRemapping config refreshed: cameraRemap={}, fkeyRemap={}", cameraRemap, fkeyRemap);
     }
 
+    /**
+     * Dialog state cached on the client tick so the AWT key listener does not
+     * walk widgets off the client thread.
+     */
     boolean isDialogOpen() {
+        return dialogOpen;
+    }
+
+    private boolean computeDialogOpen() {
         // Most chat dialogs with numerical input are added without the chatbox or its key listener being removed,
         // so chatboxFocused() is true. The chatbox onkey script uses the following logic to ignore key presses,
         // so we will use it too to not remap F-keys.

@@ -1,5 +1,7 @@
 package com.modernchat.service;
 
+import com.modernchat.util.ChatUtil;
+
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.client.config.ConfigManager;
@@ -161,16 +163,28 @@ public class ForceRecolorService implements ChatService {
             return null;
         }
 
-        int matchedGroup = findMatchingGroup(message);
+        // Match against a tag-stripped copy like the real plugin does with
+        // removeMostTags(node.getValue()) - embedded <col>/<u>/... tags in the middle of
+        // the text would otherwise break the pattern match (game messages in particular).
+        int matchedGroup = findMatchingGroup(ChatUtil.removeMostTags(message));
         if (matchedGroup < 0) {
             return null;
         }
 
         Color primary = isTransparentBackdrop ? transparentColors.get(matchedGroup) : opaqueColors.get(matchedGroup);
-        if (primary != null) {
-            return primary;
+        Color fallback = isTransparentBackdrop ? opaqueColors.get(matchedGroup) : transparentColors.get(matchedGroup);
+        Color result = primary != null ? primary : fallback;
+        if (result == null) {
+            log.debug("ForceRecolor matched group {} but no color is configured (style={})", matchedGroup, recolorStyle);
+            return null;
         }
-        return isTransparentBackdrop ? opaqueColors.get(matchedGroup) : transparentColors.get(matchedGroup);
+
+        if (log.isDebugEnabled()) {
+            log.debug("ForceRecolor match: group={}, style={}, transparentBackdrop={}, usingFallbackPalette={}, color=#{}",
+                matchedGroup, recolorStyle, isTransparentBackdrop, primary == null,
+                String.format("%06X", result.getRGB() & 0xFFFFFF));
+        }
+        return result;
     }
 
     /**

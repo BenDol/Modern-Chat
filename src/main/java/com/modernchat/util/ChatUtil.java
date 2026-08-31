@@ -178,10 +178,94 @@ public class ChatUtil
 
     public static List<Integer> extractIconIds(@Nullable String name) {
         if (name == null || name.isEmpty()) return List.of();
-        List<Integer> ids = new ArrayList<>();
+        List<Integer> ids = null;
         Matcher m = IMG_TAG_PATTERN.matcher(name);
-        while (m.find()) ids.add(Integer.parseInt(m.group(1)));
-        return ids;
+        while (m.find()) {
+            if (ids == null) ids = new ArrayList<>();
+            ids.add(Integer.parseInt(m.group(1)));
+        }
+        return ids == null ? List.of() : ids;
+    }
+
+    /**
+     * Strips formatting tags the way the Force Recolor plugin's removeMostTags does:
+     * every tag is removed EXCEPT &lt;lt&gt;, &lt;gt&gt; and &lt;img=N&gt; (case-sensitive,
+     * digits only), and NBSP (U+00A0) is then normalized to a regular space - the original
+     * plugin appends that replace so multi-word patterns still match NBSP-separated text.
+     * Force Recolor patterns are built from Text.escapeJagex'd text, so the surviving
+     * lt/gt entities line up with the escaped pattern text when matching.
+     */
+    public static String removeMostTags(@Nullable String s) {
+        String stripped = stripTags(s, false);
+        if (stripped == null || stripped.isEmpty()) return stripped;
+        return stripped.replace('\u00A0', ' ');
+    }
+
+    /**
+     * Strips only color tags (&lt;col=...&gt;, &lt;colNORMAL&gt;, &lt;/col&gt;) so an outer
+     * color wrapper actually wins; all other tags (&lt;img=N&gt;, &lt;lt&gt;, &lt;gt&gt;,
+     * &lt;br&gt;, ...) are preserved.
+     */
+    public static String removeColorTags(@Nullable String s) {
+        return stripTags(s, true);
+    }
+
+    private static String stripTags(@Nullable String s, boolean colorTagsOnly) {
+        if (s == null || s.isEmpty() || s.indexOf('<') < 0) return s;
+
+        StringBuilder out = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); ) {
+            char ch = s.charAt(i);
+            if (ch != '<') {
+                out.append(ch);
+                i++;
+                continue;
+            }
+
+            int j = s.indexOf('>', i + 1);
+            if (j < 0) {
+                // Unterminated tag: keep the remainder as-is. The original Force Recolor
+                // plugin strips tags with a regex that requires a closing '>', so
+                // unterminated text is never consumed as a tag there either.
+                out.append(s, i, s.length());
+                break;
+            }
+
+            boolean keep;
+            if (colorTagsOnly) {
+                // Match parseRich's case-insensitive color tag detection:
+                // <col=HEX>, <colHEX>, <colNORMAL>, </col>
+                keep = !(s.regionMatches(true, i + 1, "col", 0, 3)
+                    || (j - i - 1 == 4 && s.regionMatches(true, i + 1, "/col", 0, 4)));
+            } else {
+                keep = isKeptMatchTag(s, i + 1, j);
+            }
+            if (keep) {
+                out.append(s, i, j + 1);
+            }
+            i = j + 1;
+        }
+        return out.toString();
+    }
+
+    /**
+     * Case-sensitive keep rule matching the original Force Recolor plugin's
+     * removeMostTags: only &lt;lt&gt;, &lt;gt&gt; and &lt;img=N&gt; (N = digits) survive.
+     * The tag body spans {@code [start, end)} of {@code s} (angle brackets excluded).
+     */
+    private static boolean isKeptMatchTag(String s, int start, int end) {
+        int len = end - start;
+        if (len == 2) {
+            return s.regionMatches(start, "lt", 0, 2) || s.regionMatches(start, "gt", 0, 2);
+        }
+        if (len > 4 && s.regionMatches(start, "img=", 0, 4)) {
+            for (int k = start + 4; k < end; k++) {
+                char c = s.charAt(k);
+                if (c < '0' || c > '9') return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     public static boolean isPrivateMessage(ChatMessageType t) {
@@ -330,7 +414,7 @@ public class ChatUtil
         }
 
         int senderIconId = senderIconIds.isEmpty() ? -1 : senderIconIds.get(0);
-        return new SenderReceiver(senderName, receiverName, senderIconId, senderIconIds);
+        return new SenderReceiver(senderName, receiverName, senderIconId, List.copyOf(senderIconIds));
     }
 
     public static String getCustomPrefix(ChatMessage msg) {
