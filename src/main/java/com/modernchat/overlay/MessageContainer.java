@@ -36,6 +36,7 @@ import net.runelite.client.input.MouseWheelListener;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 import javax.annotation.Nullable;
@@ -58,6 +59,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -71,6 +73,7 @@ public class MessageContainer extends Overlay
 
     @Inject protected Client client;
     @Inject protected MouseManager mouseManager;
+    @Inject protected OverlayManager overlayManager;
     @Inject protected FontService fontService;
     @Inject protected ImageService imageService;
     @Inject protected ChannelFilterState channelFilterState;
@@ -82,6 +85,9 @@ public class MessageContainer extends Overlay
     @Getter @Setter protected boolean chromeEnabled = true;
     @Getter @Setter protected Supplier<Rectangle> boundsProvider;
     @Getter @Setter protected Function<MessageContainer, Boolean> canShowDecider = mc -> true;
+    // Reports whether an interface above this overlay covers a canvas point; the mouse
+    // handlers must not react to events that belong to that interface
+    @Getter @Setter protected Predicate<java.awt.Point> occlusionGate = p -> false;
 
     // State
     @Getter @Setter protected volatile boolean hidden = false;
@@ -142,6 +148,8 @@ public class MessageContainer extends Overlay
         this.config = config;
         this.chatMode = chatMode;
 
+        refreshLayer();
+
         if (registerMouse) {
             this.mouse = new MouseHandler();
             registerMouseListener();
@@ -153,6 +161,23 @@ public class MessageContainer extends Overlay
             unregisterMouseListener();
             this.mouse = null;
         }
+    }
+
+    /**
+     * Applies the configured overlay layer. A layer change only takes effect when the
+     * overlay is re-registered, so re-add it if it is currently attached.
+     */
+    public void refreshLayer() {
+        OverlayLayer target = config != null && config.isRenderBehindInterfaces()
+            ? OverlayLayer.UNDER_WIDGETS
+            : OverlayLayer.ABOVE_WIDGETS;
+        if (getLayer() == target)
+            return;
+
+        boolean attached = overlayManager.remove(this);
+        setLayer(target);
+        if (attached)
+            overlayManager.add(this);
     }
 
     @Override
@@ -1037,6 +1062,8 @@ public class MessageContainer extends Overlay
                 return e;
             if (msgViewport.isEmpty() || !msgViewport.contains(p))
                 return e;
+            if (occlusionGate.test(p))
+                return e; // the wheel belongs to the interface covering this overlay
 
             final int viewportH = Math.max(1, msgViewport.height);
 
@@ -1074,6 +1101,8 @@ public class MessageContainer extends Overlay
 
             if (lastViewport == null || !lastViewport.contains(p))
                 return e;
+            if (occlusionGate.test(p))
+                return e; // the click belongs to the interface covering this overlay
 
             if (thumb.contains(p)) {
                 dragging = true;

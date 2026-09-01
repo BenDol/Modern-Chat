@@ -69,6 +69,8 @@ public interface ModernChatConfigBase extends
         String featureRedesign_GameTabEnabled = "featureRedesign_GameTabEnabled";
         String featureRedesign_TradeTabEnabled = "featureRedesign_TradeTabEnabled";
         String featureRedesign_ShowTabIcons = "featureRedesign_ShowTabIcons";
+        String featureRedesign_RenderBehindInterfaces = "featureRedesign_RenderBehindInterfaces";
+        String featureRedesign_FrontWhileTyping = "featureRedesign_FrontWhileTyping";
 
         // Style: fonts & sizes
         String featureRedesign_FontStyle = "featureRedesign_FontStyle";
@@ -191,6 +193,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_TimestampColor = "featurePeek_TimestampColor";
         String featurePeek_TypePrefixColor = "featurePeek_TypePrefixColor";
         String featurePeek_SourceTabIndicatorColor = "featurePeek_SourceTabIndicatorColor";
+        String featurePeek_RenderBehindInterfaces = "featurePeek_RenderBehindInterfaces";
 
         // Timestamp and type prefix colors
         String featureRedesign_TimestampColor = "featureRedesign_TimestampColor";
@@ -249,6 +252,8 @@ public interface ModernChatConfigBase extends
         FEATURE_REDESIGN_GAME_TAB_ENABLED(Keys.featureRedesign_GameTabEnabled, Kind.BOOL, ModernChatConfigBase::featureRedesign_GameTabEnabled),
         FEATURE_REDESIGN_TRADE_TAB_ENABLED(Keys.featureRedesign_TradeTabEnabled, Kind.BOOL, ModernChatConfigBase::featureRedesign_TradeTabEnabled),
         FEATURE_REDESIGN_SHOW_TAB_ICONS(Keys.featureRedesign_ShowTabIcons, Kind.BOOL, ModernChatConfigBase::featureRedesign_ShowTabIcons),
+        FEATURE_REDESIGN_RENDER_BEHIND_INTERFACES(Keys.featureRedesign_RenderBehindInterfaces, Kind.BOOL, ModernChatConfigBase::featureRedesign_RenderBehindInterfaces),
+        FEATURE_REDESIGN_FRONT_WHILE_TYPING(Keys.featureRedesign_FrontWhileTyping, Kind.BOOL, ModernChatConfigBase::featureRedesign_FrontWhileTyping),
 
         // ---- Style: fonts & sizes ----
         FEATURE_REDESIGN_FONT_STYLE(Keys.featureRedesign_FontStyle, FontStyle.class, ModernChatConfigBase::featureRedesign_FontStyle),
@@ -372,6 +377,7 @@ public interface ModernChatConfigBase extends
         PEEK_UNFADE_ON_COLLAPSED(Keys.featurePeek_UnfadeOnCollapsed, Kind.BOOL, ModernChatConfigBase::featurePeek_UnfadeOnCollapsed),
         PEEK_TIMESTAMP_COLOR(Keys.featurePeek_TimestampColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TimestampColor),
         PEEK_TYPE_PREFIX_COLOR(Keys.featurePeek_TypePrefixColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TypePrefixColor),
+        PEEK_RENDER_BEHIND_INTERFACES(Keys.featurePeek_RenderBehindInterfaces, Kind.BOOL, ModernChatConfigBase::featurePeek_RenderBehindInterfaces),
 
         // ---- Commands ----
         CMD_ENABLED(Keys.featureCommands_Enabled, Kind.BOOL, ModernChatConfigBase::featureCommands_Enabled),
@@ -540,6 +546,8 @@ public interface ModernChatConfigBase extends
         @Override public boolean featureRedesign_GameTabEnabled() { return getBool(Keys.featureRedesign_GameTabEnabled, DEFAULTS.featureRedesign_GameTabEnabled()); }
         @Override public boolean featureRedesign_TradeTabEnabled() { return getBool(Keys.featureRedesign_TradeTabEnabled, DEFAULTS.featureRedesign_TradeTabEnabled()); }
         @Override public boolean featureRedesign_ShowTabIcons() { return getBool(Keys.featureRedesign_ShowTabIcons, DEFAULTS.featureRedesign_ShowTabIcons()); }
+        @Override public boolean featureRedesign_RenderBehindInterfaces() { return getBool(Keys.featureRedesign_RenderBehindInterfaces, DEFAULTS.featureRedesign_RenderBehindInterfaces()); }
+        @Override public boolean featureRedesign_FrontWhileTyping() { return getBool(Keys.featureRedesign_FrontWhileTyping, DEFAULTS.featureRedesign_FrontWhileTyping()); }
 
         // Style: fonts & sizes
         @Override public FontStyle featureRedesign_FontStyle() { return getEnum(Keys.featureRedesign_FontStyle, DEFAULTS.featureRedesign_FontStyle(), FontStyle.class); }
@@ -663,6 +671,7 @@ public interface ModernChatConfigBase extends
         @Override public String featurePeek_SourceTabKey() { return getString(Keys.featurePeek_SourceTabKey, DEFAULTS.featurePeek_SourceTabKey()); }
         @Override public boolean featurePeek_SuppressFadeAtGE() { return getBool(Keys.featurePeek_SuppressFadeAtGE, DEFAULTS.featurePeek_SuppressFadeAtGE()); }
         @Override public boolean featurePeek_UnfadeOnCollapsed() { return getBool(Keys.featurePeek_UnfadeOnCollapsed, DEFAULTS.featurePeek_UnfadeOnCollapsed()); }
+        @Override public boolean featurePeek_RenderBehindInterfaces() { return getBool(Keys.featurePeek_RenderBehindInterfaces, DEFAULTS.featurePeek_RenderBehindInterfaces()); }
         @Override public Color featurePeek_TimestampColor() { return getColor(Keys.featurePeek_TimestampColor, DEFAULTS.featurePeek_TimestampColor()); }
         @Override public Color featurePeek_TypePrefixColor() { return getColor(Keys.featurePeek_TypePrefixColor, DEFAULTS.featurePeek_TypePrefixColor()); }
         @Override public Color featurePeek_SourceTabIndicatorColor() { return getColor(Keys.featurePeek_SourceTabIndicatorColor, DEFAULTS.featurePeek_SourceTabIndicatorColor()); }

@@ -21,6 +21,7 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -72,6 +73,10 @@ public class ResizePanel extends Overlay
 
     // Configurable properties
     @Getter @Setter private Supplier<Boolean> isResizable = () -> true;
+
+    // Reports whether an interface above the panel covers a canvas point; grips at such
+    // points are neither highlighted nor grabbable
+    @Getter @Setter private Predicate<Point> occlusionGate = p -> false;
 
     // Enable/disable each side independently
     @Getter @Setter private Supplier<Boolean> enableTop    = () -> true;
@@ -247,7 +252,7 @@ public class ResizePanel extends Overlay
 
     private boolean isMouseOver(Rectangle r) {
         Point p = mouseHandler.lastMovePoint;
-        return p != null && r.contains(p);
+        return p != null && r.contains(p) && !occlusionGate.test(p);
     }
 
     private void setCanvasCursor(int cursorType) {
@@ -267,7 +272,7 @@ public class ResizePanel extends Overlay
     }
 
     private void updateHoverCursor(Point p) {
-        if (p == null || lastPanel == null || !lastPanel.contains(p)) {
+        if (p == null || lastPanel == null || !lastPanel.contains(p) || occlusionGate.test(p)) {
             setCanvasCursor(Cursor.DEFAULT_CURSOR);
             return;
         }
@@ -317,6 +322,7 @@ public class ResizePanel extends Overlay
 
             Point p = ClientUtil.getMouseCanvasPoint(client, e);
             if (lastPanel == null || !lastPanel.contains(p)) return e;
+            if (occlusionGate.test(p)) return e; // the press belongs to the covering interface
 
             // TOP
             if (enableTop.get() && topHot.contains(p)) {

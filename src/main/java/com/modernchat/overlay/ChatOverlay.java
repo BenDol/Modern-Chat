@@ -267,7 +267,7 @@ public class ChatOverlay extends OverlayPanel
         clientThread.invoke(() -> hideLegacyChat(false));
 
         setPosition(OverlayPosition.DYNAMIC);
-        setLayer(OverlayLayer.ABOVE_WIDGETS);
+        applyLayer();
         setClearChildren(false);
 
         defaultTabNames.clear();
@@ -286,6 +286,7 @@ public class ChatOverlay extends OverlayPanel
         resizePanel.setSidesEnabled(false, true, true, false);
         resizePanel.setBaseBoundsProvider(() -> lastViewport);
         resizePanel.setListener(this::setDesiredChatSize);
+        resizePanel.setOcclusionGate(this::isPointOccluded);
         resizePanel.startUp(() -> isResizable() && !isHidden() && !client.isMenuOpen());
 
         MessageContainer clanContainer = messageContainerProvider.get();
@@ -301,6 +302,7 @@ public class ChatOverlay extends OverlayPanel
         messageContainers.forEach((mode, container) -> {
             container.setChromeEnabled(true);
             container.setCanShowDecider(containerCanShowDecider);
+            container.setOcclusionGate(this::isPointOccluded);
             container.startUp(containerConfig, ChatMode.valueOf(mode));
         });
 
@@ -310,17 +312,20 @@ public class ChatOverlay extends OverlayPanel
         allContainer.setMaxLines(ALL_TAB_MAX_LINES);
         allContainer.setApplyChannelFilters(true);
         allContainer.setCanShowDecider(containerCanShowDecider);
+        allContainer.setOcclusionGate(this::isPointOccluded);
         allContainer.startUp(containerConfig, ChatMode.PUBLIC);
 
         // Initialize Game and Trade containers (read-only tabs)
         gameContainer = messageContainerProvider.get();
         gameContainer.setChromeEnabled(true);
         gameContainer.setCanShowDecider(containerCanShowDecider);
+        gameContainer.setOcclusionGate(this::isPointOccluded);
         gameContainer.startUp(containerConfig, ChatMode.PUBLIC);
 
         tradeContainer = messageContainerProvider.get();
         tradeContainer.setChromeEnabled(true);
         tradeContainer.setCanShowDecider(containerCanShowDecider);
+        tradeContainer.setOcclusionGate(this::isPointOccluded);
         tradeContainer.startUp(containerConfig, ChatMode.PUBLIC);
 
         refreshTabs();
@@ -378,6 +383,11 @@ public class ChatOverlay extends OverlayPanel
         Rectangle vp = updateAndGetLastViewPort();
         if (vp == null)
             return null;
+
+        // Keep the interface-occlusion snapshot fresh while rendering behind interfaces;
+        // the mouse handlers hit-test against it from the AWT thread
+        if (isBehindInterfaces())
+            widgetBucket.refreshInterfaceOcclusion();
 
         if (messageContainer == null) {
             selectTab(config.getDefaultChatMode());
@@ -1505,6 +1515,10 @@ public class ChatOverlay extends OverlayPanel
         Point mp = client.getMouseCanvasPosition();
         Point mouse = new Point(mp.getX(), mp.getY());
 
+        // No chat menu entries when an interface covers the point the menu was opened on
+        if (isPointOccluded(new java.awt.Point(mp.getX(), mp.getY())))
+            return;
+
         Menu rootMenu = client.getMenu();
 
         if (messageContainer != null && messageContainer.hitAt(mouse)) {
@@ -1838,15 +1852,55 @@ public class ChatOverlay extends OverlayPanel
     public void focusInput() {
         if (hidden) return;
 
-        inputFocused = true;
+        setInputFocused(true);
         caret = inputBuf.length(); // place caret at end
         clearSelection();
     }
 
     public void unfocusInput() {
-        inputFocused = false;
+        setInputFocused(false);
         caretOn = false;
         lastBlinkMs = 0;
+    }
+
+    private void setInputFocused(boolean focused) {
+        if (inputFocused == focused)
+            return;
+
+        inputFocused = focused;
+        applyLayer(); // focus drives the Front While Typing layer swap
+    }
+
+    public boolean isBehindInterfaces() {
+        return getLayer() == OverlayLayer.UNDER_WIDGETS;
+    }
+
+    /**
+     * Whether the given canvas point is covered by an interface (bank, GE, etc.) that
+     * renders above the chat. Always false unless the chat is on the UNDER_WIDGETS layer.
+     */
+    public boolean isPointOccluded(java.awt.Point p) {
+        return isBehindInterfaces() && widgetBucket.isPointCoveredByInterface(p);
+    }
+
+    private OverlayLayer getTargetLayer() {
+        if (config == null || !config.isRenderBehindInterfaces())
+            return OverlayLayer.ABOVE_WIDGETS;
+        if (config.isFrontWhileTyping() && inputFocused)
+            return OverlayLayer.ABOVE_WIDGETS;
+        return OverlayLayer.UNDER_WIDGETS;
+    }
+
+    public void applyLayer() {
+        OverlayLayer target = getTargetLayer();
+        if (getLayer() == target)
+            return;
+
+        // A layer change only takes effect when the overlay is re-registered
+        boolean attached = overlayManager.remove(this);
+        setLayer(target);
+        if (attached)
+            overlayManager.add(this);
     }
 
     public void registerMouseListener() {
@@ -2200,6 +2254,7 @@ public class ChatOverlay extends OverlayPanel
             container = messageContainerProvider.get();
             container.setPrivate(true);
             container.setCanShowDecider(containerCanShowDecider);
+            container.setOcclusionGate(this::isPointOccluded);
             container.startUp(config.getMessageContainerConfig(), ChatMode.PRIVATE);
             privateContainers.put(targetName, container);
 
@@ -2668,13 +2723,15 @@ public class ChatOverlay extends OverlayPanel
         private boolean scrollDisabledNotificationSent = false;
 
         private boolean shouldBlockClickThrough(MouseEvent e) {
+            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
             boolean shouldBlock = !config.isAllowClickThrough()
                 && e.getButton() == MouseEvent.BUTTON1
                 && !isHidden()
                 && !e.isAltDown()
                 && !client.isMenuOpen()
                 && lastViewport != null
-                && lastViewport.contains(ClientUtil.getMouseCanvasPoint(client, e));
+                && lastViewport.contains(p)
+                && !isPointOccluded(p);
             if (shouldBlock && !clickThroughNotificationSent) {
                 notificationService.pushHelperNotification(new ChatMessageBuilder()
                     .append("Left-click did not pass through the chat because ")
@@ -2712,6 +2769,10 @@ public class ChatOverlay extends OverlayPanel
                 return e;
 
             java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+
+            // The wheel belongs to the interface covering the chat (e.g. the bank)
+            if (isPointOccluded(p))
+                return e;
 
             // Scroll the tab bar when the cursor is over it
             if (tabsBarBounds.contains(p)) {
@@ -2754,22 +2815,29 @@ public class ChatOverlay extends OverlayPanel
                 return false;
 
             java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+            boolean occluded = isPointOccluded(p);
 
             // Handle filter dropdown clicks first (it's rendered on top)
             if (filterDropdown != null && filterDropdown.isVisible()) {
-                DropdownItem<ChannelFilterType> item = filterDropdown.itemAt(p);
-                if (item != null && e.getButton() == MouseEvent.BUTTON1) {
-                    // Toggle the filter
-                    item.setSelected(!item.isSelected());
-                    channelFilterState.setEnabled(item.getValue(), item.isSelected());
-                    e.consume();
-                    return true;
-                }
-                // If click is outside dropdown, close it
-                if (!filterDropdown.hitTest(p) && !filterButtonBounds.contains(p)) {
+                if (occluded) {
+                    // The click belongs to the interface covering the chat; close the
+                    // dropdown without consuming so the interface still receives it
                     filterDropdown.close();
-                    e.consume();
-                    return true;
+                } else {
+                    DropdownItem<ChannelFilterType> item = filterDropdown.itemAt(p);
+                    if (item != null && e.getButton() == MouseEvent.BUTTON1) {
+                        // Toggle the filter
+                        item.setSelected(!item.isSelected());
+                        channelFilterState.setEnabled(item.getValue(), item.isSelected());
+                        e.consume();
+                        return true;
+                    }
+                    // If click is outside dropdown, close it
+                    if (!filterDropdown.hitTest(p) && !filterButtonBounds.contains(p)) {
+                        filterDropdown.close();
+                        e.consume();
+                        return true;
+                    }
                 }
             }
 
@@ -2777,7 +2845,8 @@ public class ChatOverlay extends OverlayPanel
                 return false;
             }
 
-            if (!lastViewport.contains(p)) {
+            // A point covered by an interface above the chat is treated as an outside click
+            if (!lastViewport.contains(p) || occluded) {
                 // Close dropdown if clicking outside
                 if (filterDropdown != null && filterDropdown.isVisible()) {
                     filterDropdown.close();
@@ -2857,7 +2926,7 @@ public class ChatOverlay extends OverlayPanel
             // Input focus + selection: LMB only
             if (inputBounds.contains(p)) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                    inputFocused = true;
+                    setInputFocused(true);
 
                     // caret/selection update
                     FontMetrics fm = getInputFontMetrics();
@@ -2881,7 +2950,7 @@ public class ChatOverlay extends OverlayPanel
                 return false;
             } else {
                 if (e.getButton() == MouseEvent.BUTTON1 && !config.isPreserveFocusOnOutsideClick())
-                    inputFocused = false;
+                    setInputFocused(false);
             }
             return false;
         }

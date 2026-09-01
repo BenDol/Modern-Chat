@@ -26,6 +26,10 @@ public interface ChatOverlayConfig
 
     boolean isAllowClickThrough();
 
+    boolean isRenderBehindInterfaces();
+
+    boolean isFrontWhileTyping();
+
     boolean isAutoSelectPrivateTab();
 
     boolean isAutoClosePrivateTab();
@@ -195,6 +199,16 @@ public interface ChatOverlayConfig
         @Override
         public boolean isAllowClickThrough() {
             return true;
+        }
+
+        @Override
+        public boolean isRenderBehindInterfaces() {
+            return true;
+        }
+
+        @Override
+        public boolean isFrontWhileTyping() {
+            return false;
         }
 
         @Override
