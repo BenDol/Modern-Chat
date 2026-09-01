@@ -384,9 +384,11 @@ public class ChatOverlay extends OverlayPanel
         if (vp == null)
             return null;
 
-        // Keep the interface-occlusion snapshot fresh while rendering behind interfaces;
-        // the mouse handlers hit-test against it from the AWT thread
-        if (isBehindInterfaces())
+        // Keep the interface-occlusion snapshot fresh whenever the feature is enabled,
+        // even while Front While Typing has the chat temporarily fronted, so it is
+        // current the moment focus drops and the chat falls behind again; the mouse
+        // handlers hit-test against it from the AWT thread
+        if (config.isRenderBehindInterfaces())
             widgetBucket.refreshInterfaceOcclusion();
 
         if (messageContainer == null) {
@@ -1891,7 +1893,7 @@ public class ChatOverlay extends OverlayPanel
         return OverlayLayer.UNDER_WIDGETS;
     }
 
-    public void applyLayer() {
+    public synchronized void applyLayer() {
         OverlayLayer target = getTargetLayer();
         if (getLayer() == target)
             return;
@@ -2723,15 +2725,16 @@ public class ChatOverlay extends OverlayPanel
         private boolean scrollDisabledNotificationSent = false;
 
         private boolean shouldBlockClickThrough(MouseEvent e) {
-            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
             boolean shouldBlock = !config.isAllowClickThrough()
                 && e.getButton() == MouseEvent.BUTTON1
                 && !isHidden()
                 && !e.isAltDown()
                 && !client.isMenuOpen()
-                && lastViewport != null
-                && lastViewport.contains(p)
-                && !isPointOccluded(p);
+                && lastViewport != null;
+            if (shouldBlock) {
+                java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+                shouldBlock = lastViewport.contains(p) && !isPointOccluded(p);
+            }
             if (shouldBlock && !clickThroughNotificationSent) {
                 notificationService.pushHelperNotification(new ChatMessageBuilder()
                     .append("Left-click did not pass through the chat because ")
