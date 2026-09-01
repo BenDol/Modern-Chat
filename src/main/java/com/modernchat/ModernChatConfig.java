@@ -454,7 +454,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default boolean featureRedesign_MessageContainer_BottomAlign() {
-        return true;
+        return false;
     }
 
     @ConfigItem(
@@ -1885,7 +1885,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default boolean featurePeek_BottomAlign() {
-        return true;
+        return false;
     }
 
     /* ------------ Feature: Commands ------------ */
