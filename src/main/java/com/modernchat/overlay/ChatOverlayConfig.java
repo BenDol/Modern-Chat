@@ -208,7 +208,7 @@ public interface ChatOverlayConfig
 
         @Override
         public boolean isFrontWhileTyping() {
-            return false;
+            return true;
         }
 
         @Override

@@ -335,7 +335,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     )
     @Override
     default boolean featureRedesign_FrontWhileTyping() {
-        return false;
+        return true;
     }
 
     /* ------------ Modern Chat Style ------------ */
