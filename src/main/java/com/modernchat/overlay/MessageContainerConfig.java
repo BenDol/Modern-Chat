@@ -20,6 +20,8 @@ public interface MessageContainerConfig extends ChatColors
 
     boolean isDrawScrollbar();
 
+    default boolean isBottomAligned() { return false; }
+
     boolean isShowPrivateMessages();
     
     boolean isShowNpcMessages();

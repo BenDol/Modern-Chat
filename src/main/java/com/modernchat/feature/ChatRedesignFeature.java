@@ -129,6 +129,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         boolean featureRedesign_MessageContainer_ShowTimestamp();
         boolean featureRedesign_MessageContainer_Scrollable();
         boolean featureRedesign_MessageContainer_DrawScrollbar();
+        boolean featureRedesign_MessageContainer_BottomAlign();
         int featureRedesign_MessageContainer_OffsetX();
         int featureRedesign_MessageContainer_OffsetY();
         int featureRedesign_MessageContainer_Margin();
@@ -243,6 +244,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean featureRedesign_MessageContainer_ShowTimestamp() { return cfg.featureRedesign_MessageContainer_ShowTimestamp(); }
             @Override public boolean featureRedesign_MessageContainer_Scrollable() { return cfg.featureRedesign_MessageContainer_Scrollable(); }
             @Override public boolean featureRedesign_MessageContainer_DrawScrollbar() { return cfg.featureRedesign_MessageContainer_DrawScrollbar(); }
+            @Override public boolean featureRedesign_MessageContainer_BottomAlign() { return cfg.featureRedesign_MessageContainer_BottomAlign(); }
             @Override public int featureRedesign_MessageContainer_OffsetX() { return cfg.featureRedesign_MessageContainer_OffsetX(); }
             @Override public int featureRedesign_MessageContainer_OffsetY() { return cfg.featureRedesign_MessageContainer_OffsetY(); }
             @Override public int featureRedesign_MessageContainer_Margin() { return cfg.featureRedesign_MessageContainer_Margin(); }
@@ -361,6 +363,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
                 @Override public boolean isShowTimestamp() { return cfg.featureRedesign_MessageContainer_ShowTimestamp(); }
                 @Override public boolean isScrollable() { return cfg.featureRedesign_MessageContainer_Scrollable(); }
                 @Override public boolean isDrawScrollbar() { return cfg.featureRedesign_MessageContainer_DrawScrollbar(); }
+                @Override public boolean isBottomAligned() { return cfg.featureRedesign_MessageContainer_BottomAlign(); }
                 @Override public boolean isShowNpcMessages() { return cfg.featureRedesign_ShowNpc(); }
                 @Override public Point getOffset() { return new Point(cfg.featureRedesign_MessageContainer_OffsetX(), cfg.featureRedesign_MessageContainer_OffsetY()); }
                 @Override public Margin getMargin() { return new Margin(cfg.featureRedesign_MessageContainer_Margin()); }

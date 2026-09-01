@@ -303,6 +303,10 @@ public class MessageContainer extends Overlay
             // Clamp scroll
             scrollOffsetPx = MathUtil.clamp(scrollOffsetPx, 0, Math.max(0, contentHeightPx - msgViewport.height));
 
+            // Anchor short content to the bottom of the viewport when configured
+            final int bottomAlignPx = config.isBottomAligned()
+                ? Math.max(0, msgViewport.height - contentHeightPx) : 0;
+
             // Clip to message viewport and draw from top honoring scroll
             Shape oldClip = g.getClip();
             g.setClip(msgViewport);
@@ -313,7 +317,7 @@ public class MessageContainer extends Overlay
             final Color prefixOverride = config.getTypePrefixColor();
             final Color nameOverride = config.getNameColor();
 
-            int y = msgViewport.y - scrollOffsetPx + fm.getAscent();
+            int y = msgViewport.y + bottomAlignPx - scrollOffsetPx + fm.getAscent();
             int rowIdx = 0;
             for (VisualLine vl : all) {
                 final float rowAlpha = perLineFade ? rowAlphas[rowIdx++] : 1f;
@@ -1295,8 +1299,12 @@ public class MessageContainer extends Overlay
             ? Math.max(0, contentHeightPx - viewportH)
             : Math.max(0, Math.min(scrollOffsetPx, Math.max(0, contentHeightPx - viewportH)));
 
+        // Mirror render()'s bottom anchoring so hit-tests line up with drawn rows
+        final int bottomAlignPx = config.isBottomAligned()
+            ? Math.max(0, viewportH - contentHeightPx) : 0;
+
         // Convert mouse Y to global wrapped-row index
-        final int relY = p.getY() - msgViewport.y + effectiveScroll; // 0 at content top
+        final int relY = p.getY() - msgViewport.y - bottomAlignPx + effectiveScroll; // 0 at content top
         if (relY < 0 || relY >= contentHeightPx) return null;
 
         final int rowH = lastLineHeight;
@@ -1314,7 +1322,7 @@ public class MessageContainer extends Overlay
                 final VisualLine vl = cache.get(visualIndex - cm);
 
                 // Compute this row's on-screen rect on the fly
-                final int yTop = msgViewport.y + visualIndex * rowH - effectiveScroll;
+                final int yTop = msgViewport.y + bottomAlignPx + visualIndex * rowH - effectiveScroll;
                 final Rectangle r = new Rectangle(msgViewport.x, yTop, msgViewport.width, rowH);
 
                 return new RowHit(r, rl, vl);
