@@ -90,6 +90,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		String featurePeek_SourceTabKey();
 		boolean featurePeek_SuppressFadeAtGE();
 		boolean featurePeek_UnfadeOnCollapsed();
+		boolean featurePeek_BottomAlign();
 	}
 
 	/** rebuildpmbox lays each of the 5 line slots out as 4 dynamic children of the pm container */
@@ -153,6 +154,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public String featurePeek_SourceTabKey() { return config.featurePeek_SourceTabKey(); }
 			@Override public boolean featurePeek_SuppressFadeAtGE() { return config.featurePeek_SuppressFadeAtGE(); }
 			@Override public boolean featurePeek_UnfadeOnCollapsed() { return config.featurePeek_UnfadeOnCollapsed(); }
+			@Override public boolean featurePeek_BottomAlign() { return config.featurePeek_BottomAlign(); }
 			@Override public boolean featurePeek_ShowNpcMessages() { return config.featurePeek_ShowNpcMessages(); }
 
 			// Chat Colors has no welcome message color; fall back to Modern Chat's general welcome color
@@ -179,6 +181,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean isShowTimestamp() { return cfg.featurePeek_ShowTimestamp(); }
 			@Override public boolean isScrollable() { return false; } // Peek chat does not support scrolling
 			@Override public boolean isDrawScrollbar() { return false; }
+			@Override public boolean isBottomAligned() { return cfg.featurePeek_BottomAlign(); }
 			@Override public boolean isShowPrivateMessages() { return cfg.featurePeek_ShowPrivateMessages(); }
 			@Override public boolean isShowNpcMessages() { return cfg.featurePeek_ShowNpcMessages(); }
 			@Override public boolean isFollowChatBox() { return cfg.featurePeek_FollowChatBox(); }

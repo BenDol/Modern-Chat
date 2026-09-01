@@ -84,6 +84,7 @@ public interface ModernChatConfigBase extends
         // Layout / metrics
         String featureRedesign_Padding = "featureRedesign_Padding";
         String featureRedesign_MessageContainer_DrawScrollbar = "featureRedesign_MessageContainer_DrawScrollbar";
+        String featureRedesign_MessageContainer_BottomAlign = "featureRedesign_MessageContainer_BottomAlign";
         String featureRedesign_MessageContainer_ScrollbarWidth = "featureRedesign_MessageContainer_ScrollbarWidth";
 
         // Colors (outer)
@@ -198,6 +199,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_SourceTabKey = "featurePeek_SourceTabKey";
         String featurePeek_SuppressFadeAtGE = "featurePeek_SuppressFadeAtGE";
         String featurePeek_UnfadeOnCollapsed = "featurePeek_UnfadeOnCollapsed";
+        String featurePeek_BottomAlign = "featurePeek_BottomAlign";
         String featurePeek_TimestampColor = "featurePeek_TimestampColor";
         String featurePeek_TypePrefixColor = "featurePeek_TypePrefixColor";
         String featurePeek_NameColor = "featurePeek_NameColor";
@@ -275,6 +277,7 @@ public interface ModernChatConfigBase extends
         // ---- Layout / metrics ----
         FEATURE_REDESIGN_PADDING(Keys.featureRedesign_Padding, Kind.INT, ModernChatConfigBase::featureRedesign_Padding),
         FEATURE_REDESIGN_DRAW_SCROLLBAR(Keys.featureRedesign_MessageContainer_DrawScrollbar, Kind.BOOL, ModernChatConfigBase::featureRedesign_MessageContainer_DrawScrollbar),
+        FEATURE_REDESIGN_BOTTOM_ALIGN(Keys.featureRedesign_MessageContainer_BottomAlign, Kind.BOOL, ModernChatConfigBase::featureRedesign_MessageContainer_BottomAlign),
         FEATURE_REDESIGN_SCROLLBAR_WIDTH(Keys.featureRedesign_MessageContainer_ScrollbarWidth, Kind.INT, ModernChatConfigBase::featureRedesign_MessageContainer_ScrollbarWidth),
 
         // ---- Colors (outer) ----
@@ -392,6 +395,7 @@ public interface ModernChatConfigBase extends
         PEEK_FADE_DELAY(Keys.featurePeek_FadeDelay, Kind.INT, ModernChatConfigBase::featurePeek_FadeDelay),
         PEEK_FADE_DURATION(Keys.featurePeek_FadeDuration, Kind.INT, ModernChatConfigBase::featurePeek_FadeDuration),
         PEEK_UNFADE_ON_COLLAPSED(Keys.featurePeek_UnfadeOnCollapsed, Kind.BOOL, ModernChatConfigBase::featurePeek_UnfadeOnCollapsed),
+        PEEK_BOTTOM_ALIGN(Keys.featurePeek_BottomAlign, Kind.BOOL, ModernChatConfigBase::featurePeek_BottomAlign),
         PEEK_TIMESTAMP_COLOR(Keys.featurePeek_TimestampColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TimestampColor),
         PEEK_TYPE_PREFIX_COLOR(Keys.featurePeek_TypePrefixColor, Kind.COLOR, ModernChatConfigBase::featurePeek_TypePrefixColor),
         PEEK_NAME_COLOR(Keys.featurePeek_NameColor, Kind.COLOR, ModernChatConfigBase::featurePeek_NameColor),
@@ -581,6 +585,7 @@ public interface ModernChatConfigBase extends
         // Layout / metrics
         @Override public int featureRedesign_Padding() { return getInt(Keys.featureRedesign_Padding, DEFAULTS.featureRedesign_Padding()); }
         @Override public boolean featureRedesign_MessageContainer_DrawScrollbar() { return getBool(Keys.featureRedesign_MessageContainer_DrawScrollbar, DEFAULTS.featureRedesign_MessageContainer_DrawScrollbar()); }
+        @Override public boolean featureRedesign_MessageContainer_BottomAlign() { return getBool(Keys.featureRedesign_MessageContainer_BottomAlign, DEFAULTS.featureRedesign_MessageContainer_BottomAlign()); }
         @Override public int featureRedesign_MessageContainer_ScrollbarWidth() { return getInt(Keys.featureRedesign_MessageContainer_ScrollbarWidth, DEFAULTS.featureRedesign_MessageContainer_ScrollbarWidth()); }
 
         // Colors (outer)
@@ -700,6 +705,7 @@ public interface ModernChatConfigBase extends
         @Override public String featurePeek_SourceTabKey() { return getString(Keys.featurePeek_SourceTabKey, DEFAULTS.featurePeek_SourceTabKey()); }
         @Override public boolean featurePeek_SuppressFadeAtGE() { return getBool(Keys.featurePeek_SuppressFadeAtGE, DEFAULTS.featurePeek_SuppressFadeAtGE()); }
         @Override public boolean featurePeek_UnfadeOnCollapsed() { return getBool(Keys.featurePeek_UnfadeOnCollapsed, DEFAULTS.featurePeek_UnfadeOnCollapsed()); }
+        @Override public boolean featurePeek_BottomAlign() { return getBool(Keys.featurePeek_BottomAlign, DEFAULTS.featurePeek_BottomAlign()); }
         @Override public Color featurePeek_TimestampColor() { return getColor(Keys.featurePeek_TimestampColor, DEFAULTS.featurePeek_TimestampColor()); }
         @Override public Color featurePeek_TypePrefixColor() { return getColor(Keys.featurePeek_TypePrefixColor, DEFAULTS.featurePeek_TypePrefixColor()); }
         @Override public Color featurePeek_NameColor() { return getColor(Keys.featurePeek_NameColor, DEFAULTS.featurePeek_NameColor()); }

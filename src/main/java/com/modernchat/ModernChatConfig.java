@@ -446,6 +446,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.featureRedesign_MessageContainer_BottomAlign,
+        name = "Bottom-Align Messages",
+        description = "Anchor messages to the bottom of the message container when it is not full, like the vanilla chatbox",
+        position = 59,
+        section = modernChatStyleSection
+    )
+    @Override
+    default boolean featureRedesign_MessageContainer_BottomAlign() {
+        return false;
+    }
+
+    @ConfigItem(
         keyName = Keys.featureRedesign_MessageContainer_ScrollbarWidth,
         name = "Scrollbar Width",
         description = "Width of the scrollbar in the message container",
@@ -1862,6 +1874,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default boolean featurePeek_UnfadeOnCollapsed() {
         return true;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_BottomAlign,
+        name = "Bottom-Align Messages",
+        description = "Anchor messages to the bottom of the peek overlay when it is not full, like the vanilla chatbox",
+        position = 31,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_BottomAlign() {
+        return false;
     }
 
     /* ------------ Feature: Commands ------------ */
