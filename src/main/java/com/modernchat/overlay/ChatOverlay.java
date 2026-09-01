@@ -88,7 +88,6 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.util.ColorUtil;
-import net.runelite.client.util.LinkBrowser;
 import net.runelite.client.util.Text;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -1675,19 +1674,20 @@ public class ChatOverlay extends OverlayPanel
                 : null;
             if (taskName != null) {
                 rootMenu.createMenuEntry(1)
-                    .setOption("Lookup task")
+                    .setOption("Copy wiki link")
                     .setTarget(ColorUtil.wrapWithColorTag(taskName, Color.ORANGE))
                     .setType(MenuAction.RUNELITE)
-                    .onClick(me -> LinkBrowser.browse(WIKI_SEARCH_URL + URLEncoder.encode(taskName, StandardCharsets.UTF_8)));
+                    .onClick(me -> copyLinkToClipboard("Wiki link",
+                        WIKI_SEARCH_URL + URLEncoder.encode(taskName, StandardCharsets.UTF_8)));
             }
 
             if (hit.getLine().getType() == ChatMessageType.BROADCAST) {
                 final String newspostUrl = resolveNewspostUrl(hit.getLine());
                 if (newspostUrl != null) {
                     rootMenu.createMenuEntry(1)
-                        .setOption("Open newspost")
+                        .setOption("Copy newspost link")
                         .setType(MenuAction.RUNELITE)
-                        .onClick(me -> LinkBrowser.browse(newspostUrl));
+                        .onClick(me -> copyLinkToClipboard("Newspost link", newspostUrl));
                 }
             }
 
@@ -2665,6 +2665,23 @@ public class ChatOverlay extends OverlayPanel
     private void copyToClipboard(String s) {
         Toolkit.getDefaultToolkit().getSystemClipboard()
             .setContents(new StringSelection(s == null ? "" : s), null);
+    }
+
+    /**
+     * Opening a browser is not allowed on the Plugin Hub (LinkBrowser is a restricted
+     * API), so links are copied to the clipboard for the player to paste themselves.
+     */
+    private void copyLinkToClipboard(String what, String url) {
+        try {
+            copyToClipboard(url);
+            notificationService.pushChatMessage(new ChatMessageBuilder()
+                .append(what + " copied to clipboard - paste it into your browser."));
+        } catch (Exception ex) {
+            // Clipboard can be unavailable or locked by another process; still
+            // surface the url so the player can get to it manually
+            notificationService.pushChatMessage(new ChatMessageBuilder()
+                .append("Couldn't access the clipboard. " + what + ": " + url));
+        }
     }
 
     private @Nullable Tab tabAt(Point p) {
