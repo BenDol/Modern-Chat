@@ -4,17 +4,24 @@ import com.modernchat.util.ClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.WidgetNode;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetModalMode;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @Slf4j
 @Singleton
@@ -220,5 +227,63 @@ public class WidgetBucket {
 
     public boolean isPmWidget(Widget widget) {
         return widget != null && widget == getPmWidget();
+    }
+
+    // Bounds of open modal sub-interfaces (bank, GE, settings, etc.) that draw above
+    // overlays on the UNDER_WIDGETS layer. Written on the client thread, read from the
+    // AWT mouse thread.
+    private volatile List<Rectangle> interfaceOcclusionRects = Collections.emptyList();
+    private int lastOcclusionCycle = -1;
+
+    /**
+     * Refreshes the cached bounds of the modal sub-interfaces currently open in the
+     * component table. Must be called from the client thread (typically during overlay
+     * render); the result is cached per game cycle so repeated calls in a frame are free.
+     */
+    public void refreshInterfaceOcclusion() {
+        int cycle = client.getGameCycle();
+        if (cycle == lastOcclusionCycle)
+            return;
+        lastOcclusionCycle = cycle;
+
+        List<Rectangle> rects = null;
+        for (WidgetNode node : client.getComponentTable()) {
+            // Non-modal sub-interfaces (side panels, the chatbox itself, etc.) either
+            // never overlap the chat area or are managed by this plugin; only modal
+            // interfaces such as the bank act as occluders.
+            if (node.getModalMode() == WidgetModalMode.NON_MODAL)
+                continue;
+
+            int groupId = node.getId();
+            if (groupId == InterfaceID.CHATBOX || groupId == InterfaceID.PM_CHAT)
+                continue;
+
+            Widget parent = client.getWidget((int) node.getHash());
+            if (parent == null || parent.isHidden())
+                continue;
+
+            Rectangle bounds = parent.getBounds();
+            if (bounds == null || bounds.isEmpty())
+                continue;
+
+            if (rects == null)
+                rects = new ArrayList<>(4);
+            rects.add(bounds);
+        }
+        interfaceOcclusionRects = rects == null ? Collections.emptyList() : rects;
+    }
+
+    /**
+     * Whether an open modal interface (bank, GE, etc.) covers the given canvas point.
+     * Safe to call from any thread; reads the snapshot built by refreshInterfaceOcclusion.
+     */
+    public boolean isPointCoveredByInterface(Point p) {
+        if (p == null)
+            return false;
+        for (Rectangle r : interfaceOcclusionRects) {
+            if (r.contains(p))
+                return true;
+        }
+        return false;
     }
 }

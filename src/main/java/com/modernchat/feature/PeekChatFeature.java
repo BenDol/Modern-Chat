@@ -91,6 +91,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		boolean featurePeek_SuppressFadeAtGE();
 		boolean featurePeek_UnfadeOnCollapsed();
 		boolean featurePeek_BottomAlign();
+		boolean featurePeek_RenderBehindInterfaces();
 	}
 
 	/** rebuildpmbox lays each of the 5 line slots out as 4 dynamic children of the pm container */
@@ -156,6 +157,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public boolean featurePeek_UnfadeOnCollapsed() { return config.featurePeek_UnfadeOnCollapsed(); }
 			@Override public boolean featurePeek_BottomAlign() { return config.featurePeek_BottomAlign(); }
 			@Override public boolean featurePeek_ShowNpcMessages() { return config.featurePeek_ShowNpcMessages(); }
+			@Override public boolean featurePeek_RenderBehindInterfaces() { return config.featurePeek_RenderBehindInterfaces(); }
 
 			// Chat Colors has no welcome message color; fall back to Modern Chat's general welcome color
 			@Override public Color getWelcomeColor() { return config.general_WelcomeChatColor(); }
@@ -177,6 +179,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		return new MessageContainerConfig.Default() {
 			@Override
 			public boolean isEnabled() { return cfg.featurePeek_Enabled(); }
+			@Override public boolean isRenderBehindInterfaces() { return cfg.featurePeek_RenderBehindInterfaces(); }
 			@Override public boolean isPrefixChatType() { return cfg.featurePeek_PrefixChatTypes(); }
 			@Override public boolean isShowTimestamp() { return cfg.featurePeek_ShowTimestamp(); }
 			@Override public boolean isScrollable() { return false; } // Peek chat does not support scrolling
@@ -300,6 +303,11 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 		if (chatPeekOverlay != null) {
 			chatPeekOverlay.dirty();
 			chatPeekOverlay.resetFade();
+
+			// Re-register the overlay on the target layer when the layering setting changes
+			if (ModernChatConfigBase.Keys.featurePeek_RenderBehindInterfaces.equals(key)) {
+				chatPeekOverlay.refreshLayer();
+			}
 		}
 	}
 

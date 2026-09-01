@@ -12,6 +12,8 @@ public interface MessageContainerConfig extends ChatColors
 {
     boolean isEnabled();
 
+    default boolean isRenderBehindInterfaces() { return false; }
+
     boolean isPrefixChatType();
 
     boolean isShowTimestamp();

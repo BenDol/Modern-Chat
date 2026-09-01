@@ -341,6 +341,30 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         return false;
     }
 
+    @ConfigItem(
+        keyName = Keys.featureRedesign_RenderBehindInterfaces,
+        name = "Render Behind Interfaces",
+        description = "Draw the chat behind game interfaces such as the bank, matching the vanilla chatbox behavior",
+        position = 19,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_RenderBehindInterfaces() {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featureRedesign_FrontWhileTyping,
+        name = "Front While Typing",
+        description = "Temporarily bring the chat back above interfaces while the chat input is focused (only applies when Render Behind Interfaces is enabled)",
+        position = 20,
+        section = modernChatSection
+    )
+    @Override
+    default boolean featureRedesign_FrontWhileTyping() {
+        return true;
+    }
+
     /* ------------ Modern Chat Style ------------ */
 
     @ConfigItem(
@@ -1886,6 +1910,18 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     @Override
     default boolean featurePeek_BottomAlign() {
         return false;
+    }
+
+    @ConfigItem(
+        keyName = Keys.featurePeek_RenderBehindInterfaces,
+        name = "Render Behind Interfaces",
+        description = "Draw the peek overlay behind game interfaces such as the bank",
+        position = 32,
+        section = peekOverlaySection
+    )
+    @Override
+    default boolean featurePeek_RenderBehindInterfaces() {
+        return true;
     }
 
     /* ------------ Feature: Commands ------------ */

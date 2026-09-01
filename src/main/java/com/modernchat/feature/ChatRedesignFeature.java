@@ -87,6 +87,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         boolean featureRedesign_ShowTabIcons();
         boolean featureRedesign_ChannelPrefixes();
         boolean featureRedesign_ChannelPrefixesExtended();
+        boolean featureRedesign_RenderBehindInterfaces();
+        boolean featureRedesign_FrontWhileTyping();
         ChatMode featureRedesign_DefaultChatMode();
         FontStyle featureRedesign_FontStyle();
         int featureRedesign_Padding();
@@ -204,6 +206,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean featureRedesign_ShowTabIcons() { return cfg.featureRedesign_ShowTabIcons(); }
             @Override public boolean featureRedesign_ChannelPrefixes() { return cfg.featureRedesign_ChannelPrefixes(); }
             @Override public boolean featureRedesign_ChannelPrefixesExtended() { return cfg.featureRedesign_ChannelPrefixesExtended(); }
+            @Override public boolean featureRedesign_RenderBehindInterfaces() { return cfg.featureRedesign_RenderBehindInterfaces(); }
+            @Override public boolean featureRedesign_FrontWhileTyping() { return cfg.featureRedesign_FrontWhileTyping(); }
             @Override public FontStyle featureRedesign_FontStyle() { return cfg.featureRedesign_FontStyle(); }
             @Override public int featureRedesign_Padding() { return cfg.featureRedesign_Padding(); }
             @Override public int featureRedesign_InputFontSize() { return cfg.featureRedesign_InputFontSize(); }
@@ -291,6 +295,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             @Override public boolean isShowTabIcons() { return cfg.featureRedesign_ShowTabIcons(); }
             @Override public boolean isChannelPrefixesEnabled() { return cfg.featureRedesign_ChannelPrefixes(); }
             @Override public boolean isChannelPrefixesExtended() { return cfg.featureRedesign_ChannelPrefixesExtended(); }
+            @Override public boolean isRenderBehindInterfaces() { return cfg.featureRedesign_RenderBehindInterfaces(); }
+            @Override public boolean isFrontWhileTyping() { return cfg.featureRedesign_FrontWhileTyping(); }
             @Override public int getInputFontSize() { return cfg.featureRedesign_InputFontSize(); }
             @Override public Color getBackdropColor() { return cfg.featureRedesign_BackdropColor(); }
             @Override public Color getBorderColor() { return cfg.featureRedesign_BorderColor(); }
@@ -359,6 +365,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             }
 
             final MessageContainerConfig containerConfig = new MessageContainerConfig.Default() {
+                @Override public boolean isRenderBehindInterfaces() { return cfg.featureRedesign_RenderBehindInterfaces(); }
                 @Override public boolean isPrefixChatType() { return cfg.featureRedesign_MessageContainer_PrefixChatType(); }
                 @Override public boolean isShowTimestamp() { return cfg.featureRedesign_MessageContainer_ShowTimestamp(); }
                 @Override public boolean isScrollable() { return cfg.featureRedesign_MessageContainer_Scrollable(); }
@@ -470,6 +477,13 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
             return;
 
         overlay.dirty();
+
+        // Re-register the overlay on the target layer when layering settings change
+        if (key.equals(ModernChatConfigBase.Keys.featureRedesign_RenderBehindInterfaces)
+         || key.equals(ModernChatConfigBase.Keys.featureRedesign_FrontWhileTyping))
+        {
+            overlay.applyLayer();
+        }
 
         // Refresh tabs when tab settings change
         if (key.equals(ModernChatConfigBase.Keys.featureRedesign_AutoClosePrivateTab)
