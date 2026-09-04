@@ -10,6 +10,7 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -41,66 +42,45 @@ public class WidgetBucket {
         eventBus.unregister(this);
     }
 
-    @Subscribe(priority = -1)
+    // Runs before other subscribers so nothing reads a widget from the previous
+    // interface instance once the group has been reloaded (e.g. after a world hop).
+    @Subscribe(priority = 1)
     public void onWidgetLoaded(WidgetLoaded e) {
-        if (e.getGroupId() == InterfaceID.CHATBOX) {
-            chatWidget = null;
-        }
-        else if (e.getGroupId() == ComponentID.CHATBOX_PARENT) {
-            chatParentWidget = null;
-        }
-        else if (e.getGroupId() == InterfaceID.PM_CHAT) {
-            pmWidget = null;
-        }
-        else if (e.getGroupId() == InterfaceID.Chatbox.MES_TEXT2) {
-            messageLayerWidget = null;
-        }
-        else if (e.getGroupId() == InterfaceID.Chatbox.CHATAREA) {
-            chatBoxArea = null;
-        }
-        else if (e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT ||
-                 e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT) {
-            chatViewportWidget = null;
-        }
-        else if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
-            dialogLeft = null;
-        }
-        else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
-            dialogRight = null;
-        }
-        else if (e.getGroupId() == InterfaceID.CHATMENU) {
-            dialogOptions = null;
-        }
+        invalidateGroup(e.getGroupId());
     }
 
+    // Runs after other subscribers so close handlers can still reach the old widget.
     @Subscribe(priority = -1)
     public void onWidgetClosed(WidgetClosed e) {
-        if (e.getGroupId() == InterfaceID.CHATBOX) {
+        invalidateGroup(e.getGroupId());
+    }
+
+    /**
+     * Drops every cached widget that lives in the given interface group.
+     * Widget events carry plain interface ids (e.g. {@link InterfaceID#CHATBOX}),
+     * never packed component ids, so compare against the group each component belongs to.
+     */
+    private void invalidateGroup(int groupId) {
+        if (groupId == InterfaceID.CHATBOX) {
             chatWidget = null;
-        }
-        else if (e.getGroupId() == ComponentID.CHATBOX_PARENT) {
             chatParentWidget = null;
-        }
-        else if (e.getGroupId() == InterfaceID.PM_CHAT) {
-            pmWidget = null;
-        }
-        else if (e.getGroupId() == InterfaceID.Chatbox.MES_TEXT2) {
+            chatBoxArea = null;
             messageLayerWidget = null;
         }
-        else if (e.getGroupId() == InterfaceID.Chatbox.CHATAREA) {
-            chatBoxArea = null;
+        else if (groupId == InterfaceID.PM_CHAT) {
+            pmWidget = null;
         }
-        else if (e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT ||
-                 e.getGroupId() == ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT) {
+        else if (groupId == WidgetUtil.componentToInterface(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT)
+              || groupId == WidgetUtil.componentToInterface(ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT)) {
             chatViewportWidget = null;
         }
-        else if (e.getGroupId() == InterfaceID.CHAT_LEFT) {
+        else if (groupId == InterfaceID.CHAT_LEFT) {
             dialogLeft = null;
         }
-        else if (e.getGroupId() == InterfaceID.CHAT_RIGHT) {
+        else if (groupId == InterfaceID.CHAT_RIGHT) {
             dialogRight = null;
         }
-        else if (e.getGroupId() == InterfaceID.CHATMENU) {
+        else if (groupId == InterfaceID.CHATMENU) {
             dialogOptions = null;
         }
     }
