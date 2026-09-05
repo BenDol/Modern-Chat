@@ -45,6 +45,22 @@ public class PlayerMenuServiceTest
         assertEquals(-1, actionOp(null, "Add friend"));
     }
 
+    @Test
+    public void actionOpAcceptsReportAbuseAsReport()
+    {
+        String[] actions = { "Message", "Add ignore", "Add friend", "Report abuse" };
+
+        assertEquals(4, actionOp(actions, "Report"));
+    }
+
+    @Test
+    public void actionOpIgnoresCaseOnBothSides()
+    {
+        String[] actions = { "ADD FRIEND" };
+
+        assertEquals(1, actionOp(actions, "Add friend"));
+    }
+
     private static int actionOp(String[] actions, String action)
     {
         try

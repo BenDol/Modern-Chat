@@ -23,7 +23,10 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Recreates the player-name menu exposed by the legacy chatbox for Modern Chat usernames.
@@ -179,20 +182,41 @@ public class PlayerMenuService
         Widget scrollArea = client.getWidget(InterfaceID.Chatbox.SCROLLAREA);
         Widget best = null;
         int bestScore = Integer.MIN_VALUE;
+        List<String> diagnostics = null;
 
         for (int componentId = InterfaceID.Chatbox.LINE0;
              componentId <= InterfaceID.Chatbox.LINE99;
              componentId++)
         {
             Widget widget = client.getWidget(componentId);
-            if (widget == null
-                || actionOp(widget.getActions(), action) < 0
-                || !matchesUsername(widget, normalizedUsername))
+            if (widget == null)
             {
                 continue;
             }
 
+            int op = actionOp(widget.getActions(), action);
             Object[] listener = widget.getOnOpListener();
+            boolean nameMatches = matchesUsername(widget, normalizedUsername);
+            if (diagnostics == null)
+            {
+                diagnostics = new ArrayList<>();
+            }
+            diagnostics.add(String.format(
+                "line%d id=%s op=%d nameMatch=%s listener=%s name=%s text=%s actions=%s",
+                componentId - InterfaceID.Chatbox.LINE0,
+                Integer.toHexString(componentId),
+                op,
+                nameMatches,
+                listener == null ? null : listener.length,
+                widget.getName(),
+                widget.getText(),
+                widget.getActions() == null ? null : java.util.Arrays.toString(widget.getActions())));
+
+            if (op < 0 || !nameMatches)
+            {
+                continue;
+            }
+
             if (listener == null || listener.length == 0)
             {
                 continue;
@@ -219,6 +243,53 @@ public class PlayerMenuService
                 best = widget;
                 bestScore = score;
             }
+        }
+
+        // Some builds host the actions on the scroll area's own rows rather than on the
+        // group LINE widgets; scan those as well.
+        if (scrollArea != null && scrollArea.getChildren() != null)
+        {
+            for (Widget child : scrollArea.getChildren())
+            {
+                if (child == null)
+                {
+                    continue;
+                }
+
+                int op = actionOp(child.getActions(), action);
+                Object[] listener = child.getOnOpListener();
+                boolean nameMatches = matchesUsername(child, normalizedUsername);
+                if (op < 0 || !nameMatches || listener == null || listener.length == 0)
+                {
+                    continue;
+                }
+
+                int score = 0;
+                if (expectedType != Integer.MIN_VALUE && listenerMessageType(listener) == expectedType)
+                {
+                    score += 4;
+                }
+                if (!expectedBody.isEmpty() && expectedBody.equals(normalizeBody(child.getText())))
+                {
+                    score += 8;
+                }
+                if (score > bestScore)
+                {
+                    best = child;
+                    bestScore = score;
+                }
+            }
+        }
+
+        if (best == null && diagnostics != null)
+        {
+            log.debug("chatmenu: unable to resolve {} for {}; candidate widgets:\n{}",
+                action, normalizedUsername, String.join("\n", diagnostics));
+        }
+        else
+        {
+            log.debug("chatmenu: resolved {} for {} to {}", action, normalizedUsername,
+                best == null ? null : Integer.toHexString(best.getId()));
         }
 
         return best;
@@ -254,10 +325,12 @@ public class PlayerMenuService
             return -1;
         }
 
+        final String wanted = Text.removeTags(action).trim().toLowerCase(Locale.ENGLISH);
         for (int i = 0; i < actions.length; i++)
         {
-            String candidate = Text.removeTags(actions[i]).trim();
-            if (action.equalsIgnoreCase(candidate))
+            String candidate = Text.removeTags(actions[i]).trim().toLowerCase(Locale.ENGLISH);
+            if (wanted.equals(candidate)
+                || (wanted.startsWith("report") && candidate.startsWith("report")))
             {
                 return i + 1;
             }
@@ -267,8 +340,30 @@ public class PlayerMenuService
 
     private static boolean matchesUsername(Widget widget, String normalizedUsername)
     {
-        return normalizedUsername.equals(normalize(widget.getName()))
-            || normalizedUsername.equals(normalizeSenderText(widget.getText()));
+        if (normalizedUsername.isEmpty())
+        {
+            return false;
+        }
+
+        String name = normalize(widget.getName());
+        if (normalizedUsername.equals(name))
+        {
+            return true;
+        }
+
+        String text = normalizeSenderText(widget.getText());
+        if (normalizedUsername.equals(text))
+        {
+            return true;
+        }
+
+        // The line widget may hold the full "name: message" text rather than the sender alone.
+        if (text.startsWith(normalizedUsername) && text.length() > normalizedUsername.length())
+        {
+            char boundary = text.charAt(normalizedUsername.length());
+            return boundary == ':' || boundary == ' ' || boundary == '-';
+        }
+        return false;
     }
 
     private static int listenerMessageType(Object[] listener)
