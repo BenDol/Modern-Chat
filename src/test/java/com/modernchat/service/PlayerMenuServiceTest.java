@@ -61,11 +61,49 @@ public class PlayerMenuServiceTest
         assertEquals(1, actionOp(actions, "Add friend"));
     }
 
+    @Test
+    public void opForActionFallsBackToFixedChatMenuOpsWhenActionsAreNull()
+    {
+        assertEquals(2, opForAction(null, "Add ignore"));
+        assertEquals(3, opForAction(null, "Add friend"));
+        assertEquals(4, opForAction(null, "Report"));
+    }
+
+    @Test
+    public void opForActionPrefersDerivedActionIndex()
+    {
+        String[] actions = { "", "Message", "Add ignore", "Add friend", "Report" };
+
+        assertEquals(4, opForAction(actions, "Add friend"));
+        assertEquals(5, opForAction(actions, "Report"));
+        assertEquals(3, opForAction(actions, "Add ignore"));
+    }
+
+    @Test
+    public void opForActionReturnsMinusOneForUnknownAction()
+    {
+        assertEquals(-1, opForAction(null, "Message"));
+    }
+
     private static int actionOp(String[] actions, String action)
     {
         try
         {
             Method method = PlayerMenuService.class.getDeclaredMethod("actionOp", String[].class, String.class);
+            method.setAccessible(true);
+            return (int) method.invoke(null, actions, action);
+        }
+        catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException ex)
+        {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private static int opForAction(String[] actions, String action)
+    {
+        try
+        {
+            Method method = PlayerMenuService.class.getDeclaredMethod("opForAction", String[].class, String.class);
             method.setAccessible(true);
             return (int) method.invoke(null, actions, action);
         }

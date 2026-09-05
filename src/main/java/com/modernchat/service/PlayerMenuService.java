@@ -25,8 +25,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Recreates the player-name menu exposed by the legacy chatbox for Modern Chat usernames.
@@ -40,6 +42,14 @@ public class PlayerMenuService
     private static final String LOOKUP = "Look up";
     private static final String REPORT = "Report";
     private static final String COPY_TO_CLIPBOARD = "Copy to clipboard";
+
+    // The game generates chat-line menus dynamically at menu-open time and stores no
+    // static actions on the line widgets in this revision, so the menu ops are fixed:
+    // 1 = Message, 2 = Add ignore, 3 = Add friend, 4 = Report abuse.
+    private static final int OP_MESSAGE = 1;
+    private static final int OP_ADD_IGNORE = 2;
+    private static final int OP_ADD_FRIEND = 3;
+    private static final int OP_REPORT = 4;
 
     private final Client client;
     private final ClientThread clientThread;
@@ -128,7 +138,7 @@ public class PlayerMenuService
                     return;
                 }
 
-                int op = actionOp(widget.getActions(), action);
+int op = opForAction(widget.getActions(), action);
                 Object[] listener = widget.getOnOpListener();
                 if (op < 0 || listener == null || listener.length == 0)
                 {
@@ -179,22 +189,31 @@ public class PlayerMenuService
             : Integer.MIN_VALUE;
         final String expectedBody = messageNode != null ? normalizeBody(messageNode.getValue()) : "";
 
-        Widget scrollArea = client.getWidget(InterfaceID.Chatbox.SCROLLAREA);
-        Widget best = null;
-        int bestScore = Integer.MIN_VALUE;
-        List<String> diagnostics = null;
-
+        List<Widget> candidates = new ArrayList<>();
+        collectWidget(client.getWidget(InterfaceID.Chatbox.SCROLLAREA), candidates);
+        collectWidget(client.getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLAREA), candidates);
+        collectWidget(client.getWidget(InterfaceID.Chatbox.MES_LAYER_SCROLLCONTENTS), candidates);
+        collectWidget(client.getWidget(InterfaceID.Chatbox.CHATDISPLAY), candidates);
         for (int componentId = InterfaceID.Chatbox.LINE0;
              componentId <= InterfaceID.Chatbox.LINE99;
              componentId++)
         {
-            Widget widget = client.getWidget(componentId);
-            if (widget == null)
+            collectWidget(client.getWidget(componentId), candidates);
+        }
+
+        Set<Integer> seen = new HashSet<>();
+        Widget best = null;
+        int bestScore = Integer.MIN_VALUE;
+        List<String> diagnostics = null;
+
+        for (Widget widget : candidates)
+        {
+            if (widget == null || !seen.add(widget.getId()))
             {
                 continue;
             }
 
-            int op = actionOp(widget.getActions(), action);
+            int op = opForAction(widget.getActions(), action);
             Object[] listener = widget.getOnOpListener();
             boolean nameMatches = matchesUsername(widget, normalizedUsername);
             if (diagnostics == null)
@@ -202,17 +221,16 @@ public class PlayerMenuService
                 diagnostics = new ArrayList<>();
             }
             diagnostics.add(String.format(
-                "line%d id=%s op=%d nameMatch=%s listener=%s name=%s text=%s actions=%s",
-                componentId - InterfaceID.Chatbox.LINE0,
-                Integer.toHexString(componentId),
+                "id=%s op=%d nameMatch=%s listener=%s name=%s text=%s actions=%s",
+                Integer.toHexString(widget.getId()),
                 op,
                 nameMatches,
-                listener == null ? null : listener.length,
+                listener == null ? null : java.util.Arrays.toString(listener),
                 widget.getName(),
                 widget.getText(),
                 widget.getActions() == null ? null : java.util.Arrays.toString(widget.getActions())));
 
-            if (op < 0 || !nameMatches)
+            if (op <= 0 || !nameMatches)
             {
                 continue;
             }
@@ -227,15 +245,9 @@ public class PlayerMenuService
             {
                 score += 4;
             }
-
-            int line = componentId - InterfaceID.Chatbox.LINE0;
-            if (!expectedBody.isEmpty() && scrollArea != null)
+            if (!expectedBody.isEmpty() && expectedBody.equals(normalizeBody(widget.getText())))
             {
-                Widget body = scrollArea.getChild(line * 4 + 1);
-                if (body != null && expectedBody.equals(normalizeBody(body.getText())))
-                {
-                    score += 8;
-                }
+                score += 8;
             }
 
             if (score > bestScore)
@@ -245,46 +257,17 @@ public class PlayerMenuService
             }
         }
 
-        // Some builds host the actions on the scroll area's own rows rather than on the
-        // group LINE widgets; scan those as well.
-        if (scrollArea != null && scrollArea.getChildren() != null)
-        {
-            for (Widget child : scrollArea.getChildren())
-            {
-                if (child == null)
-                {
-                    continue;
-                }
-
-                int op = actionOp(child.getActions(), action);
-                Object[] listener = child.getOnOpListener();
-                boolean nameMatches = matchesUsername(child, normalizedUsername);
-                if (op < 0 || !nameMatches || listener == null || listener.length == 0)
-                {
-                    continue;
-                }
-
-                int score = 0;
-                if (expectedType != Integer.MIN_VALUE && listenerMessageType(listener) == expectedType)
-                {
-                    score += 4;
-                }
-                if (!expectedBody.isEmpty() && expectedBody.equals(normalizeBody(child.getText())))
-                {
-                    score += 8;
-                }
-                if (score > bestScore)
-                {
-                    best = child;
-                    bestScore = score;
-                }
-            }
-        }
-
         if (best == null && diagnostics != null)
         {
-            log.debug("chatmenu: unable to resolve {} for {}; candidate widgets:\n{}",
-                action, normalizedUsername, String.join("\n", diagnostics));
+            final int cap = 100;
+            List<String> shown = diagnostics.size() > cap
+                ? new ArrayList<>(diagnostics.subList(0, cap))
+                : diagnostics;
+            log.debug("chatmenu: unable to resolve {} for {} (msg type={}, body={}); {} candidates, showing {}:\n{}",
+                action, normalizedUsername,
+                expectedType == Integer.MIN_VALUE ? null : expectedType, expectedBody,
+                diagnostics.size(), shown.size(),
+                String.join("\n", shown));
         }
         else
         {
@@ -293,6 +276,31 @@ public class PlayerMenuService
         }
 
         return best;
+    }
+
+    private static void collectWidget(Widget widget, List<Widget> out)
+    {
+        collectWidget(widget, out, 0);
+    }
+
+    private static void collectWidget(Widget widget, List<Widget> out, int depth)
+    {
+        if (widget == null || depth > 3)
+        {
+            return;
+        }
+        out.add(widget);
+        Widget[] children = widget.getChildren();
+        if (children != null)
+        {
+            for (Widget child : children)
+            {
+                if (child != null)
+                {
+                    collectWidget(child, out, depth + 1);
+                }
+            }
+        }
     }
 
     private MessageNode findMessageNode(int messageId)
@@ -336,6 +344,31 @@ public class PlayerMenuService
             }
         }
         return -1;
+    }
+
+    /**
+     * Chooses the op to dispatch for the action. Prefers the action's position in the
+     * widget's actions array when the game has populated one, and otherwise falls back
+     * to the fixed ops the game's dynamically generated chat-line menu uses.
+     */
+    private static int opForAction(String[] actions, String action)
+    {
+        int derived = actionOp(actions, action);
+        if (derived > 0)
+        {
+            return derived;
+        }
+        switch (action)
+        {
+            case ADD_IGNORE:
+                return OP_ADD_IGNORE;
+            case ADD_FRIEND:
+                return OP_ADD_FRIEND;
+            case REPORT:
+                return OP_REPORT;
+            default:
+                return -1;
+        }
     }
 
     private static boolean matchesUsername(Widget widget, String normalizedUsername)
