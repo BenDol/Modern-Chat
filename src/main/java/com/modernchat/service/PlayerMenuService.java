@@ -9,6 +9,8 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.MessageNode;
 import net.runelite.api.ScriptEvent;
 import net.runelite.api.ScriptID;
+import net.runelite.api.VarClientInt;
+import net.runelite.api.VarClientStr;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.callback.ClientThread;
@@ -128,69 +130,85 @@ public class PlayerMenuService
 
     private void invokeLegacyChatAction(String username, int messageId, String action)
     {
-        clientThread.invokeLater(() ->
-        {
-            try
-            {
-                Widget widget = resolveChatActionWidget(username, messageId, action);
-                if (widget == null)
-                {
-                    notifyUnavailable(action + " is unavailable for " + username + ".");
-                    return;
-                }
-
-int op = opForAction(widget.getActions(), action);
-                Object[] listener = widget.getOnOpListener();
-                if (op <= 0 || listener == null || listener.length == 0)
-                {
-                    notifyUnavailable(action + " is unavailable for " + username + ".");
-                    return;
-                }
-
-                Object[] eventArgs = new Object[listener.length];
-                System.arraycopy(listener, 0, eventArgs, 0, listener.length);
-                String targetName = widget.getName();
-                if (targetName == null || targetName.isEmpty())
-                {
-                    targetName = Text.removeTags(username);
-                }
-                for (int i = 0; i < eventArgs.length; i++)
-                {
-                    if (ScriptEvent.NAME.equals(eventArgs[i]))
-                    {
-                        eventArgs[i] = targetName;
-                    }
-                }
-
-                ScriptEvent event = client.createScriptEventBuilder(eventArgs)
-                    .setSource(widget)
-                    .setOp(op)
-                    .build();
-                event.run();
-            }
-            catch (Throwable ex)
-            {
-                log.warn("Unable to execute legacy chat action {} for {}", action, username, ex);
-                notifyUnavailable(action + " is unavailable for " + username + ".");
-            }
-        });
+        clientThread.invokeLater(() -> dispatchChatAction(username, messageId, action, 0));
     }
 
-    /**
-     * Finds a live chat line to route the menu action through. When the game has not
-     * populated its chatbox line widgets (e.g. the chat UI is hidden), asks the game to
-     * rebuild the chatbox first and retries.
-     */
-    private Widget resolveChatActionWidget(String username, int messageId, String action)
+    private void dispatchChatAction(String username, int messageId, String action, int attempt)
     {
-        Widget widget = findChatLineWidget(username, messageId, action);
-        if (widget != null)
+        try
         {
-            return widget;
+            Widget widget = findChatLineWidget(username, messageId, action);
+            if (widget != null)
+            {
+                executeLineAction(widget, username, action);
+                return;
+            }
+
+            // The game only populates its chat line widgets while the chat UI is active.
+            // Rebuild the chatbox and give it a tick to repopulate before falling back.
+            if (attempt == 0)
+            {
+                forceChatboxRebuild();
+                clientThread.invokeAtTickEnd(() -> dispatchChatAction(username, messageId, action, 1));
+                return;
+            }
+
+            if (ADD_FRIEND.equals(action) || ADD_IGNORE.equals(action))
+            {
+                if (executeSocialPanelAdd(username, ADD_IGNORE.equals(action)))
+                {
+                    return;
+                }
+            }
+
+            notifyUnavailable(action + " is unavailable for " + username + ".");
+            dumpWidgetIntrospection(action, username);
+        }
+        catch (Throwable ex)
+        {
+            log.warn("Unable to execute legacy chat action {} for {}", action, username, ex);
+            notifyUnavailable(action + " is unavailable for " + username + ".");
+        }
+    }
+
+    private void executeLineAction(Widget widget, String username, String action)
+    {
+        int op = opForAction(widget.getActions(), action);
+        Object[] listener = widget.getOnOpListener();
+        if (op <= 0 || listener == null || listener.length == 0)
+        {
+            log.debug("chatmenu: line {} has no usable listener/op for {}", widget.getId(), action);
+            notificationService.pushChatMessage(action + " is unavailable for " + username + ".");
+            return;
         }
 
+        Object[] eventArgs = new Object[listener.length];
+        System.arraycopy(listener, 0, eventArgs, 0, listener.length);
+        String targetName = widget.getName();
+        if (targetName == null || targetName.isEmpty())
+        {
+            targetName = Text.removeTags(username);
+        }
+        for (int i = 0; i < eventArgs.length; i++)
+        {
+            if (ScriptEvent.NAME.equals(eventArgs[i]))
+            {
+                eventArgs[i] = targetName;
+            }
+        }
+
+        ScriptEvent event = client.createScriptEventBuilder(eventArgs)
+            .setSource(widget)
+            .setOp(op)
+            .build();
+        event.run();
+        log.debug("chatmenu: dispatched {} for {} on line={} op={} listener={}", action, username,
+            Integer.toHexString(widget.getId()), op, java.util.Arrays.toString(listener));
+    }
+
+    private void forceChatboxRebuild()
+    {
         Widget root = client.getWidget(InterfaceID.CHATBOX, 0);
-        boolean wasHidden = root != null && root.isHidden();
         try
         {
             if (root != null)
@@ -203,13 +221,119 @@ int op = opForAction(widget.getActions(), action);
         {
             log.debug("Unable to force the chatbox to rebuild", ex);
         }
+    }
 
-        widget = findChatLineWidget(username, messageId, action);
-        if (root != null && wasHidden)
+    /**
+     * Adds a friend or ignore through the game's social-panel action: the name is written to
+     * the chat input and the panel's Add Friend/Add Ignore action is dispatched, mirroring
+     * how the game itself commits the entry.
+     */
+    private boolean executeSocialPanelAdd(String username, boolean ignore)
+    {
+        final String name = Text.removeTags(username);
+        Widget box = client.getWidget(ignore ? InterfaceID.Ignore.ADDIGNORE : InterfaceID.Friends.ADDFRIEND);
+        if (box == null)
         {
-            root.setHidden(true);
+            log.debug("chatmenu: {} panel not loaded for {}", ignore ? "ignore" : "friends", username);
+            return false;
         }
-        return widget;
+
+        Object[] listener = box.getOnOpListener();
+        if (listener == null || listener.length == 0)
+        {
+            log.debug("chatmenu: {} add box listener missing", ignore ? "ignore" : "friends");
+            return false;
+        }
+
+        try
+        {
+            client.setVarcStrValue(VarClientStr.INPUT_TEXT, name);
+            client.setVarcIntValue(VarClientInt.INPUT_TYPE, 1);
+        }
+        catch (Throwable ex)
+        {
+            log.debug("Unable to seed the chat input", ex);
+        }
+
+        Object[] args = new Object[listener.length];
+        System.arraycopy(listener, 0, args, 0, listener.length);
+        for (int i = 0; i < args.length; i++)
+        {
+            if (ScriptEvent.NAME.equals(args[i]))
+            {
+                args[i] = name;
+            }
+        }
+
+        ScriptEvent event = client.createScriptEventBuilder(args)
+            .setSource(box)
+            .setOp(1)
+            .build();
+        event.run();
+        log.debug("chatmenu: social add dispatched for {} (ignore={}) listener={}", name, ignore,
+            java.util.Arrays.toString(listener));
+        return true;
+    }
+
+    private void dumpWidgetIntrospection(String action, String username)
+    {
+        dumpChildren("FriendsPanel", client.getWidget(InterfaceID.Friends.UNIVERSE));
+        dumpChildren("IgnorePanel", client.getWidget(InterfaceID.Ignore.UNIVERSE));
+        dumpChildren("Reportabuse", client.getWidget(InterfaceID.Reportabuse.UNIVERSE));
+        dumpWidget("ChatInput", client.getWidget(InterfaceID.Chatbox.INPUT));
+        dumpWidget("ChatInputClickArea", client.getWidget(InterfaceID.Chatbox.INPUT_CLICKAREA));
+        try
+        {
+            log.debug("chatmenu-input: INPUT_TYPE={} INPUT_TEXT={}", 
+                client.getVarcIntValue(VarClientInt.INPUT_TYPE),
+                client.getVarcStrValue(VarClientStr.INPUT_TEXT));
+        }
+        catch (Throwable ignored)
+        {
+        }
+    }
+
+    private void dumpChildren(String label, Widget widget)
+    {
+        if (widget == null)
+        {
+            log.debug("chatmenu-{}: root not loaded", label);
+            return;
+        }
+        Widget[] children = widget.getChildren();
+        if (children == null || children.length == 0)
+        {
+            log.debug("chatmenu-{}: no children", label);
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        int shown = Math.min(children.length, 30);
+        for (int i = 0; i < shown; i++)
+        {
+            Widget child = children[i];
+            if (child == null)
+            {
+                continue;
+            }
+            sb.append(String.format("  child=%d id=%s name=%s text=%s actions=%s listener=%s%n",
+                i, Integer.toHexString(child.getId()), child.getName(), child.getText(),
+                child.getActions() == null ? null : java.util.Arrays.toString(child.getActions()),
+                child.getOnOpListener() == null ? null : java.util.Arrays.toString(child.getOnOpListener())));
+        }
+        log.debug("chatmenu-{}: {} children:\n{}", label, children.length, sb.toString().trim());
+    }
+
+    private void dumpWidget(String label, Widget widget)
+    {
+        if (widget == null)
+        {
+            log.debug("chatmenu-{}: not loaded", label);
+            return;
+        }
+        log.debug("chatmenu-{}: id={} name={} text={} actions={} listener={}", label,
+            Integer.toHexString(widget.getId()), widget.getName(), widget.getText(),
+            widget.getActions() == null ? null : java.util.Arrays.toString(widget.getActions()),
+            widget.getOnOpListener() == null ? null : java.util.Arrays.toString(widget.getOnOpListener()));
     }
 
     private Widget findChatLineWidget(String username, int messageId, String action)
