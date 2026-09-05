@@ -8,6 +8,7 @@ import net.runelite.api.IconID;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MessageNode;
 import net.runelite.api.ScriptEvent;
+import net.runelite.api.ScriptID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.callback.ClientThread;
@@ -131,7 +132,7 @@ public class PlayerMenuService
         {
             try
             {
-                Widget widget = findLegacyChatWidget(username, messageId, action);
+                Widget widget = resolveChatActionWidget(username, messageId, action);
                 if (widget == null)
                 {
                     notifyUnavailable(action + " is unavailable for " + username + ".");
@@ -140,7 +141,7 @@ public class PlayerMenuService
 
 int op = opForAction(widget.getActions(), action);
                 Object[] listener = widget.getOnOpListener();
-                if (op < 0 || listener == null || listener.length == 0)
+                if (op <= 0 || listener == null || listener.length == 0)
                 {
                     notifyUnavailable(action + " is unavailable for " + username + ".");
                     return;
@@ -175,7 +176,43 @@ int op = opForAction(widget.getActions(), action);
         });
     }
 
-    private Widget findLegacyChatWidget(String username, int messageId, String action)
+    /**
+     * Finds a live chat line to route the menu action through. When the game has not
+     * populated its chatbox line widgets (e.g. the chat UI is hidden), asks the game to
+     * rebuild the chatbox first and retries.
+     */
+    private Widget resolveChatActionWidget(String username, int messageId, String action)
+    {
+        Widget widget = findChatLineWidget(username, messageId, action);
+        if (widget != null)
+        {
+            return widget;
+        }
+
+        Widget root = client.getWidget(InterfaceID.CHATBOX, 0);
+        boolean wasHidden = root != null && root.isHidden();
+        try
+        {
+            if (root != null)
+            {
+                root.setHidden(false);
+            }
+            client.runScript(ScriptID.BUILD_CHATBOX);
+        }
+        catch (Throwable ex)
+        {
+            log.debug("Unable to force the chatbox to rebuild", ex);
+        }
+
+        widget = findChatLineWidget(username, messageId, action);
+        if (root != null && wasHidden)
+        {
+            root.setHidden(true);
+        }
+        return widget;
+    }
+
+    private Widget findChatLineWidget(String username, int messageId, String action)
     {
         final String normalizedUsername = normalize(username);
         if (normalizedUsername.isEmpty())
@@ -230,17 +267,16 @@ int op = opForAction(widget.getActions(), action);
                 widget.getText(),
                 widget.getActions() == null ? null : java.util.Arrays.toString(widget.getActions())));
 
-            if (op <= 0 || !nameMatches)
-            {
-                continue;
-            }
-
             if (listener == null || listener.length == 0)
             {
                 continue;
             }
 
             int score = 0;
+            if (nameMatches)
+            {
+                score += 8;
+            }
             if (expectedType != Integer.MIN_VALUE && listenerMessageType(listener) == expectedType)
             {
                 score += 4;
