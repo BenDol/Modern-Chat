@@ -138,6 +138,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 			@Override public Color getWelcomeColor() { return config.general_WelcomeChatColor(); }
 			@Override public Color getPublicColor() { return config.general_PublicChatColor(); }
+			@Override public Color getPublicUsernameColor() { return config.general_PublicUsernameColor(); }
 			@Override public Color getPrivateColor() { return config.general_PrivateChatColor(); }
 			@Override public Color getFriendColor() { return config.general_FriendsChatColor(); }
 			@Override public Color getClanColor() { return config.general_ClanChatColor(); }
@@ -178,6 +179,7 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			@Override public Color getScrollbarThumbColor() { return super.getScrollbarThumbColor(); }
 			@Override public Color getWelcomeColor() { return cfg.getWelcomeColor(); }
 			@Override public Color getPublicColor() { return cfg.getPublicColor(); }
+			@Override public Color getUsernameColor() { return cfg.getPublicUsernameColor(); }
 			@Override public Color getPrivateColor() { return cfg.getPrivateColor(); }
 			@Override public Color getFriendColor() { return cfg.getFriendColor(); }
 			@Override public Color getClanColor() { return cfg.getClanColor(); }

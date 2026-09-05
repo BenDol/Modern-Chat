@@ -9,6 +9,7 @@ import com.modernchat.draw.Padding;
 import com.modernchat.draw.PrefixSegment;
 import com.modernchat.draw.RichLine;
 import com.modernchat.draw.RowHit;
+import com.modernchat.draw.SenderSegment;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.TimestampSegment;
 import com.modernchat.draw.UsernameHit;
@@ -350,6 +351,11 @@ public class MessageContainer extends Overlay
                             if (pfxColor.getAlpha() > 0) {
                                 segColor = pfxColor;
                             }
+                        } else if (seg instanceof SenderSegment) {
+                            Color usernameColor = config.getUsernameColor();
+                            if (usernameColor.getAlpha() > 0) {
+                                segColor = usernameColor;
+                            }
                         }
 
                         // Draw text with shadow or outline
@@ -616,7 +622,7 @@ public class MessageContainer extends Overlay
             }
         }
 
-        RichLine rl = parseRich(messageToRender, baseColor == null ? Color.WHITE : baseColor, type, timestamp, prefix);
+        RichLine rl = parseRich(messageToRender, baseColor == null ? Color.WHITE : baseColor, type, timestamp, prefix, sender);
         rl.setType(type);
         rl.setSender(sender);
         rl.setReceiver(receiver);
@@ -684,7 +690,7 @@ public class MessageContainer extends Overlay
         return stripped;
     }
 
-    private RichLine parseRich(String s, Color base, ChatMessageType type, long timestamp, String prefix) {
+    private RichLine parseRich(String s, Color base, ChatMessageType type, long timestamp, String prefix, String sender) {
         RichLine out = new RichLine();
         out.setTimestamp(timestamp);
         if (s == null) return out;
@@ -771,7 +777,50 @@ public class MessageContainer extends Overlay
         if (buf.length() > 0)
             out.getSegs().add(new TextSegment(buf.toString(), cur));
 
+        markSenderSegment(out, sender);
         return out;
+    }
+
+    private void markSenderSegment(RichLine line, String sender) {
+        if (line == null || sender == null || sender.isEmpty())
+            return;
+
+        StringBuilder leadingText = new StringBuilder();
+        for (TextSegment seg : line.getSegs()) {
+            if (seg instanceof TimestampSegment || seg instanceof PrefixSegment || seg instanceof ImageSegment)
+                continue;
+
+            String text = seg.getText();
+            if (text != null)
+                leadingText.append(text);
+
+            if (leadingText.length() >= sender.length())
+                break;
+        }
+
+        if (!leadingText.toString().startsWith(sender))
+            return;
+
+        int senderTextRemaining = sender.length();
+        for (int i = 0; i < line.getSegs().size() && senderTextRemaining > 0; i++) {
+            TextSegment seg = line.getSegs().get(i);
+            if (seg instanceof TimestampSegment || seg instanceof PrefixSegment || seg instanceof ImageSegment)
+                continue;
+
+            String text = seg.getText();
+            if (text == null || text.isEmpty())
+                continue;
+
+            int split = Math.min(senderTextRemaining, text.length());
+            line.getSegs().remove(i);
+            line.getSegs().add(i, new SenderSegment(text.substring(0, split), seg.getColor()));
+
+            if (split < text.length()) {
+                line.getSegs().add(i + 1, new TextSegment(text.substring(split), seg.getColor()));
+            }
+
+            senderTextRemaining -= split;
+        }
     }
 
     private List<VisualLine> wrapRichLine(RichLine rl, FontMetrics fm, int maxWidth)
@@ -818,7 +867,7 @@ public class MessageContainer extends Overlay
             }
 
             // Timestamp and Prefix segments: unbreakable tokens that preserve their type
-            if (s instanceof TimestampSegment || s instanceof PrefixSegment) {
+            if (s instanceof TimestampSegment || s instanceof PrefixSegment || s instanceof SenderSegment) {
                 String txt = s.getText();
                 if (txt == null || txt.isEmpty())
                     continue;

@@ -1158,10 +1158,23 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
 
     @Alpha
     @ConfigItem(
+        keyName = Keys.general_PublicUsernameColor,
+        name = "Public Username Color",
+        description = "Color for public chat usernames. Set fully transparent to use the public chat color.",
+        position = 9,
+        section = generalSection
+    )
+    @Override
+    default Color general_PublicUsernameColor() {
+        return new Color(0, 0, 0, 0);
+    }
+
+    @Alpha
+    @ConfigItem(
         keyName = Keys.general_FriendsChatColor,
         name = "Friends Chat Color",
         description = "Color for friends chat messages in the peek overlay",
-        position = 9,
+        position = 11,
         section = generalSection
     )
     @Override
@@ -1174,7 +1187,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_ClanChatColor,
         name = "Clan Chat Color",
         description = "Color for clan chat messages in the peek overlay",
-        position = 10,
+        position = 12,
         section = generalSection
     )
     @Override
@@ -1187,7 +1200,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_PrivateChatColor,
         name = "Private Chat Color",
         description = "Color for private chat messages in the peek overlay",
-        position = 11,
+        position = 13,
         section = generalSection
     )
     @Override
@@ -1200,7 +1213,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_SystemChatColor,
         name = "System Chat Color",
         description = "Color for system chat messages in the peek overlay",
-        position = 12,
+        position = 14,
         section = generalSection
     )
     @Override
@@ -1213,7 +1226,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_WelcomeChatColor,
         name = "Welcome Chat Color",
         description = "Color for welcome chat messages in the peek overlay",
-        position = 13,
+        position = 15,
         section = generalSection
     )
     @Override
@@ -1226,7 +1239,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.general_TradeChatColor,
         name = "Trade Chat Color",
         description = "Color for trade chat messages in the peek overlay",
-        position = 14,
+        position = 16,
         section = generalSection
     )
     @Override
