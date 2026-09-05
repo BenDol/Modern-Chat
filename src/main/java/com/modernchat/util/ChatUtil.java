@@ -351,6 +351,20 @@ public class ChatUtil
      * @param filteredMessage optional filtered message text (from chat filter plugins), or null to use original
      */
     public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer, @Nullable String filteredMessage) {
+        return createMessageLine(e, client, requireLocalPlayer, filteredMessage, null);
+    }
+
+    /**
+     * Create a MessageLine from a ChatMessage, optionally using a filtered message text and a
+     * pre-resolved (RuneLite Chat Commands) body.
+     *
+     * @param e the chat message event
+     * @param client the game client
+     * @param requireLocalPlayer whether to require local player info
+     * @param filteredMessage optional filtered message text (from chat filter plugins), or null to use original
+     * @param resolvedMessage a result already present on the node (e.g. a chat command response), or null
+     */
+    public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer, @Nullable String filteredMessage, @Nullable String resolvedMessage) {
         Player localPlayer = client.getLocalPlayer();
         if (localPlayer == null && requireLocalPlayer)
             return null;
@@ -369,9 +383,11 @@ public class ChatUtil
 
         ChatMessageType type = e.getType();
         String originalMsg = e.getMessage();
-        // Use filtered message if provided, otherwise use original
-        String msg = filteredMessage != null ? filteredMessage : originalMsg;
-        String[] params = msg.split("\\|", 3);
+        // Use resolved message if provided, otherwise filtered/original
+        String msg = resolvedMessage != null
+            ? resolvedMessage
+            : filteredMessage != null ? filteredMessage : originalMsg;
+        String[] params = msg == null ? new String[0] : msg.split("\\|", 3);
         String receiverName = senderReceiver.getReceiverName();
         String senderName = senderReceiver.getSenderName();
         int senderIconId = senderReceiver.getSenderIconId();
@@ -392,18 +408,7 @@ public class ChatUtil
             builder.append(senderName, false).append(": ");
         }
 
-        String message = msg;
-        if (params.length > 1) {
-            int icon = ChatUtil.getModImageId(params[0]);
-            if (icon != -1) {
-                builder.img(icon);
-            }
-
-            // message should always be last
-            message = params[params.length - 1];
-        }
-
-        builder.append(message, false);
+        builder.append(resolvedMessage != null ? resolvedMessage : normalizeMessageBody(msg), false);
 
         // Generate duplicate key from name + original message (for collapse detection)
         String duplicateKey = e.getName() + ":" + originalMsg;
@@ -415,7 +420,31 @@ public class ChatUtil
             && COLLAPSE_PATTERN.matcher(filteredMessage).find()
             && !originalMsg.equals(filteredMessage); // only if filtered differs from original
 
-        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed, senderIconId);
+        int messageId = e.getMessageNode() != null ? e.getMessageNode().getId() : -1;
+        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed, senderIconId, messageId);
+    }
+
+    /**
+     * Removes the chat script's pipe-delimited transport prefix while preserving an optional
+     * mod-icon prefix as a normal rich-text image tag.
+     */
+    public static String normalizeMessageBody(@Nullable String message) {
+        if (message == null || message.isEmpty()) {
+            return message == null ? "" : message;
+        }
+
+        String[] params = message.split("\\|", 3);
+        if (params.length <= 1) {
+            return message;
+        }
+
+        ChatMessageBuilder builder = new ChatMessageBuilder();
+        int icon = ChatUtil.getModImageId(params[0]);
+        if (icon != -1) {
+            builder.img(icon);
+        }
+        builder.append(params[params.length - 1], false);
+        return builder.build();
     }
 
     public static String getPrefix(ChatMessageType type) {

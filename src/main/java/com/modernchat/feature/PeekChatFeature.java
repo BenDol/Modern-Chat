@@ -15,12 +15,16 @@ import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
 import com.modernchat.event.SetPeekSourceEvent;
 import com.modernchat.event.TabClosedEvent;
+import com.modernchat.event.RuneLiteChatMessageUpdatedEvent;
+import com.modernchat.draw.UsernameHit;
 import com.modernchat.overlay.ChannelFilterState;
 import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatPeekOverlay;
 import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
 import com.modernchat.service.MessageFilterService;
+import com.modernchat.service.PlayerMenuService;
+import com.modernchat.service.RuneLiteFormattedMessageService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.StringUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -93,6 +97,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Inject private ConfigManager configManager;
 	@Inject private ChannelFilterState channelFilterState;
 	@Inject private MessageFilterService messageFilterService;
+	@Inject private PlayerMenuService playerMenuService;
+	@Inject private RuneLiteFormattedMessageService runeLiteFormattedMessageService;
 
 	private final ModernChatConfig mainConfig;
 
@@ -228,10 +234,19 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 	@Subscribe
 	public void onMenuOpened(MenuOpened e) {
 		MenuEntry[] entries = e.getMenuEntries();
-		if (entries.length == 1)
-			return;
+		// usernameHits are cached from the last render; reject them after the peek has fully faded
+		// so an invisible overlay cannot add player actions over the game scene.
+		if (chatPeekOverlay.canShow() && chatPeekOverlay.getFadeAlpha() > 0.01f) {
+			Point mouse = client.getMouseCanvasPosition();
+			UsernameHit usernameHit = chatPeekOverlay.usernameAt(mouse);
+			if (usernameHit != null) {
+				playerMenuService.addMenuEntries(usernameHit);
+			}
+		}
 
-		tryAddClearPeekMessagesMenuOption(entries);
+		if (entries.length > 1) {
+			tryAddClearPeekMessagesMenuOption(entries);
+		}
 	}
 
 	@Subscribe
@@ -257,7 +272,8 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 			return; // Message blocked by chat filter plugin
 		}
 
-        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
+        String formattedMessage = runeLiteFormattedMessageService.observe(e);
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage, formattedMessage);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages
@@ -274,6 +290,11 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
         log.debug("Chat message received: {}", line);
 		chatPeekOverlay.pushLine(line);
+	}
+
+	@Subscribe
+	public void onRuneLiteChatMessageUpdatedEvent(RuneLiteChatMessageUpdatedEvent e) {
+		chatPeekOverlay.replaceLineBody(e.getMessageId(), e.getFormattedBody());
 	}
 
 	@Subscribe
