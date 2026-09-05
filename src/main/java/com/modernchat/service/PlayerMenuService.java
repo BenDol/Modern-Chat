@@ -32,10 +32,6 @@ import java.util.Collection;
 @Singleton
 public class PlayerMenuService
 {
-    private static final int ADD_FRIEND_OP = 6;
-    private static final int ADD_IGNORE_OP = 7;
-    private static final int REPORT_OP = 8;
-
     private static final String ADD_FRIEND = "Add friend";
     private static final String ADD_IGNORE = "Add ignore";
     private static final String LOOKUP = "Look up";
@@ -83,13 +79,13 @@ public class PlayerMenuService
             .setOption(ADD_FRIEND)
             .setTarget(username)
             .setType(MenuAction.RUNELITE)
-            .onClick(entry -> invokeLegacyChatAction(username, messageId, ADD_FRIEND, ADD_FRIEND_OP));
+            .onClick(entry -> invokeLegacyChatAction(username, messageId, ADD_FRIEND));
 
         client.getMenu().createMenuEntry(1)
             .setOption(ADD_IGNORE)
             .setTarget(username)
             .setType(MenuAction.RUNELITE)
-            .onClick(entry -> invokeLegacyChatAction(username, messageId, ADD_IGNORE, ADD_IGNORE_OP));
+            .onClick(entry -> invokeLegacyChatAction(username, messageId, ADD_IGNORE));
 
         client.getMenu().createMenuEntry(1)
             .setOption(LOOKUP)
@@ -101,7 +97,7 @@ public class PlayerMenuService
             .setOption(REPORT)
             .setTarget(username)
             .setType(MenuAction.RUNELITE)
-            .onClick(entry -> invokeLegacyChatAction(username, messageId, REPORT, REPORT_OP));
+            .onClick(entry -> invokeLegacyChatAction(username, messageId, REPORT));
 
         client.getMenu().createMenuEntry(1)
             .setOption(COPY_TO_CLIPBOARD)
@@ -116,27 +112,43 @@ public class PlayerMenuService
         addMenuEntries(hit);
     }
 
-    private void invokeLegacyChatAction(String username, int messageId, String action, int op)
+    private void invokeLegacyChatAction(String username, int messageId, String action)
     {
         clientThread.invokeLater(() ->
         {
             try
             {
-                Widget widget = findLegacyChatWidget(username, messageId, action, op);
+                Widget widget = findLegacyChatWidget(username, messageId, action);
                 if (widget == null)
                 {
                     notifyUnavailable(action + " is unavailable for " + username + ".");
                     return;
                 }
 
+                int op = actionOp(widget.getActions(), action);
                 Object[] listener = widget.getOnOpListener();
-                if (listener == null || listener.length == 0)
+                if (op < 0 || listener == null || listener.length == 0)
                 {
                     notifyUnavailable(action + " is unavailable for " + username + ".");
                     return;
                 }
 
-                ScriptEvent event = client.createScriptEventBuilder(listener)
+                Object[] eventArgs = new Object[listener.length];
+                System.arraycopy(listener, 0, eventArgs, 0, listener.length);
+                String targetName = widget.getName();
+                if (targetName == null || targetName.isEmpty())
+                {
+                    targetName = Text.removeTags(username);
+                }
+                for (int i = 0; i < eventArgs.length; i++)
+                {
+                    if (ScriptEvent.NAME.equals(eventArgs[i]))
+                    {
+                        eventArgs[i] = targetName;
+                    }
+                }
+
+                ScriptEvent event = client.createScriptEventBuilder(eventArgs)
                     .setSource(widget)
                     .setOp(op)
                     .build();
@@ -150,7 +162,7 @@ public class PlayerMenuService
         });
     }
 
-    private Widget findLegacyChatWidget(String username, int messageId, String action, int op)
+    private Widget findLegacyChatWidget(String username, int messageId, String action)
     {
         final String normalizedUsername = normalize(username);
         if (normalizedUsername.isEmpty())
@@ -173,7 +185,9 @@ public class PlayerMenuService
              componentId++)
         {
             Widget widget = client.getWidget(componentId);
-            if (widget == null || !hasAction(widget, action, op) || !matchesUsername(widget, normalizedUsername))
+            if (widget == null
+                || actionOp(widget.getActions(), action) < 0
+                || !matchesUsername(widget, normalizedUsername))
             {
                 continue;
             }
@@ -228,17 +242,27 @@ public class PlayerMenuService
         }
     }
 
-    private static boolean hasAction(Widget widget, String action, int op)
+    /**
+     * Returns the 1-based op for the given action in the widget's actions array, or {@code -1}.
+     * The op of a widget menu entry is its 1-based position in {@link Widget#getActions()},
+     * not a fixed constant; it must be derived from the actions the game has populated.
+     */
+    private static int actionOp(String[] actions, String action)
     {
-        String[] actions = widget.getActions();
-        int actionIndex = op - 1;
-        if (actions == null || actionIndex < 0 || actionIndex >= actions.length)
+        if (actions == null)
         {
-            return false;
+            return -1;
         }
 
-        String candidate = actions[actionIndex];
-        return candidate != null && action.equalsIgnoreCase(Text.removeTags(candidate).trim());
+        for (int i = 0; i < actions.length; i++)
+        {
+            String candidate = Text.removeTags(actions[i]).trim();
+            if (action.equalsIgnoreCase(candidate))
+            {
+                return i + 1;
+            }
+        }
+        return -1;
     }
 
     private static boolean matchesUsername(Widget widget, String normalizedUsername)
