@@ -257,11 +257,14 @@ public class MessageContainer extends Overlay
             // Clamp scroll
             scrollOffsetPx = MathUtil.clamp(scrollOffsetPx, 0, Math.max(0, contentHeightPx - msgViewport.height));
 
-            // Clip to message viewport and draw from top honoring scroll
+            // Clip to message viewport and draw using a bottom anchor when content is shorter
+            // than the available viewport. Once content overflows, the existing scroll math
+            // continues to work unchanged.
             Shape oldClip = g.getClip();
             g.setClip(msgViewport);
 
-            int y = msgViewport.y - scrollOffsetPx + fm.getAscent();
+int bottomAlignOffset = Math.max(0, msgViewport.height - contentHeightPx);
+            int y = msgViewport.y + bottomAlignOffset - scrollOffsetPx + fm.getAscent();
             List<UsernameHit> renderedUsernameHits = new ArrayList<>();
             for (VisualLine vl : all) {
                 if (y - fm.getAscent() > msgViewport.y + msgViewport.height)
