@@ -49,6 +49,13 @@ public enum ChannelPrefix
         this.groupIronmanOnly = groupIronmanOnly;
     }
 
+    /**
+     * Finds the channel prefix the given input starts with, or null when it has none.
+     * Entries are tested in declaration order, which mirrors the game's own precedence
+     * (so "////" wins over "///", and "/@gc" over "/@g"). The group prefixes are only
+     * recognised for group ironman accounts, exactly like the vanilla chatbox.
+     * Matching is deliberately case-insensitive everywhere; vanilla is only partly so.
+     */
     public static @Nullable ChannelPrefix match(String text, boolean groupIronman) {
         if (text == null || !text.startsWith("/"))
             return null;

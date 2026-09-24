@@ -256,6 +256,19 @@ public class ClientUtil
             player.getWorldLocation().getRegionID() != 0;
     }
 
+    // VarbitID.IRONMAN values for the group ironman account types (see the is_group_iron cs2 proc)
+    private static final int IRONMAN_GROUP = 4;
+    private static final int IRONMAN_GROUP_HARDCORE = 5;
+    private static final int IRONMAN_GROUP_UNRANKED = 6;
+
+    /**
+     * MUST be on client thread.
+     */
+    public static boolean isGroupIronman(Client client) {
+        int type = client.getVarbitValue(VarbitID.IRONMAN);
+        return type == IRONMAN_GROUP || type == IRONMAN_GROUP_HARDCORE || type == IRONMAN_GROUP_UNRANKED;
+    }
+
     public static void setChatInputText(Client client, String value) {
         final String v = value == null ? "" : value;
         try {

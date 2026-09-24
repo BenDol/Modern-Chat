@@ -7,6 +7,7 @@ import com.modernchat.event.ChatMessageSentEvent;
 import com.modernchat.event.ChatPrivateMessageSentEvent;
 import com.modernchat.event.ChatSendLockedEvent;
 import com.modernchat.event.SubmitHistoryEvent;
+import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -14,10 +15,10 @@ import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
 import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.ScriptCallbackEvent;
-import net.runelite.client.callback.ClientThread;
-import net.runelite.client.eventbus.EventBus;
 import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.EventBus;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -113,7 +114,7 @@ public class MessageService implements ChatService
 
         // Honor the vanilla channel prefixes (/g, /@g, ////, /c, //, /f, /p, ...)
         // the same way the game's own chatbox does.
-        ChannelPrefix prefix = ChannelPrefix.match(text, isGroupIronman());
+        ChannelPrefix prefix = ChannelPrefix.match(text, ClientUtil.isGroupIronman(client));
         if (prefix != null) {
             message = text.substring(prefix.getPrefix().length());
             channel = prefix.getMode();
@@ -121,7 +122,9 @@ public class MessageService implements ChatService
                 chatboxMode = prefix.getChatboxMode();
         }
 
-        if (message.isEmpty())
+        // A bare "/@g" carries no message but must still reach the script so it can
+        // switch the chatbox mode; the script itself skips the send when the text is empty.
+        if (message.isEmpty() && chatboxMode == -1)
             return;
 
         // Group chat is sent as clan chat with the ironman clan type, same as the vanilla /g prefix
@@ -131,12 +134,8 @@ public class MessageService implements ChatService
 
         client.setVarcStrValue(VarClientID.CHATINPUT, text);
         client.runScript(ScriptID.CHAT_SEND, message, chatType, clanType, 0, chatboxMode);
-        eventBus.post(new ChatMessageSentEvent(message, chatType, clanType));
-    }
-
-    private boolean isGroupIronman() {
-        int ironman = client.getVarbitValue(VarbitID.IRONMAN);
-        return ironman == 4 || ironman == 5 || ironman == 6;
+        if (!message.isEmpty())
+            eventBus.post(new ChatMessageSentEvent(message, chatType, clanType));
     }
 
     public void sendPrivateChat(String text, String targetName) {
