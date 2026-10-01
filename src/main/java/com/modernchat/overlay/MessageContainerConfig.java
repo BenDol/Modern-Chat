@@ -70,6 +70,8 @@ public interface MessageContainerConfig extends ChatColors
 
     default Color getTypePrefixColor() { return new Color(0, 0, 0, 0); }
 
+    default Color getUsernameColor() { return getPublicUsernameColor(); }
+
     class Default implements MessageContainerConfig
     {
         @Override
