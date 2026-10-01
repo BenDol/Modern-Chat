@@ -369,8 +369,17 @@ public class ChatUtil
 
         ChatMessageType type = e.getType();
         String originalMsg = e.getMessage();
-        // Use filtered message if provided, otherwise use original
-        String msg = filteredMessage != null ? filteredMessage : originalMsg;
+        // RuneLite plugins such as Emoji can rewrite the MessageNode after the original
+        // ChatMessage event is created. Prefer that processed text unless a chat filter
+        // intentionally supplied different content.
+        String processedMsg = e.getMessageNode() != null
+            ? e.getMessageNode().getValue()
+            : null;
+        boolean messageWasFiltered = filteredMessage != null && originalMsg != null
+            && !filteredMessage.equals(originalMsg);
+        String msg = !messageWasFiltered && processedMsg != null
+            ? processedMsg
+            : filteredMessage != null ? filteredMessage : originalMsg;
         String[] params = msg.split("\\|", 3);
         String receiverName = senderReceiver.getReceiverName();
         String senderName = senderReceiver.getSenderName();
