@@ -680,6 +680,27 @@ public class MessageContainer extends Overlay
                 // Unknown tag: pass it through literally instead of dropping it
                 buf.append('<').append(tagRaw).append('>');
                 i = j + 1;
+            } else if (ch == '@') {
+                // The game decodes Jagex message tags like @mes_hl_blue@ into colors when
+                // drawing the chatbox. Modern Chat draws its own chatbox, so replicate it.
+                int j = s.indexOf('@', i + 1);
+                String token = j < 0 ? null : s.substring(i + 1, j);
+                Color highlight = token == null ? null : jagexHighlightColor(token);
+                if (highlight != null) {
+                    if (buf.length() > 0) {
+                        out.getSegs().add(new TextSegment(buf.toString(), cur));
+                        buf.setLength(0);
+                    }
+                    stack.push(cur);
+                    cur = highlight;
+                    i = j + 1;
+                } else if (token != null && token.regionMatches(true, 0, "mes_hl_", 0, "mes_hl_".length())) {
+                    // Unrecognized highlight tag: strip it without changing color
+                    i = j + 1;
+                } else {
+                    buf.append(ch);
+                    i++;
+                }
             } else {
                 buf.append(ch);
                 i++;
@@ -690,6 +711,61 @@ public class MessageContainer extends Overlay
             out.getSegs().add(new TextSegment(buf.toString(), cur));
 
         return out;
+    }
+
+    /**
+     * Decodes a Jagex message-highlight tag body (the text between {@code @@} delimiters), such as
+     * {@code mes_hl_blue} or {@code mes_hl_red}, into the color the game would render it as.
+     * Returns {@code null} for anything that is not a known highlight tag so non-tag {@code @}
+     * characters are left untouched.
+     */
+    private static @Nullable Color jagexHighlightColor(String token) {
+        if (token == null || !token.regionMatches(true, 0, "mes_hl_", 0, "mes_hl_".length())) {
+            return null;
+        }
+
+        String name = token.substring("mes_hl_".length()).toLowerCase(Locale.ROOT);
+        switch (name) {
+            case "red":
+            case "lre":
+                return new Color(0xFF2222);
+            case "gre":
+            case "green":
+                return new Color(0x00FF00);
+            case "blu":
+            case "blue":
+                return new Color(0x0000FF);
+            case "yel":
+            case "yellow":
+                return new Color(0xFFFF00);
+            case "cya":
+            case "cyan":
+                return new Color(0x00FFFF);
+            case "pur":
+            case "purple":
+            case "mag":
+            case "magenta":
+                return new Color(0xFF00FF);
+            case "whi":
+            case "white":
+                return new Color(0xFFFFFF);
+            case "bla":
+            case "black":
+                return new Color(0x000000);
+            case "dre":
+                return new Color(0x800000);
+            case "pink":
+                return new Color(0xFF69B4);
+            case "orange":
+                return new Color(0xFF8000);
+            case "gold":
+                return new Color(0xFFD700);
+            case "navy":
+            case "dbl":
+                return new Color(0x000080);
+            default:
+                return null;
+        }
     }
 
     private List<VisualLine> wrapRichLine(RichLine rl, FontMetrics fm, int maxWidth)
