@@ -47,6 +47,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.ProfileChanged;
+import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
@@ -153,6 +154,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private WidgetBucket widgetBucket;
     @Inject private MessageService messageService;
     @Inject private MessageFilterService messageFilterService;
+    @Inject private ChatIconManager chatIconManager;
     @Inject private NotificationService notificationService;
     @Inject private ChatOverlay overlay;
     @Inject private ChannelFilterState channelFilterState;
@@ -541,7 +543,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         }
 
         // Use the filtered message text
-        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage, chatIconManager);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages
