@@ -327,7 +327,7 @@ public class ChatOverlay extends OverlayPanel
 
         ChatProxy chatProxy = chatProxyProvider.get();
         clientThread.invoke(() -> setHidden(config.isStartHidden()));
-        clientThread.invokeAtTickEnd(() -> selectTab(config.getDefaultChatMode()));
+        clientThread.invokeAtTickEnd(() -> selectTabByKey(ALL_TAB_KEY));
     }
 
     public void shutDown() {
@@ -494,7 +494,7 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void selectDefaultTab() {
-        selectTab(config.getDefaultChatMode());
+        selectTabByKey(ALL_TAB_KEY);
     }
 
     public void selectTab(ChatMode chatMode) {
