@@ -18,6 +18,7 @@ import com.modernchat.draw.RichLine;
 import com.modernchat.draw.RowHit;
 import com.modernchat.draw.Tab;
 import com.modernchat.draw.TextSegment;
+import com.modernchat.draw.UsernameHit;
 import com.modernchat.event.ChatMenuOpenedEvent;
 import com.modernchat.event.ChatResizedEvent;
 import com.modernchat.event.ChatToggleEvent;
@@ -32,6 +33,7 @@ import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageService;
+import com.modernchat.service.PlayerMenuService;
 import com.modernchat.service.SpamFilterService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
@@ -127,6 +129,7 @@ public class ChatOverlay extends OverlayPanel
     @Inject private NotificationService notificationService;
     @Inject private FilterService filterService;
     @Inject private MessageService messageService;
+    @Inject private PlayerMenuService playerMenuService;
     @Inject private ImageService imageService;
     @Inject private SpamFilterService spamFilterService;
     @Inject @Getter private ResizePanel resizePanel;
@@ -1506,6 +1509,11 @@ public class ChatOverlay extends OverlayPanel
         Point mouse = new Point(mp.getX(), mp.getY());
 
         Menu rootMenu = client.getMenu();
+
+        UsernameHit usernameHit = messageContainer.usernameAt(mouse);
+        if (usernameHit != null) {
+            playerMenuService.addMenuEntries(usernameHit);
+        }
 
         if (messageContainer != null && messageContainer.hitAt(mouse)) {
             rootMenu.createMenuEntry(1)
