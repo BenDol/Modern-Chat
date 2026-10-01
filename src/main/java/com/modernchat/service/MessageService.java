@@ -118,7 +118,10 @@ public class MessageService implements ChatService
 
         clientThread.invoke(() -> {
             client.setVarcStrValue(VarClientID.CHATINPUT, text);
-            client.runScript(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, 0);
+            client.createScriptEventBuilder(ScriptID.CHAT_SEND, text, modeValue, clanTypeValue, 0, -1)
+                .build()
+                .setCanSendPackets(true)
+                .run();
             eventBus.post(new ChatMessageSentEvent(text, modeValue, clanTypeValue));
         });
 
@@ -146,7 +149,10 @@ public class MessageService implements ChatService
         }
 
         clientThread.invoke(() -> {
-            client.runScript(ScriptID.PRIVMSG, targetName, text);
+            client.createScriptEventBuilder(ScriptID.PRIVMSG, targetName, text)
+                .build()
+                .setCanSendPackets(true)
+                .run();
             eventBus.post(new SubmitHistoryEvent(text));
             eventBus.post(new ChatPrivateMessageSentEvent(text, targetName));
         });
