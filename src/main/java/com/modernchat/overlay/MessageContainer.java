@@ -488,7 +488,8 @@ public class MessageContainer extends Overlay
             targetName,
             line.getPrefix(),
             line.getDuplicateKey(),
-            line.isCollapsed());
+            line.isCollapsed(),
+            line.getMessageId());
     }
 
     public void pushLine(
@@ -514,6 +515,44 @@ public class MessageContainer extends Overlay
         String duplicateKey,
         boolean collapsed
     ) {
+        pushLine(s, type, timestamp, sender, receiver, targetName, prefix, duplicateKey, collapsed, -1);
+    }
+
+    public void pushLine(
+        String s,
+        ChatMessageType type,
+        long timestamp,
+        String sender,
+        String receiver,
+        String targetName,
+        String prefix,
+        String duplicateKey,
+        boolean collapsed,
+        int messageId
+    ) {
+        RichLine rl = createRichLine(s, type, timestamp, sender, receiver, targetName,
+            prefix, duplicateKey, collapsed, messageId);
+
+        // If this is a collapsed message (has count suffix), remove previous messages with same key
+        if (collapsed && duplicateKey != null) {
+            lines.removeIf(line -> duplicateKey.equals(line.getDuplicateKey()));
+        }
+
+        pushRich(rl);
+    }
+
+    private RichLine createRichLine(
+        String s,
+        ChatMessageType type,
+        long timestamp,
+        String sender,
+        String receiver,
+        String targetName,
+        String prefix,
+        String duplicateKey,
+        boolean collapsed,
+        int messageId
+    ) {
         type = type == null ? ChatMessageType.GAMEMESSAGE : type;
 
         // Always use default color as base (for sender name, etc.)
@@ -535,15 +574,94 @@ public class MessageContainer extends Overlay
         rl.setSender(sender);
         rl.setReceiver(receiver);
         rl.setTargetName(targetName);
+        rl.setPrefix(prefix);
         rl.setDuplicateKey(duplicateKey);
         rl.setCollapsed(collapsed);
+        rl.setMessageId(messageId);
 
-        // If this is a collapsed message (has count suffix), remove previous messages with same key
-        if (collapsed && duplicateKey != null) {
-            lines.removeIf(line -> duplicateKey.equals(line.getDuplicateKey()));
+        return rl;
+    }
+
+    /** Replace a command row in place when RuneLite supplies its asynchronous formatted result. */
+    public boolean replaceLineBody(int messageId, String messageBody) {
+        if (messageId < 0) {
+            return false;
         }
 
-        pushRich(rl);
+        List<RichLine> updated = new ArrayList<>(lines.size());
+        boolean replaced = false;
+        for (RichLine line : lines) {
+            if (line.getMessageId() != messageId) {
+                updated.add(line);
+                continue;
+            }
+
+            String body = messageBody == null ? "" : messageBody;
+            RichLine replacement = createRichLine(
+                senderPrefixMarkup(line) + body,
+                line.getType(),
+                line.getTimestamp(),
+                line.getSender(),
+                line.getReceiver(),
+                line.getTargetName(),
+                line.getPrefix(),
+                line.getDuplicateKey(),
+                line.isCollapsed(),
+                messageId);
+            updated.add(replacement);
+            replaced = true;
+        }
+
+        if (replaced) {
+            lines.clear();
+            lines.addAll(updated);
+        }
+        return replaced;
+    }
+
+    /** Serialize the existing sender prefix so replacing a body preserves account icons and colors. */
+    private String senderPrefixMarkup(RichLine line) {
+        String sender = line.getSender();
+        if (StringUtil.isNullOrEmpty(sender)) {
+            return "";
+        }
+
+        int remaining = sender.length() + 2; // sender plus ": "
+        StringBuilder prefix = new StringBuilder();
+        Color base = getColor(line.getType());
+        for (TextSegment segment : line.getSegs()) {
+            if (segment instanceof TimestampSegment || segment instanceof PrefixSegment) {
+                continue;
+            }
+            if (segment instanceof ImageSegment) {
+                if (remaining > 0) {
+                    prefix.append("<img=").append(((ImageSegment) segment).getId()).append('>');
+                }
+                continue;
+            }
+            if (remaining <= 0) {
+                break;
+            }
+
+            String text = segment.getText();
+            if (StringUtil.isNullOrEmpty(text)) {
+                continue;
+            }
+            int length = Math.min(remaining, text.length());
+            Color color = segment.getColor();
+            if (color != null && base != null && !color.equals(base)) {
+                prefix.append("<col=")
+                    .append(String.format("%06X", color.getRGB() & 0xFFFFFF))
+                    .append('>')
+                    .append(text, 0, length)
+                    .append("</col>");
+            } else {
+                prefix.append(text, 0, length);
+            }
+            remaining -= length;
+        }
+
+        return remaining == 0 ? prefix.toString() : sender + ": ";
     }
 
     /**
@@ -872,6 +990,10 @@ public class MessageContainer extends Overlay
         copy.setSender(source.getSender());
         copy.setReceiver(source.getReceiver());
         copy.setTargetName(source.getTargetName());
+        copy.setPrefix(source.getPrefix());
+        copy.setDuplicateKey(source.getDuplicateKey());
+        copy.setCollapsed(source.isCollapsed());
+        copy.setMessageId(source.getMessageId());
 
         // Copy segments (they're immutable-ish, safe to share references)
         copy.getSegs().addAll(source.getSegs());

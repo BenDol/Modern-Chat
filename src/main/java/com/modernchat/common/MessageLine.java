@@ -22,4 +22,6 @@ public class MessageLine
     boolean collapsed;
     /** Icon ID from the sender's name tag (e.g. ironman icon), or -1 if none */
     int senderIconId;
+    /** ID of the backing RuneLite MessageNode, or -1 for synthetic messages. */
+    int messageId;
 }
