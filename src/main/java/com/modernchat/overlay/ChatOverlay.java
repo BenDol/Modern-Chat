@@ -2686,6 +2686,18 @@ public class ChatOverlay extends OverlayPanel
             return shouldBlock;
         }
 
+        private boolean isClickThroughMessageArea(MouseEvent e) {
+            return config.isAllowClickThrough()
+                && e.getButton() == MouseEvent.BUTTON1
+                && !client.isMenuOpen()
+                && messageContainer != null
+                && messageContainer.hitAt(new Point(e.getX(), e.getY()))
+                && !tabsBarBounds.contains(e.getPoint())
+                && !inputBounds.contains(e.getPoint())
+                && !filterButtonBounds.contains(e.getPoint())
+                && !reportButtonBounds.contains(e.getPoint());
+        }
+
         @Override public MouseEvent mouseEntered(MouseEvent e) { return e; }
         @Override public MouseEvent mouseExited(MouseEvent e) { return e; }
         @Override public MouseEvent mouseMoved(MouseEvent e) { return e; }
@@ -2847,11 +2859,27 @@ public class ChatOverlay extends OverlayPanel
                         dragTabWidth = b.width;
                         dragTabHeight = b.height;
 
+                        // Keep the input ready when clicking or starting a drag on a tab.
+                        if (config.isPreserveFocusOnOutsideClick()) {
+                            focusInput();
+                        }
+
                         e.consume();
                         return true;
                     }
                     return false; // RMB falls through for RuneLite menu
                 }
+            }
+
+            if (isClickThroughMessageArea(e)) {
+                if (!config.isPreserveFocusOnOutsideClick()) {
+                    boolean wasFocused = inputFocused;
+                    unfocusInput();
+                    if (wasFocused) {
+                        eventBus.post(new ChatToggleEvent(true));
+                    }
+                }
+                return false;
             }
 
             // Input focus + selection: LMB only
