@@ -1606,10 +1606,24 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
     }
 
     @ConfigItem(
+        keyName = Keys.featurePeek_MessageSpacing,
+        name = "Message Spacing",
+        description = "Extra spacing between messages in the peek overlay",
+        position = 18,
+        section = peekOverlaySection
+    )
+    @Range(min = 0, max = 100)
+    @Units(Units.PIXELS)
+    @Override
+    default int featurePeek_MessageSpacing() {
+        return 0;
+    }
+
+    @ConfigItem(
         keyName = Keys.featurePeek_FadeEnabled,
         name = "Fade Enabled",
         description = "Enable fade-in/out effect for the peek overlay (overlay will automatically reappear when a message is received)",
-        position = 18,
+        position = 19,
         section = peekOverlaySection
     )
     @Override
@@ -1621,7 +1635,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_FadeDelay,
         name = "Fade Delay (s)",
         description = "Delay (seconds) of inactivity before fading in/out the peek overlay",
-        position = 19,
+        position = 20,
         section = peekOverlaySection
     )
     @Override
@@ -1633,7 +1647,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_FadeDuration,
         name = "Fade Duration (ms)",
         description = "Duration (ms) for fade-in/out effect in the peek overlay",
-        position = 20,
+        position = 21,
         section = peekOverlaySection
     )
     @Range(max = 10000)
@@ -1646,7 +1660,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_SourceTabKey,
         name = "Peek Source Tab",
         description = "Tab to use as the source for peek messages (empty = all messages)",
-        position = 21,
+        position = 22,
         section = peekOverlaySection,
         hidden = true
     )
@@ -1659,7 +1673,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_SuppressFadeAtGE,
         name = "Suppress Fade at GE",
         description = "Don't auto-reset fade when at the Grand Exchange (busy area)",
-        position = 22,
+        position = 23,
         section = peekOverlaySection
     )
     @Override
@@ -1671,7 +1685,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_TimestampColor,
         name = "Timestamp Color",
         description = "Color for message timestamps. Set fully transparent to use Modern Design color, or line color if that is also transparent.",
-        position = 23,
+        position = 24,
         section = peekOverlaySection
     )
     @Alpha
@@ -1684,7 +1698,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_TypePrefixColor,
         name = "Type Prefix Color",
         description = "Color for message type prefixes ([Clan], [System], etc.). Set fully transparent to use Modern Design color, or line color if that is also transparent.",
-        position = 24,
+        position = 25,
         section = peekOverlaySection
     )
     @Alpha
@@ -1697,7 +1711,7 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
         keyName = Keys.featurePeek_SourceTabIndicatorColor,
         name = "Source Tab Indicator",
         description = "Border color to highlight which tab is the peek overlay source. Set fully transparent to disable.",
-        position = 25,
+        position = 26,
         section = peekOverlaySection
     )
     @Alpha
