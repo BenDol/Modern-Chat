@@ -30,6 +30,7 @@ import com.modernchat.service.ForceRecolorService;
 import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageFilterService;
 import com.modernchat.service.MessageService;
+import com.modernchat.service.RuneLiteFormattedMessageService;
 import com.modernchat.service.PrivateChatService;
 import com.modernchat.service.ProfileService;
 import com.modernchat.service.SoundService;
@@ -120,6 +121,7 @@ public class ModernChatPlugin extends Plugin {
     @Inject private SpamFilterService spamFilterService;
 	@Inject private ForceRecolorService forceRecolorService;
 	@Inject private MessageFilterService messageFilterService;
+	@Inject private RuneLiteFormattedMessageService runeLiteFormattedMessageService;
 	@Inject private KeyRemappingService keyRemappingService;
 	@Inject private WidgetBucket widgetBucket;
 	@Inject private ChatProxy chatProxy;
@@ -163,6 +165,7 @@ public class ModernChatPlugin extends Plugin {
 		imageService.startUp();
 		forceRecolorService.startUp();
 		messageFilterService.startUp();
+		runeLiteFormattedMessageService.startUp();
 
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "/com/modernchat/images/icon.png");
 		if (icon == null) {
@@ -240,6 +243,7 @@ public class ModernChatPlugin extends Plugin {
 		imageService.shutDown();
 		forceRecolorService.shutDown();
 		messageFilterService.shutDown();
+		runeLiteFormattedMessageService.shutDown();
 		keyRemappingService.shutDown();
 
 		if (features != null) {
@@ -463,6 +467,12 @@ public class ModernChatPlugin extends Plugin {
 	public void onPostClientTick(PostClientTick e) {
 		// Poll once per tick but do nothing unless bounds changed
 		maybeReanchor(false);
+		if (chatRedesignFeature.isEnabled() || peekChatFeature.isEnabled()) {
+			runeLiteFormattedMessageService.poll();
+		} else {
+			// Retain no references to default-chat messages when Modern Chat has no consumer.
+			runeLiteFormattedMessageService.clear();
+		}
 	}
 
 	@Subscribe
@@ -518,6 +528,7 @@ public class ModernChatPlugin extends Plugin {
 
 		if (e.getGameState() == GameState.LOGIN_SCREEN || e.getGameState() == GameState.HOPPING) {
 			chatOverlay.setLoginTime(null);
+			runeLiteFormattedMessageService.clear();
 			loggedIn = false;
 		}
 	}
