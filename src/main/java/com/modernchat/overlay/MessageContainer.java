@@ -11,6 +11,7 @@ import com.modernchat.draw.RichLine;
 import com.modernchat.draw.RowHit;
 import com.modernchat.draw.TextSegment;
 import com.modernchat.draw.TimestampSegment;
+import com.modernchat.draw.UsernameHit;
 import com.modernchat.draw.VisualLine;
 import com.modernchat.feature.ToggleChatFeature;
 import com.modernchat.service.FontService;
@@ -94,6 +95,7 @@ public class MessageContainer extends Overlay
     @Getter private volatile boolean fading = false;
 
     protected final Deque<RichLine> lines = new ArrayDeque<>();
+    private volatile List<UsernameHit> usernameHits = List.of();
     protected Font lineFont = null;
     protected FontStyle lineFontStyle = null;
 
@@ -149,6 +151,7 @@ public class MessageContainer extends Overlay
     }
 
     public void shutDown() {
+        usernameHits = List.of();
         if (this.mouse != null) {
             unregisterMouseListener();
             this.mouse = null;
@@ -159,6 +162,8 @@ public class MessageContainer extends Overlay
     public Dimension render(Graphics2D g) {
         if (!isEnabled() || hidden)
             return null;
+
+        usernameHits = List.of();
 
         if (!canShow()) {
             resetFade();
@@ -215,6 +220,7 @@ public class MessageContainer extends Overlay
 
             // Flatten wrapped lines (oldest to newest)
             final List<VisualLine> all = new ArrayList<>(64);
+            final List<RichLine> owners = new ArrayList<>(64);
             for (RichLine rl : lines) {
                 if (!config.isShowPrivateMessages() && ChatUtil.isPrivateMessage(rl.getType())) {
                     continue;
@@ -233,8 +239,12 @@ public class MessageContainer extends Overlay
                     rl.setLineCache(wrapRichLine(rl, fm, innerW));
                 }
                 final List<VisualLine> cache = rl.getLineCache();
-                if (cache != null && !cache.isEmpty())
+                if (cache != null && !cache.isEmpty()) {
                     all.addAll(cache);
+                    for (int i = 0; i < cache.size(); i++) {
+                        owners.add(rl);
+                    }
+                }
             }
 
             // Measure content height and auto-stick to bottom when needed
@@ -251,11 +261,19 @@ public class MessageContainer extends Overlay
             g.setClip(msgViewport);
 
             int y = msgViewport.y - scrollOffsetPx + fm.getAscent();
-            for (VisualLine vl : all) {
+            List<UsernameHit> renderedUsernameHits = new ArrayList<>();
+            for (int visualLineIndex = 0; visualLineIndex < all.size(); visualLineIndex++) {
+                VisualLine vl = all.get(visualLineIndex);
+                RichLine owner = owners.get(visualLineIndex);
                 if (y - fm.getAscent() > msgViewport.y + msgViewport.height)
                     break; // below viewport
                 if (y + fm.getDescent() >= msgViewport.y) {
                     int dx = left;
+                    int usernameCharsRemaining = isPlayerMessageType(owner.getType())
+                        && owner.getSender() != null
+                        && !"You".equalsIgnoreCase(owner.getSender())
+                        ? owner.getSender().length()
+                        : 0;
                     for (TextSegment seg : vl.getSegs()) {
                         if (seg instanceof ImageSegment) {
                             ImageSegment imageSeg = (ImageSegment) seg;
@@ -311,6 +329,26 @@ public class MessageContainer extends Overlay
                             segColor, config.getShadowColor(),
                             config.getTextShadow(), config.getTextOutline());
 
+                        if (usernameCharsRemaining > 0
+                            && !(seg instanceof TimestampSegment)
+                            && !(seg instanceof PrefixSegment)
+                            && segText != null
+                            && !segText.isEmpty()) {
+                            int usernamePartLength = Math.min(usernameCharsRemaining, segText.length());
+                            if (usernamePartLength > 0) {
+                                int usernameWidth = fm.stringWidth(segText.substring(0, usernamePartLength));
+                                Rectangle usernameBounds = new Rectangle(
+                                    dx, y - fm.getAscent(), usernameWidth,
+                                    fm.getAscent() + fm.getDescent()).intersection(msgViewport);
+                                String rawName = rawSenderName(owner.getDuplicateKey());
+                                renderedUsernameHits.add(new UsernameHit(
+                                    usernameBounds,
+                                    owner.getSender(),
+                                    rawName));
+                                usernameCharsRemaining -= usernamePartLength;
+                            }
+                        }
+
                         dx += fm.stringWidth(segText);
                         if (dx > right)
                             break;
@@ -322,6 +360,7 @@ public class MessageContainer extends Overlay
             g.setClip(oldClip);
 
             drawScrollbar(g, msgViewport, sbW);
+            usernameHits = List.copyOf(renderedUsernameHits);
         } finally {
             g.setComposite(oldComp);
         }
@@ -404,6 +443,7 @@ public class MessageContainer extends Overlay
 
     public void clearMessages() {
         lines.clear();
+        usernameHits = List.of();
         clearChatWidget();
     }
 
@@ -936,8 +976,44 @@ public class MessageContainer extends Overlay
         return null;
     }
 
+    public @Nullable UsernameHit usernameAt(Point p) {
+        if (p == null || hidden || !isEnabled()) {
+            return null;
+        }
+
+        java.awt.Point point = new java.awt.Point(p.getX(), p.getY());
+        List<UsernameHit> hits = usernameHits;
+        for (int i = hits.size() - 1; i >= 0; i--) {
+            UsernameHit hit = hits.get(i);
+            if (hit.getBounds().contains(point)) {
+                return hit;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isPlayerMessageType(ChatMessageType type) {
+        return type == ChatMessageType.PUBLICCHAT
+            || type == ChatMessageType.MODCHAT
+            || type == ChatMessageType.PRIVATECHAT
+            || type == ChatMessageType.MODPRIVATECHAT
+            || type == ChatMessageType.FRIENDSCHAT
+            || type == ChatMessageType.CLAN_CHAT
+            || type == ChatMessageType.CLAN_GUEST_CHAT
+            || type == ChatMessageType.CLAN_GIM_CHAT;
+    }
+
+    private static String rawSenderName(String duplicateKey) {
+        if (duplicateKey == null) {
+            return null;
+        }
+        int separator = duplicateKey.indexOf(':');
+        return separator < 0 ? duplicateKey : duplicateKey.substring(0, separator);
+    }
+
     public void clear() {
         lines.clear();
+        usernameHits = List.of();
     }
 
     public void registerMouseListener() {
