@@ -182,6 +182,7 @@ public interface ModernChatConfigBase extends
         String featurePeek_Padding = "featurePeek_Padding";
         String featurePeek_MarginRight = "featurePeek_MarginRight";
         String featurePeek_MarginBottom = "featurePeek_MarginBottom";
+        String featurePeek_MessageSpacing = "featurePeek_MessageSpacing";
         String featurePeek_FadeEnabled = "featurePeek_FadeEnabled";
         String featurePeek_FadeDelay = "featurePeek_FadeDelay";
         String featurePeek_FadeDuration = "featurePeek_FadeDuration";
@@ -366,6 +367,7 @@ public interface ModernChatConfigBase extends
         PEEK_PADDING(Keys.featurePeek_Padding, Kind.INT, ModernChatConfigBase::featurePeek_Padding),
         PEEK_MARGIN_RIGHT(Keys.featurePeek_MarginRight, Kind.INT, ModernChatConfigBase::featurePeek_MarginRight),
         PEEK_MARGIN_BOTTOM(Keys.featurePeek_MarginBottom, Kind.INT, ModernChatConfigBase::featurePeek_MarginBottom),
+        PEEK_MESSAGE_SPACING(Keys.featurePeek_MessageSpacing, Kind.INT, ModernChatConfigBase::featurePeek_MessageSpacing),
         PEEK_FADE_ENABLED(Keys.featurePeek_FadeEnabled, Kind.BOOL, ModernChatConfigBase::featurePeek_FadeEnabled),
         PEEK_FADE_DELAY(Keys.featurePeek_FadeDelay, Kind.INT, ModernChatConfigBase::featurePeek_FadeDelay),
         PEEK_FADE_DURATION(Keys.featurePeek_FadeDuration, Kind.INT, ModernChatConfigBase::featurePeek_FadeDuration),
@@ -455,6 +457,7 @@ public interface ModernChatConfigBase extends
     Color featureRedesign_TimestampColor();
     Color featureRedesign_TypePrefixColor();
 
+    int featurePeek_MessageSpacing();
     Color featurePeek_TimestampColor();
     Color featurePeek_TypePrefixColor();
     Color featurePeek_SourceTabIndicatorColor();
@@ -657,6 +660,7 @@ public interface ModernChatConfigBase extends
         @Override public int featurePeek_Padding() { return getInt(Keys.featurePeek_Padding, DEFAULTS.featurePeek_Padding()); }
         @Override public int featurePeek_MarginRight() { return getInt(Keys.featurePeek_MarginRight, DEFAULTS.featurePeek_MarginRight()); }
         @Override public int featurePeek_MarginBottom() { return getInt(Keys.featurePeek_MarginBottom, DEFAULTS.featurePeek_MarginBottom()); }
+        @Override public int featurePeek_MessageSpacing() { return getInt(Keys.featurePeek_MessageSpacing, DEFAULTS.featurePeek_MessageSpacing()); }
         @Override public boolean featurePeek_FadeEnabled() { return getBool(Keys.featurePeek_FadeEnabled, DEFAULTS.featurePeek_FadeEnabled()); }
         @Override public int featurePeek_FadeDelay() { return getInt(Keys.featurePeek_FadeDelay, DEFAULTS.featurePeek_FadeDelay()); }
         @Override public int featurePeek_FadeDuration() { return getInt(Keys.featurePeek_FadeDuration, DEFAULTS.featurePeek_FadeDuration()); }
