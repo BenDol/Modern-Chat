@@ -199,9 +199,11 @@ public class PeekChatFeature extends AbstractChatFeature<PeekChatFeatureConfig>
 
 	@Override
 	public void startUp() {
-		super.startUp();
-
+		// The overlay must be ready before we subscribe: startup runs off the client
+		// thread, so an event can be delivered the moment we are on the bus
 		chatPeekOverlay.startUp(partitionConfig(config), ChatMode.PUBLIC, false);
+
+		super.startUp();
 
 		overlayManager.add(chatPeekOverlay);
 	}
