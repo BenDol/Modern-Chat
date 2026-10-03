@@ -133,9 +133,23 @@ public class MessageService implements ChatService
         final int clanType = (group ? ClanType.IRONMAN : ClanType.NORMAL).getValue();
 
         client.setVarcStrValue(VarClientID.CHATINPUT, text);
-        client.runScript(ScriptID.CHAT_SEND, message, chatType, clanType, 0, chatboxMode);
+        runSendScript(ScriptID.CHAT_SEND, message, chatType, clanType, 0, chatboxMode);
         if (!message.isEmpty())
             eventBus.post(new ChatMessageSentEvent(message, chatType, clanType));
+    }
+
+    /**
+     * Runs a script that sends a packet to the server. RuneLite blocks packets from
+     * scripts started through {@link Client#runScript}, so a send has to opt in, the
+     * same way the client's own ChatInputManager does. Only use this for sends that
+     * are the direct result of the player submitting a message.
+     * MUST be on client thread.
+     */
+    private void runSendScript(Object... args) {
+        client.createScriptEventBuilder(args)
+            .build()
+            .setCanSendPackets(true)
+            .run();
     }
 
     public void sendPrivateChat(String text, String targetName) {
@@ -159,7 +173,7 @@ public class MessageService implements ChatService
         }
 
         clientThread.invoke(() -> {
-            client.runScript(ScriptID.PRIVMSG, targetName, text);
+            runSendScript(ScriptID.PRIVMSG, targetName, text);
             eventBus.post(new SubmitHistoryEvent(text));
             eventBus.post(new ChatPrivateMessageSentEvent(text, targetName));
         });
