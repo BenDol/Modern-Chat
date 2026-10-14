@@ -1,8 +1,10 @@
 package com.modernchat;
 
 import com.modernchat.service.ProfileService;
+import com.modernchat.service.SpamFilterService;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.Filepath;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -20,13 +22,13 @@ import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 
 public class ModernChatPanel extends PluginPanel
 {
     private final ProfileService profileService;
+    private final SpamFilterService spamFilterService;
     private final ConfigManager configManager;
 
     private final DefaultListModel<String> model = new DefaultListModel<>();
@@ -38,10 +40,13 @@ public class ModernChatPanel extends PluginPanel
     private final JButton copyPathBtn = new JButton("Copy Path");
     private final JButton saveBtn = new JButton("Save");
     private final JButton saveAsBtn = new JButton("Save As");
+    private final JButton importSpamBtn = new JButton("Import Spam List");
 
-    public ModernChatPanel(ProfileService profileService, ConfigManager configManager) {
+    public ModernChatPanel(ProfileService profileService, SpamFilterService spamFilterService,
+                           ConfigManager configManager) {
         super(false); // no wrap
         this.profileService = profileService;
+        this.spamFilterService = spamFilterService;
         this.configManager = configManager;
 
         setLayout(new BorderLayout(0, 8));
@@ -70,7 +75,7 @@ public class ModernChatPanel extends PluginPanel
 
         add(new JScrollPane(list), BorderLayout.CENTER);
 
-        JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 3));
+        JPanel buttons = new JPanel(new GridLayout(3, 1, 0, 3));
         buttons.add(selectBtn);
         add(buttons, BorderLayout.SOUTH);
 
@@ -80,7 +85,10 @@ public class ModernChatPanel extends PluginPanel
         inner.add(reloadBtn);
         inner.add(copyPathBtn);
         buttons.add(inner, BorderLayout.SOUTH);
+        buttons.add(importSpamBtn);
 
+        importSpamBtn.setToolTipText("Import marked spam from the Spam Filter plugin's spam-filter folder");
+        importSpamBtn.addActionListener(ae -> importSpamList());
         selectBtn.addActionListener(ae -> setActiveFromSelection());
         reloadBtn.addActionListener(ae -> loadProfilesIntoList());
         copyPathBtn.setToolTipText("Copy the profiles folder path to your clipboard");
@@ -144,11 +152,13 @@ public class ModernChatPanel extends PluginPanel
     }
 
     private void copyProfilesFolderPath() {
-        Path dir;
+        Filepath dir;
         try {
             dir = profileService.getProfilesDir();
-            if (!Files.exists(dir))
-                Files.createDirectories(dir);
+            if (dir == null)
+                throw new IllegalStateException("Modern Chat data folder is unavailable");
+            if (!dir.exists())
+                dir.createDirectories();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                 "Unable to access the profiles folder:\n" + ex.getMessage(),
@@ -156,7 +166,7 @@ public class ModernChatPanel extends PluginPanel
             return;
         }
 
-        String path = dir.toAbsolutePath().toString();
+        String path = dir.toString();
         String message;
         try {
             Toolkit.getDefaultToolkit().getSystemClipboard()
@@ -231,8 +241,15 @@ public class ModernChatPanel extends PluginPanel
         }
 
         // enforce "new" unless the user explicitly agrees to overwrite
-        Path out = profileService.getProfilesDir().resolve(name + ".json");
-        if (Files.exists(out)) {
+        boolean exists;
+        try {
+            exists = profileService.profileExists(name);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Failed to save profile:\n" + ex.getMessage(),
+                "Modern Chat", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (exists) {
             int choice = JOptionPane.showConfirmDialog(
                 this,
                 "Profile \"" + name + "\" already exists.\nDo you want to overwrite it?",
@@ -266,6 +283,43 @@ public class ModernChatPanel extends PluginPanel
             JOptionPane.showMessageDialog(this, "Failed to save profile:\n" + ex.getMessage(),
                 "Modern Chat", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /**
+     * Let the player pick the Spam Filter plugin's folder and merge its lists
+     * into ours. Uses Filepath.Chooser, the Plugin Hub sanctioned file picker.
+     */
+    private void importSpamList() {
+        List<Filepath> picked = new Filepath.Chooser()
+            .setIsOpen()
+            .setAcceptsDirectories()
+            .setFileHidingEnabled(false) // .runelite is hidden on macOS/Linux
+            .setDialogTitle("Select your .runelite/" + SpamFilterService.SPAMFILTER_DIR + " folder")
+            .showDialog(this);
+        if (picked == null || picked.isEmpty()) return; // cancelled
+
+        SpamFilterService.ImportResult result;
+        try {
+            result = spamFilterService.importCorpus(picked.get(0));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                "Failed to import spam list:\n" + ex.getMessage(),
+                "Modern Chat", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (!result.isFoundSpamFile() && !result.isFoundHamFile()) {
+            JOptionPane.showMessageDialog(this,
+                "No spam lists found in that folder.\n"
+                    + "Pick the \"" + SpamFilterService.SPAMFILTER_DIR + "\" folder inside your .runelite folder.",
+                "Modern Chat", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JOptionPane.showMessageDialog(this,
+            "Imported " + result.getSpamAdded() + " spam and "
+                + result.getHamAdded() + " not-spam entries.",
+            "Modern Chat", JOptionPane.INFORMATION_MESSAGE);
     }
 
     /** keep filenames friendly: letters, numbers, dash/underscore; collapse spaces to dash */

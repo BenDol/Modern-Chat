@@ -9,8 +9,8 @@ import com.modernchat.ModernChatConfig;
 import com.modernchat.ModernChatConfigBase;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.util.Filepath;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -31,18 +31,17 @@ import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.modernchat.ModernChatConfigBase.DEFAULTS;
 import static com.modernchat.ModernChatConfigBase.Field;
@@ -58,8 +57,11 @@ public class ProfileService implements ChatService
     @Inject ConfigManager configManager;
     @Inject Gson gson;
 
+    private static final String PROFILE_EXT = ".json";
+
+    /** Set by the plugin from its plugin directory before startUp. */
     @Getter
-    private Path profilesDir;
+    private volatile Filepath profilesDir;
 
     /** filename (without .json) -> profile config */
     private final Map<String, ModernChatConfigBase> profiles = new LinkedHashMap<>();
@@ -67,15 +69,12 @@ public class ProfileService implements ChatService
     /** currently active profile key */
     private String activeProfile;
 
-    public ProfileService() {
-        this(resolveDefaultProfilesDir());
-    }
+    public void setProfilesDir(Filepath profilesDir) { this.profilesDir = Objects.requireNonNull(profilesDir); }
 
-    public ProfileService(Path profilesDir) {
-        this.profilesDir = Objects.requireNonNull(profilesDir);
+    /** True if a profile file with this name already exists on disk. */
+    public boolean profileExists(String profileName) throws IOException {
+        return resolveProfileFile(profileName).exists();
     }
-
-    public void setProfilesDir(Path profilesDir) { this.profilesDir = Objects.requireNonNull(profilesDir); }
 
     public Map<String, ModernChatConfigBase> getProfiles() { return Collections.unmodifiableMap(profiles); }
 
@@ -99,7 +98,7 @@ public class ProfileService implements ChatService
     public Optional<String> chooseActiveProfile(Component parent) {
         if (profiles.isEmpty()) {
             JOptionPane.showMessageDialog(parent,
-                "No profiles found in:\n" + profilesDir.toAbsolutePath(),
+                "No profiles found in:\n" + profilesDir,
                 "ModernChat Profiles", JOptionPane.WARNING_MESSAGE);
             return Optional.empty();
         }
@@ -168,23 +167,30 @@ public class ProfileService implements ChatService
 
     /** Load all *.json files in the profiles directory. */
     public void loadAllProfiles() throws IOException {
-        ensureDir(profilesDir);
+        Filepath dir = ensureDir();
         profiles.clear();
 
-        try (DirectoryStream<Path> ds = Files.newDirectoryStream(profilesDir, "*.json")) {
-            for (Path p : ds) {
-                String name = stripExt(p.getFileName().toString());
-                ModernChatConfigBase cfg = loadProfile(p);
-                if (cfg != null) {
-                    profiles.put(name, cfg);
-                }
+        List<Filepath> files;
+        try (Stream<Filepath> s = dir.walk(1)) {
+            files = s.filter(Filepath::isFile)
+                .filter(f -> f.getFileName().toLowerCase(Locale.ROOT).endsWith(PROFILE_EXT))
+                .sorted()
+                .collect(Collectors.toList());
+        }
+
+        for (Filepath f : files) {
+            try {
+                profiles.put(stripExt(f.getFileName()), loadProfile(f));
+            } catch (IOException | RuntimeException e) {
+                // one bad file should not hide the rest of the profiles
+                log.warn("[ModernChat] Skipping unreadable profile {}: {}", f.getFileName(), e.getMessage());
             }
         }
     }
 
     /** Load a single profile JSON into a ModernChatConfigBase. */
-    public ModernChatConfigBase loadProfile(Path file) throws IOException {
-        try (BufferedReader br = Files.newBufferedReader(file)) {
+    public ModernChatConfigBase loadProfile(Filepath file) throws IOException {
+        try (BufferedReader br = file.openBufferedReader()) {
             JsonElement root = new JsonParser().parse(br);
             if (root == null || !root.isJsonObject()) {
                 throw new IOException("Invalid profile JSON (expecting object): " + file);
@@ -229,15 +235,15 @@ public class ProfileService implements ChatService
     }
 
     private void saveProfile(String profileName, ModernChatConfigBase cfg, boolean failIfExists) throws IOException {
-        ensureDir(profilesDir);
-        Path out = profilesDir.resolve(profileName + ".json");
+        ensureDir();
+        Filepath out = resolveProfileFile(profileName);
 
-        if (failIfExists && Files.exists(out))
+        if (failIfExists && out.exists())
             throw new FileAlreadyExistsException(out.toString());
 
         JsonObject root = buildJsonFromConfig(cfg);
         var gsonPretty = gson.newBuilder().setPrettyPrinting().create();
-        try (var w = Files.newBufferedWriter(out, StandardCharsets.UTF_8,
+        try (var w = out.openBufferedWriter(
             StandardOpenOption.CREATE, failIfExists ? StandardOpenOption.CREATE_NEW : StandardOpenOption.TRUNCATE_EXISTING,
             StandardOpenOption.WRITE))
         {
@@ -245,25 +251,36 @@ public class ProfileService implements ChatService
         }
     }
 
-    private static void ensureDir(Path dir) throws IOException {
-        if (!Files.exists(dir))
-            Files.createDirectories(dir);
-        if (!Files.isDirectory(dir))
+    /**
+     * Resolve a profile name to its file. Filepath rejects names that would
+     * leave the profiles folder or are not valid file names on Windows.
+     */
+    private Filepath resolveProfileFile(String profileName) throws IOException {
+        try {
+            return requireDir().joinSegment(profileName + PROFILE_EXT);
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Invalid profile name \"" + profileName + "\": " + e.getMessage(), e);
+        }
+    }
+
+    private Filepath requireDir() throws IOException {
+        Filepath dir = profilesDir;
+        if (dir == null)
+            throw new IOException("Modern Chat data folder is unavailable");
+        return dir;
+    }
+
+    private Filepath ensureDir() throws IOException {
+        Filepath dir = requireDir();
+        if (!dir.exists())
+            dir.createDirectories();
+        if (!dir.isDirectory())
             throw new IOException("Not a directory: " + dir);
+        return dir;
     }
 
     private static String stripExt(String fn) {
         int i = fn.lastIndexOf('.');
         return (i > 0 ? fn.substring(0, i) : fn);
-    }
-
-    private static Path resolveDefaultProfilesDir() {
-        Path rlHome;
-        try {
-            rlHome = RuneLite.RUNELITE_DIR.toPath();
-        } catch (Throwable ignored) {
-            rlHome = Paths.get(System.getProperty("user.home", ".")).resolve(".runelite");
-        }
-        return rlHome.resolve("modern-chat");
     }
 }
