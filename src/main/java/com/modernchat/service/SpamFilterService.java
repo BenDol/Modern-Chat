@@ -1,57 +1,81 @@
 package com.modernchat.service;
 
 import lombok.Getter;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
+import net.runelite.client.util.Filepath;
 
 import javax.inject.Singleton;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Service for managing user-defined spam/ham corpus for chat filtering.
  * Allows users to mark messages as spam or ham (not spam) to build
  * a personal filter list.
  *
- * Uses the same corpus files as SpamFilterPlugin for compatibility.
+ * Uses the same corpus file names and format as the Spam Filter plugin so
+ * its lists can be imported with {@link #importCorpus(Filepath)}.
  */
 @Slf4j
 @Singleton
 public class SpamFilterService implements ChatService
 {
-    // Use same directory and file names as SpamFilterPlugin for compatibility
-    private static final String SPAMFILTER_DIR = "spam-filter";
+    /** Sub-folder of the plugin directory holding the corpus files. */
+    public static final String SPAMFILTER_DIR = "spam-filter";
+    // Same file names as the Spam Filter plugin so its folder can be imported as-is
     private static final String SPAM_CORPUS_FILE = "user_bad_corpus.txt";
     private static final String HAM_CORPUS_FILE = "user_good_corpus.txt";
 
-    private Path dataDir;
-    private Path spamCorpusFile;
-    private Path hamCorpusFile;
+    /** Set by the plugin from its plugin directory before startUp. */
+    private volatile Filepath dataDir;
+    private volatile Filepath spamCorpusFile;
+    private volatile Filepath hamCorpusFile;
 
+    // Read from the client thread, modified from the client thread and the EDT (import)
     @Getter
-    private final List<String> spamCorpus = new ArrayList<>();
+    private final List<String> spamCorpus = new CopyOnWriteArrayList<>();
     @Getter
-    private final List<String> hamCorpus = new ArrayList<>();
+    private final List<String> hamCorpus = new CopyOnWriteArrayList<>();
+
+    @Value
+    public static class ImportResult
+    {
+        boolean foundSpamFile;
+        boolean foundHamFile;
+        int spamAdded;
+        int hamAdded;
+    }
+
+    public void setDataDir(Filepath dataDir) {
+        this.dataDir = dataDir;
+    }
 
     @Override
     public void startUp() {
-        dataDir = resolveDataDir();
-        spamCorpusFile = dataDir.resolve(SPAM_CORPUS_FILE);
-        hamCorpusFile = dataDir.resolve(HAM_CORPUS_FILE);
+        spamCorpus.clear();
+        hamCorpus.clear();
+
+        Filepath dir = dataDir;
+        if (dir == null) {
+            log.warn("Spam filter data folder is unavailable, marked messages will not be saved");
+            return;
+        }
 
         try {
-            ensureDir(dataDir);
-            loadCorpus(spamCorpusFile, spamCorpus);
-            loadCorpus(hamCorpusFile, hamCorpus);
+            spamCorpusFile = dir.joinSegment(SPAM_CORPUS_FILE);
+            hamCorpusFile = dir.joinSegment(HAM_CORPUS_FILE);
+            ensureDir(dir);
+            spamCorpus.addAll(readCorpus(spamCorpusFile));
+            hamCorpus.addAll(readCorpus(hamCorpusFile));
             log.debug("SpamFilterService started - loaded {} spam entries, {} ham entries",
                 spamCorpus.size(), hamCorpus.size());
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             log.error("Failed to initialize spam filter service", e);
         }
     }
@@ -125,7 +149,7 @@ public class SpamFilterService implements ChatService
      * @param message the message to remove
      * @return true if the message was removed
      */
-    public boolean removeFromSpam(String message) {
+    public synchronized boolean removeFromSpam(String message) {
         if (message == null || message.isEmpty()) {
             return false;
         }
@@ -144,7 +168,7 @@ public class SpamFilterService implements ChatService
      * @param message the message to remove
      * @return true if the message was removed
      */
-    public boolean removeFromHam(String message) {
+    public synchronized boolean removeFromHam(String message) {
         if (message == null || message.isEmpty()) {
             return false;
         }
@@ -178,7 +202,7 @@ public class SpamFilterService implements ChatService
     /**
      * Clear all entries from the spam corpus.
      */
-    public void clearSpamCorpus() {
+    public synchronized void clearSpamCorpus() {
         spamCorpus.clear();
         saveCorpus(spamCorpusFile, spamCorpus);
         log.debug("Cleared spam corpus");
@@ -187,10 +211,39 @@ public class SpamFilterService implements ChatService
     /**
      * Clear all entries from the ham corpus.
      */
-    public void clearHamCorpus() {
+    public synchronized void clearHamCorpus() {
         hamCorpus.clear();
         saveCorpus(hamCorpusFile, hamCorpus);
         log.debug("Cleared ham corpus");
+    }
+
+    /**
+     * Merge spam/ham lists from a folder the user picked (e.g. the Spam Filter
+     * plugin's .runelite/spam-filter folder). Entries already present are skipped.
+     *
+     * @param sourceDir folder chosen through {@link Filepath.Chooser}
+     */
+    public synchronized ImportResult importCorpus(Filepath sourceDir) throws IOException {
+        Filepath spamSource = sourceDir.joinSegment(SPAM_CORPUS_FILE);
+        Filepath hamSource = sourceDir.joinSegment(HAM_CORPUS_FILE);
+        boolean foundSpam = spamSource.isFile();
+        boolean foundHam = hamSource.isFile();
+
+        // read both before changing anything so a failed read imports nothing
+        List<String> spamEntries = foundSpam ? readCorpus(spamSource) : Collections.emptyList();
+        List<String> hamEntries = foundHam ? readCorpus(hamSource) : Collections.emptyList();
+
+        int spamAdded = mergeInto(spamEntries, spamCorpus);
+        int hamAdded = mergeInto(hamEntries, hamCorpus);
+        if (spamAdded > 0) {
+            saveCorpus(spamCorpusFile, spamCorpus);
+        }
+        if (hamAdded > 0) {
+            saveCorpus(hamCorpusFile, hamCorpus);
+        }
+
+        log.debug("Imported {} spam and {} ham entries from {}", spamAdded, hamAdded, sourceDir);
+        return new ImportResult(foundSpam, foundHam, spamAdded, hamAdded);
     }
 
     /**
@@ -201,7 +254,7 @@ public class SpamFilterService implements ChatService
         return message.replaceAll("\\s*\\([0-9.]+\\)$", "").trim();
     }
 
-    private void appendToCorpus(String message, List<String> corpus, Path corpusFile) {
+    private synchronized void appendToCorpus(String message, List<String> corpus, Filepath corpusFile) {
         if (corpus.contains(message)) {
             return; // Already in corpus
         }
@@ -210,27 +263,48 @@ public class SpamFilterService implements ChatService
         saveCorpus(corpusFile, corpus);
     }
 
-    private void loadCorpus(Path file, List<String> corpus) throws IOException {
-        corpus.clear();
-
-        if (!Files.exists(file)) {
-            // Create empty file
-            Files.createFile(file);
-            return;
-        }
-
-        List<String> lines = Files.readAllLines(file);
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) {
-                corpus.add(trimmed);
+    private static int mergeInto(List<String> entries, List<String> corpus) {
+        int added = 0;
+        for (String entry : entries) {
+            if (!corpus.contains(entry)) {
+                corpus.add(entry);
+                added++;
             }
         }
+        return added;
     }
 
-    private void saveCorpus(Path file, List<String> corpus) {
+    private static List<String> readCorpus(Filepath file) throws IOException {
+        List<String> entries = new ArrayList<>();
+        if (!file.exists()) {
+            return entries;
+        }
+
+        try (BufferedReader br = file.openBufferedReader()) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String trimmed = line.trim();
+                if (!trimmed.isEmpty() && !entries.contains(trimmed)) {
+                    entries.add(trimmed);
+                }
+            }
+        }
+        return entries;
+    }
+
+    private void saveCorpus(Filepath file, List<String> corpus) {
+        if (file == null) {
+            return; // data folder unavailable, keep the in-memory list only
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (String line : corpus) {
+            sb.append(line).append('\n');
+        }
+
         try {
-            Files.write(file, corpus,
+            ensureDir(file.getParent());
+            file.write(sb.toString(),
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.WRITE);
@@ -239,28 +313,12 @@ public class SpamFilterService implements ChatService
         }
     }
 
-    private static void ensureDir(Path dir) throws IOException {
-        if (!Files.exists(dir)) {
-            Files.createDirectories(dir);
+    private static void ensureDir(Filepath dir) throws IOException {
+        if (!dir.exists()) {
+            dir.createDirectories();
         }
-        if (!Files.isDirectory(dir)) {
+        if (!dir.isDirectory()) {
             throw new IOException("Not a directory: " + dir);
         }
-    }
-
-    private static Path resolveDataDir() {
-        Path rlHome = null;
-        try {
-            java.io.File dir = RuneLite.RUNELITE_DIR;
-            if (dir != null) {
-                rlHome = dir.toPath();
-            }
-        } catch (Throwable ignored) {
-        }
-        if (rlHome == null) {
-            rlHome = Paths.get(System.getProperty("user.home", ".")).resolve(".runelite");
-        }
-        // Use same directory as SpamFilterPlugin for compatibility
-        return rlHome.resolve(SPAMFILTER_DIR);
     }
 }
