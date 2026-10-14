@@ -43,8 +43,7 @@ public class ModernChatPanel extends PluginPanel
     private final JButton importSpamBtn = new JButton("Import Spam List");
 
     public ModernChatPanel(ProfileService profileService, SpamFilterService spamFilterService,
-                           ConfigManager configManager)
-    {
+                           ConfigManager configManager) {
         super(false); // no wrap
         this.profileService = profileService;
         this.spamFilterService = spamFilterService;

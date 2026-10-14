@@ -8,6 +8,8 @@ import net.runelite.client.util.Filepath;
 import javax.inject.Singleton;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +45,10 @@ public class SpamFilterService implements ChatService
     @Getter
     private final List<String> hamCorpus = new CopyOnWriteArrayList<>();
 
+    /**
+     * Outcome of {@link #importCorpus(Filepath)}. The found flags say whether each
+     * source file existed; the added counts exclude entries we already had.
+     */
     @Value
     public static class ImportResult
     {
@@ -223,23 +229,33 @@ public class SpamFilterService implements ChatService
      *
      * @param sourceDir folder chosen through {@link Filepath.Chooser}
      */
-    public synchronized ImportResult importCorpus(Filepath sourceDir) throws IOException {
+    public ImportResult importCorpus(Filepath sourceDir) throws IOException {
+        if (spamCorpusFile == null || hamCorpusFile == null) {
+            // without a data folder the import would only live until restart
+            throw new IOException("Modern Chat data folder is unavailable");
+        }
+
         Filepath spamSource = sourceDir.joinSegment(SPAM_CORPUS_FILE);
         Filepath hamSource = sourceDir.joinSegment(HAM_CORPUS_FILE);
         boolean foundSpam = spamSource.isFile();
         boolean foundHam = hamSource.isFile();
 
-        // read both before changing anything so a failed read imports nothing
+        // read outside the lock so marking messages on the client thread never waits on
+        // this disk read, and read both first so a failed read imports nothing
         List<String> spamEntries = foundSpam ? readCorpus(spamSource) : Collections.emptyList();
         List<String> hamEntries = foundHam ? readCorpus(hamSource) : Collections.emptyList();
 
-        int spamAdded = mergeInto(spamEntries, spamCorpus);
-        int hamAdded = mergeInto(hamEntries, hamCorpus);
-        if (spamAdded > 0) {
-            saveCorpus(spamCorpusFile, spamCorpus);
-        }
-        if (hamAdded > 0) {
-            saveCorpus(hamCorpusFile, hamCorpus);
+        int spamAdded;
+        int hamAdded;
+        synchronized (this) {
+            spamAdded = mergeInto(spamEntries, spamCorpus);
+            hamAdded = mergeInto(hamEntries, hamCorpus);
+            if (spamAdded > 0) {
+                saveCorpus(spamCorpusFile, spamCorpus);
+            }
+            if (hamAdded > 0) {
+                saveCorpus(hamCorpusFile, hamCorpus);
+            }
         }
 
         log.debug("Imported {} spam and {} ham entries from {}", spamAdded, hamAdded, sourceDir);
@@ -302,14 +318,30 @@ public class SpamFilterService implements ChatService
             sb.append(line).append('\n');
         }
 
+        Filepath tmp = null;
         try {
-            ensureDir(file.getParent());
-            file.write(sb.toString(),
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE);
+            Filepath dir = file.getParent();
+            ensureDir(dir);
+            // write a sibling temp file and swap it in, so a crash mid-write
+            // can never leave the player's list empty or half written
+            tmp = dir.createTempFile(file.getFileName() + ".", ".tmp");
+            tmp.write(sb.toString(), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            try {
+                tmp.moveTo(file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                tmp.moveTo(file, StandardCopyOption.REPLACE_EXISTING);
+            }
+            tmp = null;
         } catch (IOException e) {
             log.error("Failed to save corpus file: {}", file, e);
+        } finally {
+            if (tmp != null) {
+                try {
+                    tmp.deleteIfExists();
+                } catch (IOException e) {
+                    log.debug("Failed to delete temp corpus file: {}", tmp, e);
+                }
+            }
         }
     }
 
