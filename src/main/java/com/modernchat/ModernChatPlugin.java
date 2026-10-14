@@ -220,6 +220,8 @@ public class ModernChatPlugin extends Plugin {
 			if (localPlayer != null) {
 				startInstallIntro();
 			}
+		} else if (client.getGameState() == GameState.LOGGED_IN) {
+			spamFilterService.showImportNoticeOnce();
 		}
 	}
 
@@ -533,6 +535,8 @@ public class ModernChatPlugin extends Plugin {
 				if (localPlayer != null) {
 					startInstallIntro();
 				}
+			} else {
+				spamFilterService.showImportNoticeOnce();
 			}
 
 			loggedIn = true;
@@ -686,6 +690,7 @@ public class ModernChatPlugin extends Plugin {
 				ChatMessageType.WELCOME);
 
 			configManager.setConfiguration(ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featureExample_Enabled, true);
+			spamFilterService.markImportNoticeShown();
 		});
 	}
 

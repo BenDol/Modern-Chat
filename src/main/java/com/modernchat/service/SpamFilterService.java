@@ -1,11 +1,16 @@
 package com.modernchat.service;
 
+import com.modernchat.common.ChatMessageBuilder;
+import com.modernchat.common.NotificationService;
 import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.util.Filepath;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.awt.Color;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -15,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import static com.modernchat.ModernChatConfigBase.GROUP;
 
 /**
  * Service for managing user-defined spam/ham corpus for chat filtering.
@@ -33,6 +40,11 @@ public class SpamFilterService implements ChatService
     // Same file names as the Spam Filter plugin so its folder can be imported as-is
     private static final String SPAM_CORPUS_FILE = "user_bad_corpus.txt";
     private static final String HAM_CORPUS_FILE = "user_good_corpus.txt";
+    // Plain state key (not a ModernChatConfigBase.Field) so profiles never export it
+    private static final String IMPORT_NOTICE_SHOWN_KEY = "spamFilterImportNoticeShown";
+
+    @Inject private ConfigManager configManager;
+    @Inject private NotificationService notificationService;
 
     /** Set by the plugin from its plugin directory before startUp. */
     private volatile Filepath dataDir;
@@ -60,6 +72,35 @@ public class SpamFilterService implements ChatService
 
     public void setDataDir(Filepath dataDir) {
         this.dataDir = dataDir;
+    }
+
+    /**
+     * Tell an upgrading player, once, that spam they marked before now has to be
+     * imported. Older versions shared .runelite/spam-filter, which Filepath no
+     * longer lets us read on our own.
+     */
+    public void showImportNoticeOnce() {
+        if (Boolean.TRUE.equals(configManager.getConfiguration(GROUP, IMPORT_NOTICE_SHOWN_KEY, Boolean.class)))
+            return;
+        markImportNoticeShown();
+
+        // nothing to tell if we can't save, or the player already has a list here
+        if (spamCorpusFile == null || !spamCorpus.isEmpty() || !hamCorpus.isEmpty())
+            return;
+
+        notificationService.pushChatMessage(new ChatMessageBuilder()
+            .append("Spam you marked in older versions is no longer loaded automatically. To bring it back, open the ")
+            .append(Color.ORANGE, "Modern Chat side panel")
+            .append(", click ")
+            .append(Color.ORANGE, "Import Spam List")
+            .append(" and pick the ")
+            .append(Color.ORANGE, SPAMFILTER_DIR)
+            .append(" folder inside your .runelite folder."));
+    }
+
+    /** Fresh installs have no old list, so the intro marks the notice as seen. */
+    public void markImportNoticeShown() {
+        configManager.setConfiguration(GROUP, IMPORT_NOTICE_SHOWN_KEY, true);
     }
 
     @Override
