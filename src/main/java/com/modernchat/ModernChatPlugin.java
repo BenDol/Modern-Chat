@@ -97,8 +97,9 @@ import static com.modernchat.common.NotifyType.MESSAGE_RECEIVED;
 	name = "Modern Chat",
 	description = "A chat plugin for RuneLite that modernizes the chat experience with additional features.",
 	tags = {"chat", "modern", "quality of life"},
-	// must match the Plugin Hub manifest name, data lives in .runelite/plugin-data/<internalName>
-	internalName = "collapsible-modern-chat",
+	// must match the Plugin Hub manifest name (plugin-hub plugins/modern-chat), the packager
+	// rejects anything else; data lives in .runelite/plugin-data/<internalName>
+	internalName = "modern-chat",
 	// moves the pre-Filepath .runelite/modern-chat folder (profiles) on first use
 	legacyDataDirectory = "modern-chat"/*,
 	conflicts = "Key Remapping"*/
