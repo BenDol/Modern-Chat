@@ -43,6 +43,6 @@ public class GroupIronmanChatCommand extends AbstractChatCommand {
             return;
 
         ev.consume();
-        messageService.sendMessage(text, ChatMode.CLAN_GIM, null);
+        messageService.sendStrippedMessage(text, ChatMode.CLAN_GIM);
     }
 }

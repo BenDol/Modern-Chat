@@ -2188,7 +2188,7 @@ public class ChatOverlay extends OverlayPanel
             // Record the typed form (with prefix) so history recall replays the
             // routing; the ChatboxInput echo of the stripped message is skipped
             eventBus.post(new SubmitHistoryEvent(text, message));
-            messageService.sendMessage(message, prefix.getMode(), null);
+            messageService.sendStrippedMessage(message, prefix.getMode());
         }
 
         // Vanilla "Chatbox Mode - Set Automatically" makes plain aliases behave sticky

@@ -65,6 +65,18 @@ public class MessageService implements ChatService
     }
 
     public void sendMessage(String text, ChatMode mode, @Nullable String targetName) {
+        sendMessage(text, mode, targetName, true);
+    }
+
+    /**
+     * Sends text whose channel prefix was already removed, so it reaches the given
+     * channel as written: "/p // is clan chat" must go to public, not clan.
+     */
+    public void sendStrippedMessage(String text, ChatMode mode) {
+        sendMessage(text, mode, null, false);
+    }
+
+    private void sendMessage(String text, ChatMode mode, @Nullable String targetName, boolean honorPrefix) {
         if (StringUtil.isNullOrEmpty(text))
             return;
 
@@ -102,19 +114,19 @@ public class MessageService implements ChatService
             return;
         }
 
-        clientThread.invoke(() -> sendChannelMessage(text, mode));
+        clientThread.invoke(() -> sendChannelMessage(text, mode, honorPrefix));
 
         lastSendTimestamp = System.currentTimeMillis();
     }
 
-    private void sendChannelMessage(String text, ChatMode mode) {
+    private void sendChannelMessage(String text, ChatMode mode, boolean honorPrefix) {
         String message = text;
         ChatMode channel = mode;
         int chatboxMode = -1; // -1 leaves the player's chatbox mode untouched
 
         // Honor the vanilla channel prefixes (/g, /@g, ////, /c, //, /f, /p, ...)
         // the same way the game's own chatbox does.
-        ChannelPrefix prefix = ChannelPrefix.match(text, ClientUtil.isGroupIronman(client));
+        ChannelPrefix prefix = honorPrefix ? ChannelPrefix.match(text, ClientUtil.isGroupIronman(client)) : null;
         if (prefix != null) {
             message = text.substring(prefix.getPrefix().length());
             channel = prefix.getMode();
