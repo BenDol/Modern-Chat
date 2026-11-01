@@ -77,6 +77,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
@@ -84,6 +85,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.awt.Color;
 import java.awt.Rectangle;
+import java.io.IOException;
 import java.time.Instant;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -99,7 +101,12 @@ import static com.modernchat.common.NotifyType.MESSAGE_RECEIVED;
 @PluginDescriptor(
 	name = "Modern Chat",
 	description = "A chat plugin for RuneLite that modernizes the chat experience with additional features.",
-	tags = {"chat", "modern", "quality of life"}/*,
+	tags = {"chat", "modern", "quality of life"},
+	// must match the Plugin Hub manifest name (plugin-hub plugins/modern-chat), the packager
+	// rejects anything else; data lives in .runelite/plugin-data/<internalName>
+	internalName = "modern-chat",
+	// moves the pre-Filepath .runelite/modern-chat folder (profiles) on first use
+	legacyDataDirectory = "modern-chat"/*,
 	conflicts = "Key Remapping"*/
 )
 public class ModernChatPlugin extends Plugin {
@@ -158,8 +165,9 @@ public class ModernChatPlugin extends Plugin {
 
 	@Override
 	protected void startUp() {
+		initDataDirectories();
 		profileService.startUp();
-		panel = new ModernChatPanel(profileService, configManager);
+		panel = new ModernChatPanel(profileService, spamFilterService, configManager);
 
 		widgetBucket.startUp();
         filterService.startUp();
@@ -223,6 +231,8 @@ public class ModernChatPlugin extends Plugin {
 			if (localPlayer != null) {
 				startInstallIntro();
 			}
+		} else if (client.getGameState() == GameState.LOGGED_IN) {
+			spamFilterService.showImportNoticeOnce();
 		}
 	}
 
@@ -279,6 +289,21 @@ public class ModernChatPlugin extends Plugin {
 
 		features.add(feature);
 		log.debug("Feature {} added successfully", feature.getClass().getSimpleName());
+	}
+
+	/**
+	 * Hand the plugin data folder to the services that persist files. Profiles
+	 * live in the folder root (where the legacy migration puts them).
+	 */
+	private void initDataDirectories() {
+		try {
+			Filepath dataDir = getPluginDirectory();
+			profileService.setProfilesDir(dataDir);
+			spamFilterService.setDataDir(dataDir.joinSegment(SpamFilterService.SPAMFILTER_DIR));
+		} catch (IOException | RuntimeException e) {
+			// services keep working in memory, they just can't save
+			log.error("Unable to open the Modern Chat data folder", e);
+		}
 	}
 
 	@Subscribe
@@ -543,6 +568,8 @@ public class ModernChatPlugin extends Plugin {
 				if (localPlayer != null) {
 					startInstallIntro();
 				}
+			} else {
+				spamFilterService.showImportNoticeOnce();
 			}
 
 			loggedIn = true;
@@ -696,6 +723,7 @@ public class ModernChatPlugin extends Plugin {
 				ChatMessageType.WELCOME);
 
 			configManager.setConfiguration(ModernChatConfig.GROUP, ModernChatConfigBase.Keys.featureExample_Enabled, true);
+			spamFilterService.markImportNoticeShown();
 		});
 	}
 

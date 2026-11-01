@@ -11,6 +11,7 @@ research/
 nul
 .claude/
 dev.gradle
+.mcp.json
 
 # agent-cohort: managed dock runtime paths (auto-added)
 .claude/agent-cohort/
@@ -21,5 +22,24 @@ dev.gradle
 .agent/
 .codex/hooks.json
 .linked-*
-.mcp.json
+.grok/agent-cohort/
+.kimi/agent-cohort/
+.opencode/agent-cohort/
+.grok/hooks/agent-cohort.json
+.cursor/agent-cohort/
+.cursor/hooks.json
+.wrenix/
+.claude/wrenspace/
+.codex/wrenspace/
+.hermes/wrenspace/
+.grok/wrenspace/
+.kimi/wrenspace/
+.opencode/wrenspace/
+.cursor/wrenspace/
+.grok/hooks/wrenspace.json
+**/.wrenspace/*
+!**/.wrenspace/wrenspace.json
+!**/.wrenspace/wrenix.json
+!**/.wrenspace/agentcohort.json
 docs/ARCHITECTURE.md
+.wrenspace/wrenspace.json
