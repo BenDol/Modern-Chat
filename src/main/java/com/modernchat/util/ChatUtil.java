@@ -351,6 +351,18 @@ public class ChatUtil
      * @param filteredMessage optional filtered message text (from chat filter plugins), or null to use original
      */
     public static @Nullable MessageLine createMessageLine(ChatMessage e, Client client, boolean requireLocalPlayer, @Nullable String filteredMessage) {
+        return createMessageLine(e, client, requireLocalPlayer, filteredMessage, null);
+    }
+
+    /**
+     * Create a MessageLine from filtered chat text and an optional RuneLite-formatted command result.
+     */
+    public static @Nullable MessageLine createMessageLine(
+        ChatMessage e,
+        Client client,
+        boolean requireLocalPlayer,
+        @Nullable String filteredMessage,
+        @Nullable String resolvedMessage) {
         Player localPlayer = client.getLocalPlayer();
         if (localPlayer == null && requireLocalPlayer)
             return null;
@@ -370,8 +382,10 @@ public class ChatUtil
         ChatMessageType type = e.getType();
         String originalMsg = e.getMessage();
         // Use filtered message if provided, otherwise use original
-        String msg = filteredMessage != null ? filteredMessage : originalMsg;
-        String[] params = msg.split("\\|", 3);
+        String msg = resolvedMessage != null
+            ? resolvedMessage
+            : filteredMessage != null ? filteredMessage : originalMsg;
+        String[] params = msg == null ? new String[0] : msg.split("\\|", 3);
         String receiverName = senderReceiver.getReceiverName();
         String senderName = senderReceiver.getSenderName();
         int senderIconId = senderReceiver.getSenderIconId();
@@ -392,18 +406,22 @@ public class ChatUtil
             builder.append(senderName, false).append(": ");
         }
 
-        String message = msg;
-        if (params.length > 1) {
-            int icon = ChatUtil.getModImageId(params[0]);
-            if (icon != -1) {
-                builder.img(icon);
+        if (resolvedMessage != null) {
+            builder.append(resolvedMessage, false);
+        } else {
+            String message = msg;
+            if (params.length > 1) {
+                int icon = ChatUtil.getModImageId(params[0]);
+                if (icon != -1) {
+                    builder.img(icon);
+                }
+
+                // message should always be last
+                message = params[params.length - 1];
             }
 
-            // message should always be last
-            message = params[params.length - 1];
+            builder.append(message, false);
         }
-
-        builder.append(message, false);
 
         // Generate duplicate key from name + original message (for collapse detection)
         String duplicateKey = e.getName() + ":" + originalMsg;
@@ -415,7 +433,9 @@ public class ChatUtil
             && COLLAPSE_PATTERN.matcher(filteredMessage).find()
             && !originalMsg.equals(filteredMessage); // only if filtered differs from original
 
-        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix, duplicateKey, collapsed, senderIconId);
+        int messageId = e.getMessageNode() != null ? e.getMessageNode().getId() : -1;
+        return new MessageLine(builder.build(), type, timestamp, senderName, receiverName, prefix,
+            duplicateKey, collapsed, senderIconId, messageId);
     }
 
     public static String getPrefix(ChatMessageType type) {

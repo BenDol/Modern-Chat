@@ -18,6 +18,7 @@ import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
 import com.modernchat.event.ModernChatVisibilityChangeEvent;
+import com.modernchat.event.RuneLiteChatMessageUpdatedEvent;
 import com.modernchat.overlay.ChannelFilterState;
 import com.modernchat.overlay.ChatOverlay;
 import com.modernchat.overlay.ChatOverlayConfig;
@@ -25,6 +26,7 @@ import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
 import com.modernchat.service.MessageFilterService;
 import com.modernchat.service.MessageService;
+import com.modernchat.service.RuneLiteFormattedMessageService;
 import com.modernchat.util.ChatUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -153,6 +155,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private WidgetBucket widgetBucket;
     @Inject private MessageService messageService;
     @Inject private MessageFilterService messageFilterService;
+    @Inject private RuneLiteFormattedMessageService runeLiteFormattedMessageService;
     @Inject private NotificationService notificationService;
     @Inject private ChatOverlay overlay;
     @Inject private ChannelFilterState channelFilterState;
@@ -541,7 +544,8 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
         }
 
         // Use the filtered message text
-        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage);
+        String formattedMessage = runeLiteFormattedMessageService.observe(e);
+        MessageLine line = ChatUtil.createMessageLine(e, client, false, filteredMessage, formattedMessage);
         if (line == null) {
             log.error("Failed to parse chat message event: {}", e);
             return; // Ignore empty messages
@@ -554,6 +558,11 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
         log.debug("Chat message received: {}", line);
         overlay.addMessage(line);
+    }
+
+    @Subscribe
+    public void onRuneLiteChatMessageUpdatedEvent(RuneLiteChatMessageUpdatedEvent e) {
+        overlay.replaceMessageBody(e.getMessageId(), e.getFormattedBody());
     }
 
     @Subscribe
