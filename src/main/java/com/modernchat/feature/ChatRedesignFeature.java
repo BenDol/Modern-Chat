@@ -34,7 +34,7 @@ import net.runelite.api.Point;
 import net.runelite.api.ScriptID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClanChannelChanged;
-import net.runelite.api.events.FriendsChatChanged;
+import net.runelite.api.events.FriendsChatSync;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
@@ -572,8 +572,9 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     }
 
     @Subscribe
-    public void onFriendsChatChanged(FriendsChatChanged e) {
-        clientThread.invokeAtTickEnd(() -> overlay.refreshTabs());
+    public void onFriendsChatSync(FriendsChatSync e) {
+        // Also fires when the server resyncs a channel we are already in, so only rebuild tabs on a real join/leave
+        clientThread.invokeAtTickEnd(() -> overlay.refreshTabsIfModesChanged());
     }
 
     @Subscribe

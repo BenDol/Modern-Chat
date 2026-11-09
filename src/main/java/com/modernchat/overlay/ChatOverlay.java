@@ -1264,10 +1264,23 @@ public class ChatOverlay extends OverlayPanel
     }
 
     public void recomputeAvailableModes() {
+        availableChatModes = computeAvailableModes();
+    }
+
+    /**
+     * Rebuilds the channel tabs only when the joined channels differ from the current tabs.
+     * Use for events that can fire without a real join or leave (e.g. friends chat resyncs),
+     * since a full refresh re-selects tabs and would move the player off the one they are on.
+     */
+    public void refreshTabsIfModesChanged() {
+        if (!computeAvailableModes().equals(availableChatModes))
+            refreshTabs();
+    }
+
+    private EnumSet<ChatMode> computeAvailableModes() {
         EnumSet<ChatMode> set = EnumSet.of(ChatMode.PUBLIC); // always if logged in
 
         FriendsChatManager friendsChatManager = client.getFriendsChatManager();
-        String friendsChatName = friendsChatManager != null ? friendsChatManager.getName() : null;
         if (friendsChatManager != null && friendsChatManager.getName() != null) {
             set.add(ChatMode.FRIENDS_CHAT);
         }
@@ -1279,7 +1292,7 @@ public class ChatOverlay extends OverlayPanel
         if (client.getClanChannel(ClanID.GROUP_IRONMAN) != null)
             set.add(ChatMode.CLAN_GIM);
 
-        availableChatModes = set;
+        return set;
     }
 
     private void addTab(Tab t) {
