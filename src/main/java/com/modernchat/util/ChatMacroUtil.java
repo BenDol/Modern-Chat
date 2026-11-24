@@ -29,8 +29,10 @@ public final class ChatMacroUtil {
 
     /**
      * Shades the game uses for these macros when the chatbox is transparent, i.e. text drawn
-     * over a dark surface (clientscript 9790). Only the macros the game varies by chatbox
-     * transparency are listed; every other macro resolves through the game's own table.
+     * over a dark surface (clientscript 9790). These are the fixed colors the game swaps by
+     * chatbox transparency; every other macro resolves through the game's own table. The one
+     * transparency-dependent macro not listed is league_txt, whose shades come from the
+     * current league's data rather than a fixed color.
      */
     private static final Map<String, String> DARK_SURFACE_MACROS;
 
