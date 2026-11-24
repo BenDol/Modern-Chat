@@ -403,6 +403,9 @@ public class ChatUtil
             message = params[params.length - 1];
         }
 
+        // Game messages carry color macros such as @mes_hl_red@ that the vanilla chatbox expands
+        message = ChatMacroUtil.expand(client, type, message);
+
         builder.append(message, false);
 
         // Generate duplicate key from name + original message (for collapse detection)
