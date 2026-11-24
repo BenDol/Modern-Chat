@@ -5,6 +5,7 @@ import com.modernchat.common.ChatProxy;
 import com.modernchat.common.NotificationService;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.service.ChatService;
+import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.ConfigUtil;
 import lombok.Getter;
@@ -150,6 +151,10 @@ public class KeyRemappingService implements ChatService {
 
         typing = false;
         clientThread.invoke(() -> {
+            // Modern Chat's own private message prompt may be carrying a message the
+            // player just submitted; Modern Chat closes it once that is done
+            if (ChatUtil.OWN_PRIVATE_PROMPT_TARGET.get() != null)
+                return;
             // Flag our own MESSAGE_LAYER_CLOSE so the synchronous
             // ScriptPostFired it triggers is ignored by relockChat()
             relocking = true;
@@ -195,6 +200,10 @@ public class KeyRemappingService implements ChatService {
     }
 
     private boolean canRelockChat() {
+        // While Modern Chat conceals the chatbox it gates the chatbox keys itself
+        // (GameChatBridge), and its own private message prompt must stay open
+        if (ChatUtil.LEGACY_CHAT_CONCEALED.get() || ChatUtil.OWN_PRIVATE_PROMPT_TARGET.get() != null)
+            return false;
         // Cheapest decisive check first: already locked means nothing to do
         if (ClientUtil.isChatLocked(client))
             return false;

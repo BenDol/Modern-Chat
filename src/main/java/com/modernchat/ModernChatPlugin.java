@@ -27,6 +27,7 @@ import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
 import com.modernchat.service.ForceRecolorService;
+import com.modernchat.service.GameChatBridge;
 import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageFilterService;
 import com.modernchat.service.MessageService;
@@ -123,6 +124,7 @@ public class ModernChatPlugin extends Plugin {
 	@Inject private PrivateChatService privateChatService;
     @Inject private FilterService filterService;
     @Inject private MessageService messageService;
+    @Inject private GameChatBridge gameChatBridge;
     @Inject private ImageService imageService;
     @Inject private SpamFilterService spamFilterService;
 	@Inject private ForceRecolorService forceRecolorService;
@@ -164,6 +166,7 @@ public class ModernChatPlugin extends Plugin {
 		widgetBucket.startUp();
         filterService.startUp();
         messageService.startUp();
+        gameChatBridge.startUp();
         privateChatService.startUp();
         spamFilterService.startUp();
 		fontService.startUp();
@@ -242,6 +245,7 @@ public class ModernChatPlugin extends Plugin {
 		widgetBucket.shutDown();
         filterService.shutDown();
         messageService.shutDown();
+        gameChatBridge.shutDown();
         privateChatService.shutDown();
         spamFilterService.shutDown();
 		fontService.shutDown();
@@ -457,10 +461,16 @@ public class ModernChatPlugin extends Plugin {
 
 		switch (e.getScriptId()) {
 			case ScriptID.MESSAGE_LAYER_OPEN:
+				// The private message prompt Modern Chat holds open to send PMs is not
+				// a game dialog; it must not bring the legacy chat into view
+				if (ClientUtil.isOwnPrivatePrompt(client))
+					break;
 				eventBus.post(new MessageLayerOpenedEvent(messageWidget,
 					widgetBucket.isPmWidget(messageWidget)));
 				break;
 			case ScriptID.MESSAGE_LAYER_CLOSE:
+				if (ChatUtil.OWN_PRIVATE_PROMPT_TARGET.get() != null)
+					break;
 				eventBus.post(new MessageLayerClosedEvent(messageWidget,
 					widgetBucket.isPmWidget(messageWidget)));
 				break;
@@ -477,7 +487,7 @@ public class ModernChatPlugin extends Plugin {
 
 		Widget chatWidget = widgetBucket.getChatWidget();
 		boolean visible = chatWidget != null &&
-			!chatWidget.isHidden() && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());
+			!ChatUtil.isChatHidden(chatWidget) && !GeometryUtil.isInvalidChatBounds(chatWidget.getBounds());
 		if (chatVisible.get() != visible) {
 			chatVisible.set(visible);
 			eventBus.post(new LegacyChatVisibilityChangeEvent(chatWidget, chatVisible.get()));

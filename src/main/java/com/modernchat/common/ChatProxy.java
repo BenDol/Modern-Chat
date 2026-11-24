@@ -41,7 +41,7 @@ public class ChatProxy
 
         if (client.isClientThread()) {
             Widget legacyChat = widgetBucket.getChatWidget();
-            return legacyChat != null && legacyChat.isHidden();
+            return legacyChat != null && ChatUtil.isChatHidden(legacyChat);
         } else {
             return ChatUtil.LEGACY_CHAT_HIDDEN.get();
         }
@@ -49,7 +49,7 @@ public class ChatProxy
 
     public boolean isLegacyHidden() {
         Widget legacyChat = widgetBucket.getChatWidget();
-        return legacyChat != null && legacyChat.isHidden();
+        return legacyChat != null && ChatUtil.isChatHidden(legacyChat);
     }
 
     public boolean isModernHidden() {

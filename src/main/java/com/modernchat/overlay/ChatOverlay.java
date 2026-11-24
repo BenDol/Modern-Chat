@@ -30,8 +30,10 @@ import com.modernchat.event.TabChangeEvent;
 import com.modernchat.event.TabClosedEvent;
 import com.modernchat.service.FilterService;
 import com.modernchat.service.FontService;
+import com.modernchat.service.GameChatBridge;
 import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageService;
+import com.modernchat.service.MessageService.SubmitResult;
 import com.modernchat.service.SpamFilterService;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
@@ -127,6 +129,7 @@ public class ChatOverlay extends OverlayPanel
     @Inject private NotificationService notificationService;
     @Inject private FilterService filterService;
     @Inject private MessageService messageService;
+    @Inject private GameChatBridge gameChatBridge;
     @Inject private ImageService imageService;
     @Inject private SpamFilterService spamFilterService;
     @Inject @Getter private ResizePanel resizePanel;
@@ -332,6 +335,7 @@ public class ChatOverlay extends OverlayPanel
 
     public void shutDown() {
         clientThread.invoke(() -> {
+            gameChatBridge.syncPrivatePrompt(null);
             showLegacyChat(true);
             resetChatbox(true);
         });
@@ -1480,6 +1484,8 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onClientTick(ClientTick tick) {
+        gameChatBridge.syncPrivatePrompt(getPrivatePromptTarget());
+
         // While legacy chat is showing (bank search, GE search, dialogs, etc.) the
         // chatbox must stay at default size so the game's fixed-width children render
         // without overflowing. resetChatbox(true) in showLegacyChat sets that up; this
@@ -1888,12 +1894,16 @@ public class ChatOverlay extends OverlayPanel
         return activeTab != null && activeTab.isReadOnly();
     }
 
-    private void commitInput() {
+    private SubmitResult commitInput() {
         final String text = getInputText();
+        SubmitResult result = SubmitResult.HANDLED;
         if (!text.trim().isEmpty()) {
             Player player = client.getLocalPlayer();
             if (player != null)
-                sendMessage(text);
+                result = messageService.submit(text, getCurrentMode(), getCurrentTarget(), this::restoreUnsentInput);
+
+            if (result == SubmitResult.RETAINED)
+                return result; // keep the text so the player can try again
 
             if (messageContainer != null) {
                 messageContainer.setUserScrolled(false);
@@ -1903,10 +1913,38 @@ public class ChatOverlay extends OverlayPanel
             }
         }
 
+        // A message handed to the game is loaded into the game's input when its key
+        // script runs, so clearing ours here can't race the send
         inputBuf.setLength(0);
         caret = 0;
         inputScrollPx = 0;
         clearSelection(); // ensure selection cleared after send
+        return result;
+    }
+
+    /**
+     * Puts a message the game did not send back into the input.
+     * Called on the client thread.
+     */
+    private void restoreUnsentInput(String text) {
+        if (!isEnabled())
+            return;
+        // Never overwrite something the player has started typing since
+        if (getInputText().isEmpty())
+            setInputText(text, true);
+        if (hidden)
+            setHidden(false);
+        focusInput();
+    }
+
+    /**
+     * The player whose private tab is being typed in, while Modern Chat owns the chat;
+     * the game's private message prompt is held open for them so Enter can send.
+     */
+    private @Nullable String getPrivatePromptTarget() {
+        if (!isEnabled() || hidden || !inputFocused || legacyShowing || !ChatUtil.LEGACY_CHAT_CONCEALED.get())
+            return null;
+        return getCurrentTarget();
     }
 
     public boolean submitInput(KeyEvent e) {
@@ -1919,14 +1957,20 @@ public class ChatOverlay extends OverlayPanel
             return false;
         }
 
-        commitInput();
+        final SubmitResult result = commitInput();
+        if (result == SubmitResult.RETAINED) {
+            e.consume(); // keep the chat open with the unsent text
+            return true;
+        }
 
         if (!mainConfig.featureToggle_Enabled() || !mainConfig.featureToggle_AutoHideOnSend()) {
             unfocusInput();
             if (!mainConfig.featureToggle_Enabled()) {
                 eventBus.post(new ChatToggleEvent(true));
             }
-            e.consume();
+            // A handed-off message is sent by the game when this Enter press reaches it
+            if (result != SubmitResult.PASS_TO_GAME)
+                e.consume();
         }
 
         return true;
@@ -1934,20 +1978,6 @@ public class ChatOverlay extends OverlayPanel
 
     public @Nullable String getCurrentTarget() {
         return activeTab != null && activeTab.isPrivate() ? activeTab.getTargetName() : null;
-    }
-
-    public void sendPrivateChat(String text) {
-        String targetName = getCurrentTarget();
-        if (StringUtil.isNullOrEmpty(targetName)) {
-            log.warn("Attempted to send private chat without a target name");
-            return;
-        }
-
-        messageService.sendPrivateChat(text, targetName);
-    }
-
-    public void sendMessage(String text) {
-        messageService.sendMessage(text, getCurrentMode(), getCurrentTarget());
     }
 
     private int getCharacterLimit() {

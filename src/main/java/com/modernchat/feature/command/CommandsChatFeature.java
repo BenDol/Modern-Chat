@@ -22,6 +22,7 @@ import net.runelite.client.input.KeyListener;
 import net.runelite.client.util.Text;
 import org.apache.commons.lang3.tuple.Pair;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.HashMap;
@@ -205,6 +206,22 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         } catch (Exception ex) {
             log.warn("Chat command '{}' failed", handler.getClass().getSimpleName(), ex);
         }
+    }
+
+    /**
+     * When the input is a group chat command (/g, /gim, /group) and that command is on,
+     * returns the message to send to group chat; otherwise null.
+     * MUST be on client thread.
+     */
+    public @Nullable String resolveGroupChatAlias(String raw) {
+        if (!isEnabled() || !config.featureCommands_GroupChatEnabled())
+            return null;
+
+        final Pair<ChatCommandHandler, String[]> pair = getCommandHandler(raw);
+        if (pair == null || pair.getLeft() != groupIronmanChatCommand)
+            return null;
+
+        return groupIronmanChatCommand.extractMessage(raw);
     }
 
     private Pair<ChatCommandHandler, String[]> getCommandHandler(String raw) {

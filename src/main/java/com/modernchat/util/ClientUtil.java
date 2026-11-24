@@ -38,6 +38,8 @@ public class ClientUtil
 {
     // Unfortunately this hack is required for KeyRemappingPlugin compatibility
     public static final String PRESS_ENTER_TO_CHAT = "Press Enter to Chat...";
+    // VarClientID.MESLAYERMODE value of the "Enter message to send to" prompt
+    public static final int MESLAYER_MODE_PRIVATE_MESSAGE = 6;
 
     /**
      * Resolves a mouse event's position in real canvas space. With Stretched Mode
@@ -67,6 +69,10 @@ public class ClientUtil
      * MUST be on client thread.
      */
     public static boolean isSystemTextEntryActive(Client client) {
+        // The private message prompt Modern Chat holds open to send PMs is not a system prompt
+        if (isOwnPrivatePrompt(client))
+            return false;
+
         // INPUT_TYPE is a VarClient int id, so it must be read as a varc int.
         // Varc access can still fail very early in the client lifecycle
         // (pre-login); treat any failure as "no system text entry active" -
@@ -170,19 +176,47 @@ public class ClientUtil
     public static boolean isChatHidden(Client client) {
         Widget root = getChatWidget(client);
         if (root != null) {
-            return root.isHidden();
+            return ChatUtil.isChatHidden(root);
         }
         return false;
     }
 
+    /**
+     * Conceals (hidden = true) or reveals the game chatbox while Modern Chat is drawing
+     * the chat. See {@link ChatUtil#setChatConcealed}.
+     * MUST be on client thread.
+     */
     public static boolean setChatHidden(Client client, boolean hidden) {
         Widget chatWidget = getChatWidget(client);
         if (chatWidget != null) {
-            ChatUtil.setChatHidden(chatWidget, hidden);
-            client.refreshChat();
+            // Only a reveal needs a rebuild. The concealed chatbox stays live and rebuilds
+            // itself, so refreshing on every conceal would loop through BUILD_CHATBOX.
+            if (ChatUtil.setChatConcealed(chatWidget, hidden) && !hidden)
+                client.refreshChat();
             return true;
         }
         return false;
+    }
+
+    /**
+     * Whether the game's private message prompt is open for the target Modern Chat is
+     * holding it open for (see GameChatBridge).
+     * MUST be on client thread.
+     */
+    public static boolean isOwnPrivatePrompt(Client client) {
+        String target = ChatUtil.OWN_PRIVATE_PROMPT_TARGET.get();
+        return target != null && isPrivatePromptOpenFor(client, target);
+    }
+
+    /**
+     * Whether the game's "Enter message to send to" prompt is open for the given player.
+     * MUST be on client thread.
+     */
+    public static boolean isPrivatePromptOpenFor(Client client, String target) {
+        if (client.getVarcIntValue(VarClientID.MESLAYERMODE) != MESLAYER_MODE_PRIVATE_MESSAGE)
+            return false;
+        String current = client.getVarcStrValue(VarClientID.FRIENDTOMESSAGE);
+        return current != null && Text.toJagexName(current).equalsIgnoreCase(Text.toJagexName(target));
     }
 
     public static MessageNode findMessageNode(Client client, int id) {
@@ -353,6 +387,9 @@ public class ClientUtil
     }
 
     public static boolean isDialogOpen(Client client) {
+        // The private message prompt Modern Chat holds open hides the chat display too
+        if (isOwnPrivatePrompt(client))
+            return false;
         return isHidden(client, InterfaceID.Chatbox.MES_LAYER_HIDE)
             || isHidden(client, InterfaceID.Chatbox.CHATDISPLAY);
     }

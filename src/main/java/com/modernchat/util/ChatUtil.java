@@ -26,12 +26,22 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ChatUtil
 {
     public static final AtomicBoolean LEGACY_CHAT_HIDDEN = new AtomicBoolean(false);
+    /**
+     * True while Modern Chat conceals the game chatbox: kept unhidden so the game's own
+     * key handling stays attached (sending needs it), but drawn off-screen.
+     */
+    public static final AtomicBoolean LEGACY_CHAT_CONCEALED = new AtomicBoolean(false);
+    /** Target of the game's private message prompt while Modern Chat holds it open, else null. */
+    public static final AtomicReference<String> OWN_PRIVATE_PROMPT_TARGET = new AtomicReference<>();
+    // Far enough off any canvas that the concealed chatbox can neither draw nor take clicks
+    private static final int CONCEALED_POSITION = -10000;
     public static final String MODERN_CHAT_TAG = "[ModernChat]";
     public static final String COMMAND_MODE_MESSAGE = "Command Mode (Modern chat will be restored once you send or cancel the command)";
 
@@ -456,8 +466,49 @@ public class ChatUtil
     }
 
     public static void setChatHidden(Widget chat, boolean hidden) {
+        if (LEGACY_CHAT_CONCEALED.getAndSet(false))
+            applyConcealment(chat, false);
         chat.setHidden(hidden);
         LEGACY_CHAT_HIDDEN.set(hidden);
+    }
+
+    /**
+     * Conceals or restores the game chatbox while Modern Chat is drawing the chat. The
+     * chatbox root stays unhidden so the game keeps dispatching keys to it (RuneLite only
+     * lets the game's own chat scripts send messages), and its children are moved
+     * off-screen instead. The root keeps its bounds, which other features read.
+     *
+     * @return true when the concealed state changed
+     */
+    public static boolean setChatConcealed(Widget chat, boolean concealed) {
+        boolean changed = LEGACY_CHAT_CONCEALED.getAndSet(concealed) != concealed;
+        if (chat.isSelfHidden())
+            chat.setHidden(false);
+        // Applied every time: a reloaded chatbox comes back with fresh, unpositioned widgets
+        applyConcealment(chat, concealed);
+        LEGACY_CHAT_HIDDEN.set(concealed);
+        return changed;
+    }
+
+    /**
+     * Whether the game chatbox is out of view, either hidden or concealed by Modern Chat.
+     */
+    public static boolean isChatHidden(Widget chat) {
+        return LEGACY_CHAT_CONCEALED.get() || chat.isHidden();
+    }
+
+    private static void applyConcealment(Widget chat, boolean concealed) {
+        Widget[] children = chat.getStaticChildren();
+        if (children == null)
+            return;
+
+        int position = concealed ? CONCEALED_POSITION : -1;
+        for (Widget child : children) {
+            if (child == null)
+                continue;
+            child.setForcedPosition(position, position);
+            child.revalidate();
+        }
     }
 
     public static boolean isNpcMessage(ChatMessage e) {
