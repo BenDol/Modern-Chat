@@ -5,9 +5,9 @@ import lombok.Getter;
 @Getter
 public enum ChatMode
 {
-    // value is the CHAT_SEND channel argument. CLAN_GIM and PRIVATE use sentinels
-    // because they are not sent with their own channel value: group chat goes out
-    // as CLAN_MAIN with the ironman clan type, private chat through PRIVMSG.
+    // value is the game's chat type for the channel. CLAN_GIM and PRIVATE use sentinels
+    // because they have no chat type of their own: group chat goes out as clan chat
+    // with the ironman clan target, private chat through the game's message prompt.
     // chatboxMode is the game's VarClientID.CHATBOX_MODE value that routes an
     // unprefixed message to this channel (-1 when no chatbox mode does).
     CLAN_GIM(-2, 4),

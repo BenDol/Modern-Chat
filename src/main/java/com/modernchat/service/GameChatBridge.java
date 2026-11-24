@@ -15,6 +15,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.ScriptEvent;
 import net.runelite.api.ScriptID;
 import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
@@ -96,6 +97,11 @@ public class GameChatBridge implements ChatService
 
     @Override
     public void startUp() {
+        // The chatbox flags are static and outlive a plugin restart; nothing is concealed
+        // or held open until the chat redesign starts again
+        ChatUtil.LEGACY_CHAT_CONCEALED.set(false);
+        ChatUtil.OWN_PRIVATE_PROMPT_TARGET.set(null);
+        readyPromptTarget = null;
         eventBus.register(this);
     }
 
@@ -223,6 +229,18 @@ public class GameChatBridge implements ChatService
                 eventBus.post(new ChatPrivateMessageSentEvent(handoff.text, handoff.target));
                 break;
         }
+    }
+
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged e) {
+        GameState state = e.getGameState();
+        if (state != GameState.LOGIN_SCREEN && state != GameState.HOPPING)
+            return;
+
+        // The chatbox goes away with the session, and the held prompt with it
+        ChatUtil.OWN_PRIVATE_PROMPT_TARGET.set(null);
+        readyPromptTarget = null;
+        failedPromptTarget = null;
     }
 
     @Subscribe
@@ -410,7 +428,7 @@ public class GameChatBridge implements ChatService
     }
 
     private void closeOwnPrompt(String target) {
-        if (ClientUtil.isPrivatePromptOpenFor(client, target)) {
+        if (client.getGameState() == GameState.LOGGED_IN && ClientUtil.isPrivatePromptOpenFor(client, target)) {
             // Clear the input and restore the chatbox key handling; no dialog to resume
             client.runScript(ScriptID.MESSAGE_LAYER_CLOSE, 1, 1, 0);
         }

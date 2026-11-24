@@ -144,7 +144,8 @@ public class ChatOverlay extends OverlayPanel
 
     @Getter private final Map<String, Integer> suggestedOrder = new ConcurrentHashMap<>();
     @Getter private final List<Tab> tabOrder = new LinkedList<>();
-    @Getter private Tab activeTab = null;
+    // Read on the client thread to drive the private message prompt (GameChatBridge)
+    @Getter private volatile Tab activeTab = null;
     @Getter private final Map<String, Tab> tabsByKey = new ConcurrentHashMap<>();
     @Getter private final Map<ChatMode, String> defaultTabNames = new ConcurrentHashMap<>();
     private final Rectangle tabsBarBounds = new Rectangle();
@@ -174,7 +175,7 @@ public class ChatOverlay extends OverlayPanel
 
     // Input box state
     private final Rectangle inputBounds = new Rectangle();
-    private boolean inputFocused = false;
+    private volatile boolean inputFocused = false;
     private final StringBuilder inputBuf = new StringBuilder();
     private int caret = 0;
     private int inputScrollPx = 0;
@@ -203,7 +204,7 @@ public class ChatOverlay extends OverlayPanel
     private static final int BADGE_THIN_THRESHOLD = 120; // tab content width threshold
 
     @Getter private volatile boolean hidden = false;
-    @Getter private boolean legacyShowing = false;
+    @Getter private volatile boolean legacyShowing = false;
     @Getter private boolean wasHidden = false;
 
     // Shared decider for message containers; runs on the AWT mouse thread

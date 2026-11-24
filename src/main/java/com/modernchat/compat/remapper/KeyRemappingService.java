@@ -172,7 +172,12 @@ public class KeyRemappingService implements ChatService {
             return;
 
         typing = true;
-        clientThread.invoke(() -> client.runScript(ScriptID.MESSAGE_LAYER_CLOSE, 0, 1, 0));
+        clientThread.invoke(() -> {
+            // Never close Modern Chat's own private message prompt (see lockChat)
+            if (ChatUtil.OWN_PRIVATE_PROMPT_TARGET.get() != null)
+                return;
+            client.runScript(ScriptID.MESSAGE_LAYER_CLOSE, 0, 1, 0);
+        });
     }
 
     /**

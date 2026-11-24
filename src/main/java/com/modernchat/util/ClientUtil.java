@@ -188,14 +188,19 @@ public class ClientUtil
      */
     public static boolean setChatHidden(Client client, boolean hidden) {
         Widget chatWidget = getChatWidget(client);
-        if (chatWidget != null) {
-            // Only a reveal needs a rebuild. The concealed chatbox stays live and rebuilds
-            // itself, so refreshing on every conceal would loop through BUILD_CHATBOX.
-            if (ChatUtil.setChatConcealed(chatWidget, hidden) && !hidden)
-                client.refreshChat();
-            return true;
+        if (chatWidget == null) {
+            // No chatbox loaded (login screen, hopping): nothing is concealed any more, and
+            // a stale flag would keep GameChatBridge gating the vanilla chat keys
+            if (!hidden)
+                ChatUtil.LEGACY_CHAT_CONCEALED.set(false);
+            return false;
         }
-        return false;
+
+        // Only a reveal needs a rebuild. The concealed chatbox stays live and rebuilds
+        // itself, so refreshing on every conceal would loop through BUILD_CHATBOX.
+        if (ChatUtil.setChatConcealed(chatWidget, hidden) && !hidden)
+            client.refreshChat();
+        return true;
     }
 
     /**
