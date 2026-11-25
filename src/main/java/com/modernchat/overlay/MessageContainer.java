@@ -17,6 +17,7 @@ import com.modernchat.service.FontService;
 import com.modernchat.service.ForceRecolorService;
 import com.modernchat.service.ImageService;
 import com.modernchat.util.ChatUtil;
+import com.modernchat.util.CanvasDrag;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.ColorUtil;
 import com.modernchat.util.FormatUtil;
@@ -1010,6 +1011,7 @@ public class MessageContainer extends Overlay
         private int trackTop = 0, trackHeight = 1, maxScroll = 0;
 
         private boolean dragging = false;
+        private final CanvasDrag drag = new CanvasDrag();
         private int dragOffsetY = 0; // pointer offset within the thumb
 
         void updateScrollbar(int x, int y, int w, int h, int trackTop, int trackHeight, int maxScroll) {
@@ -1077,6 +1079,7 @@ public class MessageContainer extends Overlay
 
             if (thumb.contains(p)) {
                 dragging = true;
+                drag.begin(client, e);
                 dragOffsetY = p.y - thumb.y;
                 e.consume(); // consume press
                 return e;
@@ -1090,7 +1093,9 @@ public class MessageContainer extends Overlay
                 return e;
 
             int thumbTravel = trackHeight - thumb.height;
-            int newThumbY = clamp(ClientUtil.getMouseCanvasPoint(client, e).y - dragOffsetY, trackTop, trackTop + thumbTravel);
+            // Consumed, so in Stretched Mode the client's tracked position would stay at the
+            // press; follow the drag from the press instead
+            int newThumbY = clamp(drag.point(client, e).y - dragOffsetY, trackTop, trackTop + thumbTravel);
             double p = thumbTravel == 0 ? 0.0 : (newThumbY - trackTop) / (double) thumbTravel;
 
             scrollOffsetPx = (int) Math.round(maxScroll * p);
@@ -1103,6 +1108,7 @@ public class MessageContainer extends Overlay
         @Override
         public MouseEvent mouseReleased(MouseEvent e) {
             dragging = false;
+            drag.end();
             return e;
         }
 

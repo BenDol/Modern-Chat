@@ -35,6 +35,7 @@ import com.modernchat.service.ImageService;
 import com.modernchat.service.MessageService;
 import com.modernchat.service.MessageService.SubmitResult;
 import com.modernchat.service.SpamFilterService;
+import com.modernchat.util.CanvasDrag;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.MathUtil;
@@ -2668,6 +2669,8 @@ public class ChatOverlay extends OverlayPanel
 
     private final class ChatMouse implements MouseListener, MouseWheelListener
     {
+        private final CanvasDrag drag = new CanvasDrag();
+
         private boolean clickThroughNotificationSent = false;
         private boolean scrollDisabledNotificationSent = false;
 
@@ -2757,7 +2760,8 @@ public class ChatOverlay extends OverlayPanel
             if (lastViewport == null)
                 return false;
 
-            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+            // Anchors a text selection or tab drag that may follow
+            java.awt.Point p = drag.begin(client, e);
 
             // Handle filter dropdown clicks first (it's rendered on top)
             if (filterDropdown != null && filterDropdown.isVisible()) {
@@ -2906,7 +2910,9 @@ public class ChatOverlay extends OverlayPanel
             if (client.isMenuOpen())
                 return false;
 
-            java.awt.Point p = ClientUtil.getMouseCanvasPoint(client, e);
+            // Selection and tab drags are consumed, so in Stretched Mode the client's tracked
+            // position would stay at the press; follow the drag from the press instead
+            java.awt.Point p = drag.point(client, e);
 
             // Selection drag
             if (selectingText && inputFocused) {
@@ -2953,6 +2959,7 @@ public class ChatOverlay extends OverlayPanel
         }
 
         public boolean handleMouseReleased(MouseEvent e) {
+            drag.end();
             if (client.isMenuOpen()) {
                 return false;
             }

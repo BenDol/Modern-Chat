@@ -1,5 +1,6 @@
 package com.modernchat.overlay;
 
+import com.modernchat.util.CanvasDrag;
 import com.modernchat.util.ClientUtil;
 
 import lombok.Getter;
@@ -283,6 +284,8 @@ public class ResizePanel extends Overlay
     // Mouse handler
     private final class MouseHandler implements MouseListener
     {
+        private final CanvasDrag drag = new CanvasDrag();
+
         private Point lastMovePoint = null;
 
         @Override public MouseEvent mouseClicked(MouseEvent e) { return e; }
@@ -315,7 +318,7 @@ public class ResizePanel extends Overlay
         public MouseEvent mousePressed(MouseEvent e) {
             if (!isResizable.get()) return e;
 
-            Point p = ClientUtil.getMouseCanvasPoint(client, e);
+            Point p = drag.begin(client, e);
             if (lastPanel == null || !lastPanel.contains(p)) return e;
 
             // TOP
@@ -365,7 +368,9 @@ public class ResizePanel extends Overlay
         public MouseEvent mouseDragged(MouseEvent e) {
             if (!isResizable.get()) return e;
 
-            Point p = ClientUtil.getMouseCanvasPoint(client, e);
+            // Consumed while resizing, so in Stretched Mode the client's tracked position
+            // would stay at the press; follow the drag from the press instead
+            Point p = drag.point(client, e);
             lastMovePoint = p;
 
             if (!isResizingAny()) return e;
@@ -403,6 +408,8 @@ public class ResizePanel extends Overlay
 
         @Override
         public MouseEvent mouseReleased(MouseEvent e) {
+            Point p = drag.point(client, e);
+            drag.end();
             if (isResizingAny()) {
                 // stop any resizing state
                 resizingTop = false;
@@ -411,7 +418,7 @@ public class ResizePanel extends Overlay
                 resizingLeft = false;
 
                 // update cursor based on current hover
-                updateHoverCursor(ClientUtil.getMouseCanvasPoint(client, e));
+                updateHoverCursor(p);
                 e.consume();
                 return e;
             }
