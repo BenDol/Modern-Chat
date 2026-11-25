@@ -3,28 +3,54 @@ package com.modernchat.service;
 import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.NotificationService;
+import com.modernchat.event.ChatSendLockedEvent;
 import com.modernchat.util.StringUtil;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.eventbus.EventBus;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 @Slf4j
 @Singleton
 public class MessageService implements ChatService
 {
+    private static final int SEND_COOLDOWN_MS = 900;
+    private static final int SEND_HOT_MESSAGE_MAX = 5;
+    private static final int SEND_LOCK_MS = 1250;
+    private static final int SEND_LOCK_COUNT_RESET_MS = 60000;
+
+    @Inject private EventBus eventBus;
     @Inject private FilterService filterService;
     @Inject private GameChatBridge gameChatBridge;
     @Inject private NotificationService notificationService;
 
+    @Getter private volatile long lastSendTimestamp = 0L;
+    @Getter private volatile long lastSendLock = 0L;
+    @Getter private volatile long sendLockedUntil = 0L;
+
+    private final AtomicInteger sendHotMessageCount = new AtomicInteger(0);
+    private final AtomicInteger sendLockCount = new AtomicInteger(0);
+
     @Override
     public void startUp() {
+
     }
 
     @Override
     public void shutDown() {
+        lastSendTimestamp = 0L;
+    }
+
+    protected void resetLocks() {
+        lastSendLock = 0L;
+        sendLockedUntil = 0L;
+        sendLockCount.set(0);
+        sendHotMessageCount.set(0);
     }
 
     /**
@@ -34,7 +60,7 @@ public class MessageService implements ChatService
     {
         /** Handed to the game: let the Enter key event reach the game, clear the input. */
         PASS_TO_GAME,
-        /** Dealt with here (empty or filtered): consume, clear. */
+        /** Dealt with here (filtered or rate limited): consume, clear. */
         HANDLED,
         /** Not sent and worth retrying: consume and keep the text in the input. */
         RETAINED
@@ -74,6 +100,12 @@ public class MessageService implements ChatService
             }
         }
 
+        if (processSendLock()) {
+            log.debug("Message send is locked, cannot send message: {}", text);
+            notifyLocked(targetName, isPrivate);
+            return SubmitResult.HANDLED;
+        }
+
         if (isCommand) {
             // The game's chat script runs "::" commands exactly as the vanilla chatbox does:
             // its own (::toggleroof, ::wiki), RuneLite's (CommandExecuted) and the server's
@@ -84,6 +116,41 @@ public class MessageService implements ChatService
             gameChatBridge.handOffChannelMessage(text, mode, onFailed);
         }
 
+        lastSendTimestamp = System.currentTimeMillis();
         return SubmitResult.PASS_TO_GAME;
+    }
+
+    private void notifyLocked(String targetName, boolean isPrivate) {
+        eventBus.post(new ChatSendLockedEvent(targetName, getSendLockedUntil(), isPrivate));
+    }
+
+    private boolean processSendLock() {
+        if (isSendLocked())
+            return true;
+
+        if (!isSendCooldownActive())
+            return false;
+
+        sendHotMessageCount.incrementAndGet();
+        if (sendHotMessageCount.get() < SEND_HOT_MESSAGE_MAX)
+            return false;
+
+        long now = System.currentTimeMillis();
+        if (now - lastSendLock >= SEND_LOCK_COUNT_RESET_MS)
+            sendLockCount.set(0);
+
+        lastSendLock = now;
+        long lockCount = sendLockCount.incrementAndGet();
+        long lockDelay = Math.min(lockCount * SEND_LOCK_MS, SEND_LOCK_COUNT_RESET_MS);
+        sendLockedUntil = lastSendLock + lockDelay;
+        return true;
+    }
+
+    public boolean isSendCooldownActive() {
+        return System.currentTimeMillis() - lastSendTimestamp < SEND_COOLDOWN_MS;
+    }
+
+    public boolean isSendLocked() {
+        return System.currentTimeMillis() < sendLockedUntil;
     }
 }
