@@ -15,8 +15,9 @@ import java.util.function.UnaryOperator;
  * Game messages carry these macros raw; the vanilla chatbox swaps them for {@code <col=...>}
  * tags using a translation table the game's scripts fill at login and whenever the chatbox
  * transparency changes. Modern Chat draws messages itself, so it has to expand them too.
- * Player-typed text never contains a raw '@' (the game escapes it as {@code <at>}), so any
- * '@' left in a message belongs to a macro and the whole message can be expanded.
+ * Player-typed text never contains a raw '@' (the game escapes it as {@code <at>}, see
+ * RuneLite's {@code Text.escapeJagex}), so any '@' left in a message belongs to a macro and
+ * the whole message can be expanded.
  * <p>
  * The game's own table ({@link Client#macroExpand}) is the source of truth, so macros Jagex
  * adds later keep working. The one exception is the set of colors the game swaps by chatbox
