@@ -21,6 +21,9 @@ import java.awt.event.MouseEvent;
  */
 public final class CanvasDrag
 {
+    // How much closer the window-space reading must be before it is trusted
+    private static final double WINDOW_SPACE_MARGIN_PX = 4;
+
     private Point canvasStart;
     private Point eventStart;
     private double scaleX = 1;
@@ -77,9 +80,12 @@ public final class CanvasDrag
         // The events are already in canvas space when Stretched Mode's translating listener
         // ran ahead of ours, and in window space when it did not (seen after a launch with
         // Stretched Mode on). Whichever reading lands on the tracked position is the one.
+        // The tracked position can trail the press by a few pixels, and near the canvas
+        // origin the two readings are only that far apart, so window space has to be
+        // clearly closer; otherwise the usual canvas-space case stands.
         double asIs = event.distance(canvas);
         double scaled = Point.distance(event.x * sx, event.y * sy, canvas.x, canvas.y);
-        if (scaled < asIs) {
+        if (scaled + WINDOW_SPACE_MARGIN_PX < asIs) {
             scaleX = sx;
             scaleY = sy;
         }

@@ -48,6 +48,9 @@ public class ClientUtil
      * when the client boots with Stretched Mode already enabled), so prefer the
      * client's own tracked canvas position - the same source the menu system uses -
      * and fall back to the event point when it's unavailable.
+     * <p>
+     * The tracked position only moves when the game sees the event, so it stays at the
+     * press for a drag a listener consumes. Follow such drags with {@link CanvasDrag}.
      */
     public static Point getMouseCanvasPoint(Client client, MouseEvent e) {
         return getMouseCanvasPoint(client.isStretchedEnabled(), client.getMouseCanvasPosition(), e);
