@@ -204,6 +204,15 @@ public class ClientUtil
     }
 
     /**
+     * Keeps a chatbox component reachable for keys while the chatbox is concealed, or
+     * none with -1. See {@link ChatUtil#setConcealedKeyInput}.
+     * MUST be on client thread.
+     */
+    public static void setConcealedKeyInput(Client client, int componentId) {
+        ChatUtil.setConcealedKeyInput(getChatWidget(client), componentId);
+    }
+
+    /**
      * Whether the game's private message prompt is open for the target Modern Chat is
      * holding it open for (see GameChatBridge).
      * MUST be on client thread.

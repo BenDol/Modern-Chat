@@ -50,7 +50,9 @@ import java.util.function.Consumer;
  *   neutralises every other key the script would handle, so it never types or sends
  *   anything the player did not submit through Modern Chat.</li>
  *   <li>Private messages go through the game's "Enter message to send to" prompt, which
- *   Modern Chat holds open (concealed) while the player types on a private tab.</li>
+ *   Modern Chat holds open (concealed) while the player types on a private tab. The game
+ *   only runs the prompt's key handler while its input is on-screen, so that one input
+ *   stays in place, fully transparent (see {@link ChatUtil#setConcealedKeyInput}).</li>
  *   <li>"::" commands go through chatdefault_onkey too, which runs them like the vanilla
  *   chatbox (the game's own, RuneLite's and the server's).</li>
  * </ul>
@@ -104,6 +106,7 @@ public class GameChatBridge implements ChatService
         ChatUtil.LEGACY_CHAT_CONCEALED.set(false);
         ChatUtil.OWN_PRIVATE_PROMPT_TARGET.set(null);
         readyPromptTarget = null;
+        clientThread.invoke(() -> ClientUtil.setConcealedKeyInput(client, -1));
         eventBus.register(this);
     }
 
@@ -250,6 +253,7 @@ public class GameChatBridge implements ChatService
 
         // The chatbox goes away with the session, and the held prompt with it
         ChatUtil.OWN_PRIVATE_PROMPT_TARGET.set(null);
+        ClientUtil.setConcealedKeyInput(client, -1);
         readyPromptTarget = null;
         failedPromptTarget = null;
     }
@@ -449,6 +453,8 @@ public class GameChatBridge implements ChatService
         }
 
         if (ClientUtil.isPrivatePromptOpenFor(client, target)) {
+            // The game only runs the prompt's key handler while its input is on-screen
+            ClientUtil.setConcealedKeyInput(client, InterfaceID.Chatbox.MES_TEXT2);
             readyPromptTarget = target;
         } else {
             ChatUtil.OWN_PRIVATE_PROMPT_TARGET.set(null);
@@ -467,6 +473,7 @@ public class GameChatBridge implements ChatService
 
     private void releaseOwnPrompt(String target) {
         ChatUtil.OWN_PRIVATE_PROMPT_TARGET.set(null);
+        ClientUtil.setConcealedKeyInput(client, -1);
         readyPromptTarget = null;
 
         // The game leaves the target set after its prompt closes; clear ours so other

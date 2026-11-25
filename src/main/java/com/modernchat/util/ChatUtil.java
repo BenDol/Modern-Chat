@@ -21,11 +21,14 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,6 +48,14 @@ public class ChatUtil
     // is above -1 (negative means "cleared"), so a negative one is undone by the next rebuild.
     // Forced positions are stored as shorts, so it must also stay below Short.MAX_VALUE.
     private static final int CONCEALED_POSITION = 30000;
+    private static final int FULLY_TRANSPARENT = 255;
+    // Chatbox component kept reachable for keys inside the concealed chatbox, or -1
+    private static final AtomicInteger CONCEALED_KEY_INPUT = new AtomicInteger(-1);
+    // Widgets the concealment moved off-screen, so a later pass can put back the ones it
+    // no longer conceals, and the kept input with its own opacity. Client thread only.
+    private static Set<Widget> concealedWidgets = newWidgetSet();
+    private static Widget transparentInput;
+    private static int transparentInputOpacity;
     public static final String MODERN_CHAT_TAG = "[ModernChat]";
 
     private static final Pattern IMG_TAG_PATTERN = Pattern.compile("<img=(\\d+)>");
@@ -499,18 +510,109 @@ public class ChatUtil
         return LEGACY_CHAT_CONCEALED.get() || chat.isHidden();
     }
 
-    private static void applyConcealment(Widget chat, boolean concealed) {
-        Widget[] children = chat.getStaticChildren();
-        if (children == null)
+    /**
+     * Keeps one component of the concealed chatbox in place, fully transparent, so the game
+     * still dispatches keys to it: the client only runs a widget's key handler while its
+     * clipped bounds are on-screen and neither it nor a parent is hidden. Everything around
+     * the path to it stays off-screen. Pass -1 to conceal the whole chatbox again.
+     * MUST be on client thread.
+     *
+     * @param chat the chatbox root, or null when no chatbox is loaded
+     */
+    public static void setConcealedKeyInput(@Nullable Widget chat, int componentId) {
+        CONCEALED_KEY_INPUT.set(componentId);
+        if (chat == null) {
+            // The chatbox went away and its widgets with it
+            concealedWidgets = newWidgetSet();
+            transparentInput = null;
             return;
+        }
+        applyConcealment(chat, LEGACY_CHAT_CONCEALED.get());
+    }
 
-        int position = concealed ? CONCEALED_POSITION : -1;
+    private static void applyConcealment(Widget chat, boolean concealed) {
+        Set<Widget> conceal = newWidgetSet();
+        Widget input = null;
+        if (concealed) {
+            List<Widget> path = findStaticPath(chat, CONCEALED_KEY_INPUT.get());
+            if (path == null) {
+                addChildren(conceal, chat.getStaticChildren(), null);
+            } else {
+                // The root's static children only, as for the whole chatbox; below it
+                // everything beside the path, including built and nested children
+                addChildren(conceal, chat.getStaticChildren(), path.get(0));
+                for (int i = 1; i < path.size(); i++) {
+                    Widget parent = path.get(i - 1);
+                    Widget keep = path.get(i);
+                    addChildren(conceal, parent.getStaticChildren(), keep);
+                    addChildren(conceal, parent.getDynamicChildren(), keep);
+                    addChildren(conceal, parent.getNestedChildren(), keep);
+                }
+                input = path.get(path.size() - 1);
+            }
+        }
+
+        for (Widget widget : concealedWidgets) {
+            if (!conceal.contains(widget))
+                moveTo(widget, -1);
+        }
+        // Applied every time: a reloaded chatbox comes back with fresh, unpositioned widgets
+        for (Widget widget : conceal)
+            moveTo(widget, CONCEALED_POSITION);
+        concealedWidgets = conceal;
+        setTransparentInput(input);
+    }
+
+    // Path of static widgets from below the parent down to the component, or null
+    private static @Nullable List<Widget> findStaticPath(Widget parent, int componentId) {
+        if (componentId == -1)
+            return null;
+
+        Widget[] children = parent.getStaticChildren();
+        if (children == null)
+            return null;
+
         for (Widget child : children) {
             if (child == null)
                 continue;
-            child.setForcedPosition(position, position);
-            child.revalidate();
+            List<Widget> path = child.getId() == componentId ? new ArrayList<>() : findStaticPath(child, componentId);
+            if (path != null) {
+                path.add(0, child);
+                return path;
+            }
         }
+        return null;
+    }
+
+    private static void addChildren(Set<Widget> out, @Nullable Widget[] children, @Nullable Widget keep) {
+        if (children == null)
+            return;
+        for (Widget child : children) {
+            if (child != null && child != keep)
+                out.add(child);
+        }
+    }
+
+    private static void setTransparentInput(@Nullable Widget input) {
+        if (transparentInput != null && transparentInput != input)
+            transparentInput.setOpacity(transparentInputOpacity);
+        if (input != null) {
+            if (input != transparentInput)
+                transparentInputOpacity = input.getOpacity();
+            // Re-applied every time in case a game script reset it
+            input.setOpacity(FULLY_TRANSPARENT);
+        }
+        transparentInput = input;
+    }
+
+    // Position -1 clears a forced position
+    private static void moveTo(Widget widget, int position) {
+        widget.setForcedPosition(position, position);
+        widget.revalidate();
+    }
+
+    private static Set<Widget> newWidgetSet() {
+        return Collections.newSetFromMap(new IdentityHashMap<>());
     }
 
     public static boolean isNpcMessage(ChatMessage e) {
