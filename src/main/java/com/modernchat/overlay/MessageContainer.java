@@ -645,6 +645,18 @@ public class MessageContainer extends Overlay
                     i = j + 1;
                     continue;
                 }
+                if (tagLower.equals("at")) {
+                    // The game escapes '@' so it can't start a color macro
+                    buf.append('@');
+                    i = j + 1;
+                    continue;
+                }
+                if (tagLower.equals("nbh")) {
+                    // Non-breaking hyphen; decoded like RuneLite's Text.unescapeJagex
+                    buf.append('-');
+                    i = j + 1;
+                    continue;
+                }
 
                 if (buf.length() > 0) {
                     out.getSegs().add(new TextSegment(buf.toString(), cur));
@@ -660,7 +672,7 @@ public class MessageContainer extends Overlay
                     cur = stack.isEmpty() ? base : stack.pop();
                     i = j + 1;
                     continue;
-                } else if (tagLower.equals("br")) {
+                } else if (tagLower.equals("br") || tagLower.equals("n")) {
                     if (out.getSegs().isEmpty())
                         out.getSegs().add(new TextSegment("", cur));
                     pushRich(out);
