@@ -2359,8 +2359,7 @@ public class ChatOverlay extends OverlayPanel
         chatboxParent.setOriginalHeight(chatViewport.getOriginalHeight());
         chatboxParent.setOriginalWidth(chatViewport.getOriginalWidth());
 
-        chatboxParent.revalidate();
-        chatViewport.revalidate();
+        ChatUtil.layoutChatbox(chatboxParent);
 
         client.refreshChat();
 
@@ -2390,7 +2389,8 @@ public class ChatOverlay extends OverlayPanel
             chatboxParent.setOriginalWidth(0);
             chatboxParent.setHeightMode(WidgetSizeMode.MINUS);
             chatboxParent.setWidthMode(WidgetSizeMode.MINUS);
-            chatboxParent.revalidate();
+            // Fills its slot again; laid out inside the slot, not against the canvas
+            ChatUtil.layoutChatbox(chatboxParent);
         }
 
         client.refreshChat();

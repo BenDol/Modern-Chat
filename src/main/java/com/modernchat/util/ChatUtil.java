@@ -552,15 +552,49 @@ public class ChatUtil
             }
         }
 
+        // A forced position takes effect at once, but clearing one leaves the widget at -1,-1
+        // until the next layout, so anything put back needs the chatbox laid out again
+        boolean restored = false;
         for (Widget widget : concealedWidgets) {
-            if (!conceal.contains(widget))
-                moveTo(widget, -1);
+            if (!conceal.contains(widget)) {
+                widget.setForcedPosition(-1, -1);
+                restored = true;
+            }
+        }
+        if (!concealed) {
+            // Also clears positions this set no longer knows about (an earlier plugin instance)
+            Widget[] children = chat.getStaticChildren();
+            if (children != null) {
+                for (Widget child : children) {
+                    if (child != null)
+                        child.setForcedPosition(-1, -1);
+                }
+            }
+            restored = true;
         }
         // Applied every time: a reloaded chatbox comes back with fresh, unpositioned widgets
         for (Widget widget : conceal)
-            moveTo(widget, CONCEALED_POSITION);
+            widget.setForcedPosition(CONCEALED_POSITION, CONCEALED_POSITION);
         concealedWidgets = conceal;
         setTransparentInput(input);
+
+        if (restored)
+            layoutChatbox(chat);
+    }
+
+    /**
+     * Lays the chatbox out again inside the slot it sits in, the way the game does on a
+     * resize. Widget.revalidate() is not enough: it lays a widget out against the whole
+     * canvas, so the chatbox parts sized from their parent (the chat area fills the
+     * chatbox above the tab buttons) come out canvas-sized until the game's next layout.
+     * Forced positions are re-applied by that layout.
+     * MUST be on client thread.
+     */
+    public static void layoutChatbox(Widget chat) {
+        Widget slot = chat.getParent();
+        // revalidateScroll lays the widget out, then its children (nested interfaces too)
+        // against its own size
+        (slot != null ? slot : chat).revalidateScroll();
     }
 
     // Path of static widgets from below the parent down to the component, or null
@@ -603,12 +637,6 @@ public class ChatUtil
             input.setOpacity(FULLY_TRANSPARENT);
         }
         transparentInput = input;
-    }
-
-    // Position -1 clears a forced position
-    private static void moveTo(Widget widget, int position) {
-        widget.setForcedPosition(position, position);
-        widget.revalidate();
     }
 
     private static Set<Widget> newWidgetSet() {
