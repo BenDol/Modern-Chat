@@ -427,7 +427,7 @@ public class ChatUtil
         }
 
         // Game messages carry color macros such as @mes_hl_red@ that the vanilla chatbox expands
-        message = ChatMacroUtil.expand(client, type, message);
+        message = ChatMacroUtil.expand(client, message);
 
         builder.append(message, false);
 

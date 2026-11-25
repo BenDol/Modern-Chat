@@ -1,15 +1,12 @@
 package com.modernchat.util;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.UnaryOperator;
 
 /**
@@ -18,11 +15,14 @@ import java.util.function.UnaryOperator;
  * Game messages carry these macros raw; the vanilla chatbox swaps them for {@code <col=...>}
  * tags using a translation table the game's scripts fill at login and whenever the chatbox
  * transparency changes. Modern Chat draws messages itself, so it has to expand them too.
+ * Player-typed text never contains a raw '@' (the game escapes it as {@code <at>}), so any
+ * '@' left in a message belongs to a macro and the whole message can be expanded.
  * <p>
  * The game's own table ({@link Client#macroExpand}) is the source of truth, so macros Jagex
  * adds later keep working. The one exception is the set of colors the game swaps by chatbox
  * transparency: the game picks dark shades for the parchment of the opaque chatbox, which are
- * unreadable on Modern Chat's dark backdrop, so those always use the transparent-chatbox shades.
+ * unreadable on Modern Chat's dark backdrop, so those are swapped for the transparent-chatbox
+ * shades before the game expands the rest.
  */
 @Slf4j
 public final class ChatMacroUtil {
@@ -63,46 +63,41 @@ public final class ChatMacroUtil {
         DARK_SURFACE_MACROS = Collections.unmodifiableMap(m);
     }
 
-    /**
-     * Message types whose text a player typed. These are shown as typed: a player writing
-     * "@red@" should not be able to recolor their own message.
-     */
-    private static final Set<ChatMessageType> PLAYER_AUTHORED_TYPES = EnumSet.of(
-        ChatMessageType.PUBLICCHAT,
-        ChatMessageType.MODCHAT,
-        ChatMessageType.AUTOTYPER,
-        ChatMessageType.MODAUTOTYPER,
-        ChatMessageType.PRIVATECHAT,
-        ChatMessageType.PRIVATECHATOUT,
-        ChatMessageType.MODPRIVATECHAT,
-        ChatMessageType.FRIENDSCHAT,
-        ChatMessageType.CLAN_CHAT,
-        ChatMessageType.CLAN_GUEST_CHAT,
-        ChatMessageType.CLAN_GIM_CHAT
-    );
-
     private ChatMacroUtil() {
     }
 
     /**
-     * Expands the macros in a chat message of the given type. Player-typed messages are
-     * returned unchanged. Must be called on the client thread.
+     * Expands the macros in a chat message. Must be called on the client thread.
      */
-    public static String expand(Client client, @Nullable ChatMessageType type, String text) {
-        if (type != null && PLAYER_AUTHORED_TYPES.contains(type)) return text;
+    public static String expand(Client client, String text) {
         return expand(text, client::macroExpand);
     }
 
     /**
-     * Expands every macro in {@code text}. Dark-surface shades win; any other macro is passed
-     * to {@code gameExpander} on its own. A macro neither side knows is left as written, the
-     * same as the game does.
+     * Swaps in the dark-surface shades, then hands the whole message to {@code gameExpander}
+     * for every other macro. Messages without a macro are returned as-is.
      *
-     * @param gameExpander resolves a single {@code @key@} token, returning it unchanged when unknown
+     * @param gameExpander expands every macro in a string, like {@link Client#macroExpand}
      */
     static String expand(@Nullable String text, UnaryOperator<String> gameExpander) {
         if (text == null || text.indexOf('@') < 0) return text;
 
+        String shaded = applyDarkSurfaceShades(text);
+        try {
+            String expanded = gameExpander.apply(shaded);
+            return expanded != null ? expanded : shaded;
+        } catch (RuntimeException ex) {
+            // Never lose the message over a macro: show it with the shades applied instead.
+            log.debug("Failed to expand chat macros in {}", shaded, ex);
+            return shaded;
+        }
+    }
+
+    /**
+     * Replaces the macros in {@link #DARK_SURFACE_MACROS}, leaving every other macro for the
+     * game. Macros pair left to right, so "@gre@@mes_hl_red@" is "@gre@" then "@mes_hl_red@".
+     */
+    private static String applyDarkSurfaceShades(String text) {
         StringBuilder out = null;
         int copied = 0;
         int start = text.indexOf('@');
@@ -110,25 +105,19 @@ public final class ChatMacroUtil {
             int end = text.indexOf('@', start + 1);
             if (end < 0) break;
 
-            String replacement = null;
-            if (isMacroKey(text, start + 1, end)) {
-                String token = text.substring(start, end + 1);
-                replacement = DARK_SURFACE_MACROS.get(token.substring(1, token.length() - 1));
-                if (replacement == null) replacement = expandWithGame(gameExpander, token);
-                if (replacement.equals(token)) replacement = null;
-            }
-
-            if (replacement == null) {
-                // Not a macro (or one nobody knows): keep it as written. Its closing '@' may
-                // open the next macro, as in "user@mail @mes_hl_red@".
+            if (!isMacroKey(text, start + 1, end)) {
+                // Not a macro: its closing '@' may still open one
                 start = end;
                 continue;
             }
 
-            if (out == null) out = new StringBuilder(text.length() + 16);
-            out.append(text, copied, start).append(replacement);
-            copied = end + 1;
-            start = text.indexOf('@', copied);
+            String shade = DARK_SURFACE_MACROS.get(text.substring(start + 1, end));
+            if (shade != null) {
+                if (out == null) out = new StringBuilder(text.length() + 16);
+                out.append(text, copied, start).append(shade);
+                copied = end + 1;
+            }
+            start = text.indexOf('@', end + 1);
         }
 
         if (out == null) return text;
@@ -143,16 +132,5 @@ public final class ChatMacroUtil {
             if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_')) return false;
         }
         return true;
-    }
-
-    private static String expandWithGame(UnaryOperator<String> gameExpander, String token) {
-        try {
-            String expanded = gameExpander.apply(token);
-            return expanded != null ? expanded : token;
-        } catch (RuntimeException ex) {
-            // Never lose the message over a macro: show it unexpanded instead.
-            log.debug("Failed to expand chat macro {}", token, ex);
-            return token;
-        }
     }
 }
