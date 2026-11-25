@@ -51,6 +51,8 @@ import java.util.function.Consumer;
  *   anything the player did not submit through Modern Chat.</li>
  *   <li>Private messages go through the game's "Enter message to send to" prompt, which
  *   Modern Chat holds open (concealed) while the player types on a private tab.</li>
+ *   <li>"::" commands go through chatdefault_onkey too, which runs them like the vanilla
+ *   chatbox (the game's own, RuneLite's and the server's).</li>
  * </ul>
  */
 @Slf4j
@@ -133,6 +135,15 @@ public class GameChatBridge implements ChatService
      */
     public void handOffPrivateMessage(String text, String target, Consumer<String> onFailed) {
         register(new Handoff(text, ChatMode.PRIVATE, target, onFailed));
+    }
+
+    /**
+     * Hands a "::" command to the game's chat script, which runs it like the vanilla
+     * chatbox: the game's own commands, RuneLite's (CommandExecuted) and the server's. The
+     * caller must let the Enter key event that submitted it reach the game.
+     */
+    public void handOffCommand(String text, Consumer<String> onFailed) {
+        register(Handoff.command(text, onFailed));
     }
 
     /**
@@ -261,8 +272,23 @@ public class GameChatBridge implements ChatService
         restoreScriptState();
         Handoff handoff = active;
         active = null;
-        if (handoff != null && !handoff.delivered)
+        if (handoff == null)
+            return;
+
+        if (handoff.command && !handoff.delivered && isChatInputCleared()) {
+            // The script clears the input once it has run a command. Commands never reach
+            // the chatboxInput hook that records sent messages, so record this one here.
+            handoff.delivered = true;
+            eventBus.post(new SubmitHistoryEvent(handoff.text));
+        }
+
+        if (!handoff.delivered)
             fail(handoff);
+    }
+
+    private boolean isChatInputCleared() {
+        String input = client.getVarcStrValue(VarClientID.CHATINPUT);
+        return input == null || input.isEmpty();
     }
 
     private void register(Handoff handoff) {
@@ -280,7 +306,11 @@ public class GameChatBridge implements ChatService
             Handoff handoff = claim(false);
             if (handoff != null) {
                 active = handoff;
-                prepareChannelSend(handoff.text, handoff.mode);
+                if (handoff.command) {
+                    client.setVarcStrValue(VarClientID.CHATINPUT, handoff.text);
+                } else {
+                    prepareChannelSend(handoff.text, handoff.mode);
+                }
                 return;
             }
 
@@ -461,19 +491,31 @@ public class GameChatBridge implements ChatService
     private static final class Handoff
     {
         final String text;
-        final ChatMode mode;
+        // Null for a command, which goes to no channel
+        @Nullable final ChatMode mode;
         @Nullable final String target;
+        final boolean command;
         final Consumer<String> onFailed;
         final long deadline;
         // Set on the client thread once the game's send script has taken the message
         boolean delivered;
 
         Handoff(String text, ChatMode mode, @Nullable String target, Consumer<String> onFailed) {
+            this(text, mode, target, false, onFailed);
+        }
+
+        private Handoff(String text, @Nullable ChatMode mode, @Nullable String target, boolean command,
+                        Consumer<String> onFailed) {
             this.text = text;
             this.mode = mode;
             this.target = target;
+            this.command = command;
             this.onFailed = onFailed;
             this.deadline = System.currentTimeMillis() + HANDOFF_TIMEOUT_MS;
+        }
+
+        static Handoff command(String text, Consumer<String> onFailed) {
+            return new Handoff(text, null, null, true, onFailed);
         }
 
         boolean isPrivate() {

@@ -175,12 +175,6 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
 			return;
 		}
 
-		if (chatProxy.isCommandMode()) {
-			// Don't toggle chat visibility while in command mode
-			// We cannot consume the input event
-			return;
-		}
-
 		clientThread.invokeLater(() -> {
 			// If we are currently typing in a system prompt,
 			// do not toggle chat visibility.

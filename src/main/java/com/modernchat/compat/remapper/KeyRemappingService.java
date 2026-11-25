@@ -1,7 +1,6 @@
 package com.modernchat.compat.remapper;
 
 import com.modernchat.common.ChatMessageBuilder;
-import com.modernchat.common.ChatProxy;
 import com.modernchat.common.NotificationService;
 import com.modernchat.event.ChatToggleEvent;
 import com.modernchat.service.ChatService;
@@ -54,7 +53,6 @@ public class KeyRemappingService implements ChatService {
     @Inject private EventBus eventBus;
     @Inject private KeyManager keyManager;
     @Inject private PluginManager pluginManager;
-    @Inject private ChatProxy chatProxy;
     @Inject private NotificationService notificationService;
 
     private KeyRemappingKeyListener keyListener;
@@ -220,8 +218,6 @@ public class KeyRemappingService implements ChatService {
         if (ClientUtil.isDialogOpen(client) || ClientUtil.isSystemWidgetActive(client))
             return false;
         if (ClientUtil.isPmComposeOpen(client))
-            return false;
-        if (chatProxy.isCommandMode())
             return false;
         // Covers the world map search, report interface and focused input fields
         return chatboxFocused();

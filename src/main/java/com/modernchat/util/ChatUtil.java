@@ -43,7 +43,6 @@ public class ChatUtil
     // Far enough off any canvas that the concealed chatbox can neither draw nor take clicks
     private static final int CONCEALED_POSITION = -10000;
     public static final String MODERN_CHAT_TAG = "[ModernChat]";
-    public static final String COMMAND_MODE_MESSAGE = "Command Mode (Modern chat will be restored once you send or cancel the command)";
 
     private static final Pattern IMG_TAG_PATTERN = Pattern.compile("<img=(\\d+)>");
 
@@ -525,9 +524,5 @@ public class ChatUtil
 
     public static boolean isModernChatMessage(String message) {
         return message != null && Text.removeTags(message).startsWith(MODERN_CHAT_TAG);
-    }
-
-    public static boolean isIgnoredMessage(String line, ChatMessageType type) {
-        return line.endsWith(ChatUtil.COMMAND_MODE_MESSAGE) && ChatUtil.isModernChatMessage(line);
     }
 }

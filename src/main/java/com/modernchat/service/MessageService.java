@@ -7,16 +7,11 @@ import com.modernchat.event.ChatSendLockedEvent;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.events.CommandExecuted;
-import net.runelite.api.gameval.VarClientID;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -29,8 +24,6 @@ public class MessageService implements ChatService
     private static final int SEND_LOCK_MS = 1250;
     private static final int SEND_LOCK_COUNT_RESET_MS = 60000;
 
-    @Inject private Client client;
-    @Inject private ClientThread clientThread;
     @Inject private EventBus eventBus;
     @Inject private FilterService filterService;
     @Inject private GameChatBridge gameChatBridge;
@@ -67,7 +60,7 @@ public class MessageService implements ChatService
     {
         /** Handed to the game: let the Enter key event reach the game, clear the input. */
         PASS_TO_GAME,
-        /** Dealt with here (sent as a command, filtered or rate limited): consume, clear. */
+        /** Dealt with here (filtered or rate limited): consume, clear. */
         HANDLED,
         /** Not sent and worth retrying: consume and keep the text in the input. */
         RETAINED
@@ -113,20 +106,10 @@ public class MessageService implements ChatService
         }
 
         if (isCommand) {
-            clientThread.invoke(() -> {
-                client.setVarcStrValue(VarClientID.CHATINPUT, text);
-                String typedText = trimmed.substring(2);
-                String[] split = typedText.split(" ");
-                if (split.length == 0)
-                    return;
-                String command = split[0];
-                String[] args = Arrays.copyOfRange(split, 1, split.length);
-                eventBus.post(new CommandExecuted(command, args));
-            });
-            return SubmitResult.HANDLED;
-        }
-
-        if (isPrivate) {
+            // The game's chat script runs "::" commands exactly as the vanilla chatbox does:
+            // its own (::toggleroof, ::wiki), RuneLite's (CommandExecuted) and the server's
+            gameChatBridge.handOffCommand(text, onFailed);
+        } else if (isPrivate) {
             gameChatBridge.handOffPrivateMessage(text, targetName, onFailed);
         } else {
             gameChatBridge.handOffChannelMessage(text, mode, onFailed);

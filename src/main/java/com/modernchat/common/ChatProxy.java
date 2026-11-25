@@ -56,13 +56,6 @@ public class ChatProxy
         return modernChat.isHidden();
     }
 
-    public boolean isCommandMode() {
-        if (modernChat.isEnabled())
-            return modernChat.isCommandMode();
-
-        return false;
-    }
-
     public @Nullable Rectangle getBounds() {
         if (modernChat.isEnabled())
             return modernChat.getViewPort();

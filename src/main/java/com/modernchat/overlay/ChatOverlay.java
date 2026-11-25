@@ -58,7 +58,6 @@ import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.MenuOpened;
-import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.gameval.InterfaceID;
@@ -69,7 +68,6 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.ChatboxInput;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseListener;
@@ -150,7 +148,6 @@ public class ChatOverlay extends OverlayPanel
     @Getter private final Map<ChatMode, String> defaultTabNames = new ConcurrentHashMap<>();
     private final Rectangle tabsBarBounds = new Rectangle();
     @Getter private int lastTabBarHeight = 0;
-    @Getter private boolean commandMode;
 
     @Getter private final Map<String, MessageContainer> messageContainers = new ConcurrentHashMap<>();
     @Getter private final Map<String, MessageContainer> privateContainers = new ConcurrentHashMap<>();
@@ -367,7 +364,6 @@ public class ChatOverlay extends OverlayPanel
         }
 
         lastViewport = null;
-        commandMode = false;
         syncingInput = false;
 
         resizePanel.shutDown();
@@ -1467,15 +1463,6 @@ public class ChatOverlay extends OverlayPanel
     }
 
     @Subscribe
-    private void onScriptCallbackEvent(ScriptCallbackEvent event) {
-        if (commandMode) {
-            if (event.getEventName().equals("chatDefaultReturn")) {
-                clientThread.invoke(() -> hideLegacyChat());
-            }
-        }
-    }
-
-    @Subscribe
     public void onVarClientStrChanged(VarClientStrChanged e) {
         if (e.getIndex() == VarClientStr.CHATBOX_TYPED_TEXT && !syncingInput) {
             // keep the legacy chat input in sync, if the text matches it will be ignored
@@ -1507,13 +1494,6 @@ public class ChatOverlay extends OverlayPanel
             case ScriptID.CHAT_TEXT_INPUT_REBUILD:
                 resizeChatbox(desiredChatWidth, desiredChatHeight);
                 break;
-        }
-    }
-
-    @Subscribe
-    public void onChatboxInput(ChatboxInput e) {
-        if (commandMode) {
-            clientThread.invoke(() -> hideLegacyChat());
         }
     }
 
@@ -1836,9 +1816,6 @@ public class ChatOverlay extends OverlayPanel
             return;
 
         this.hidden = hidden;
-
-        if (commandMode && !hidden)
-            commandMode = false;
 
         if (hidden) {
             unfocusInput();
@@ -2638,23 +2615,6 @@ public class ChatOverlay extends OverlayPanel
             ClientUtil.setChatInputText(client, input);
             eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
 
-            if (!commandMode && input.trim().startsWith("::")) {
-                commandMode = true;
-                ChatProxy chatProxy = chatProxyProvider.get();
-                clientThread.invokeAtTickEnd(() -> {
-                    clearInputText(false);
-                    String widgetInput = ClientUtil.getChatboxWidgetInput(client);
-                    ClientUtil.setChatInputText(client,
-                        widgetInput != null && widgetInput.endsWith(ClientUtil.PRESS_ENTER_TO_CHAT) ? "" : input);
-
-                    showLegacyChat(true);
-                    chatProxy.setAutoHide(mainConfig.featureToggle_Enabled());
-
-                    notificationService.pushHelperNotification(new ChatMessageBuilder()
-                        .append(ChatUtil.COMMAND_MODE_MESSAGE));
-                });
-            }
-
             syncingInput = false;
         });
     }
@@ -3056,17 +3016,8 @@ public class ChatOverlay extends OverlayPanel
 
             int code = e.getKeyCode();
 
-            if (isHidden()) {
-                if (commandMode) {
-                   Keybind hideKb = mainConfig.featureToggle_EscapeHides();
-                   if (hideKb != null && !Keybind.NOT_SET.equals(hideKb) && hideKb.matches(e)) {
-                       commandMode = false;
-                       clientThread.invoke(() -> hideLegacyChat(true));
-                       e.consume();
-                   }
-                }
+            if (isHidden())
                 return;
-            }
 
             final boolean shift = e.isShiftDown();
             final boolean ctrl = e.isControlDown();
