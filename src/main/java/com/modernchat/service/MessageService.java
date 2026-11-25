@@ -13,7 +13,7 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 @Slf4j
 @Singleton
@@ -74,9 +74,10 @@ public class MessageService implements ChatService
      * MUST be called from the key listener handling that Enter press.
      *
      * @param onFailed receives the text back on the client thread if the game never
-     *                 processes the Enter press, so it can be put back in the input
+     *                 processes the Enter press, so it can be put back in the input; it
+     *                 answers whether it did
      */
-    public SubmitResult submit(String text, ChatMode mode, @Nullable String targetName, Consumer<String> onFailed) {
+    public SubmitResult submit(String text, ChatMode mode, @Nullable String targetName, Predicate<String> onFailed) {
         if (StringUtil.isNullOrEmpty(text))
             return SubmitResult.HANDLED;
 

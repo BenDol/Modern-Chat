@@ -1904,16 +1904,20 @@ public class ChatOverlay extends OverlayPanel
     /**
      * Puts a message the game did not send back into the input.
      * Called on the client thread.
+     *
+     * @return whether the text is back in the input
      */
-    private void restoreUnsentInput(String text) {
+    private boolean restoreUnsentInput(String text) {
         if (!isEnabled())
-            return;
+            return false;
         // Never overwrite something the player has started typing since
-        if (getInputText().isEmpty())
+        boolean restored = getInputText().isEmpty();
+        if (restored)
             setInputText(text, true);
         if (hidden)
             setHidden(false);
         focusInput();
+        return restored;
     }
 
     /**

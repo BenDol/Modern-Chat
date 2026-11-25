@@ -33,7 +33,7 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Sends what the player submits in Modern Chat through the game's own chat scripts.
@@ -125,9 +125,10 @@ public class GameChatBridge implements ChatService
     /**
      * Hands a channel message to the game. The caller must let the Enter key event that
      * submitted it reach the game. {@code onFailed} receives the text back on the client
-     * thread if the game never processes that Enter press.
+     * thread if the game never processes that Enter press, and answers whether it put the
+     * text back in the input.
      */
-    public void handOffChannelMessage(String text, ChatMode mode, Consumer<String> onFailed) {
+    public void handOffChannelMessage(String text, ChatMode mode, Predicate<String> onFailed) {
         register(new Handoff(text, mode, null, onFailed));
     }
 
@@ -136,7 +137,7 @@ public class GameChatBridge implements ChatService
      * the target (see {@link #isPrivatePromptReady}). The caller must let the Enter key event
      * that submitted it reach the game.
      */
-    public void handOffPrivateMessage(String text, String target, Consumer<String> onFailed) {
+    public void handOffPrivateMessage(String text, String target, Predicate<String> onFailed) {
         register(new Handoff(text, ChatMode.PRIVATE, target, onFailed));
     }
 
@@ -145,7 +146,7 @@ public class GameChatBridge implements ChatService
      * chatbox: the game's own commands, RuneLite's (CommandExecuted) and the server's. The
      * caller must let the Enter key event that submitted it reach the game.
      */
-    public void handOffCommand(String text, Consumer<String> onFailed) {
+    public void handOffCommand(String text, Predicate<String> onFailed) {
         register(Handoff.command(text, onFailed));
     }
 
@@ -427,11 +428,24 @@ public class GameChatBridge implements ChatService
 
     private void fail(Handoff handoff) {
         log.debug("Chat hand-off was not processed by the game: private={}", handoff.isPrivate());
-        notificationService.pushChatMessage(new ChatMessageBuilder()
-            .append("Your message could not be sent. It is back in the chat input."));
         // Deferred: this can run inside a key script's hooks, and restoring the input
         // can show the chat, which may run scripts of its own
-        clientThread.invokeLater(() -> handoff.onFailed.accept(handoff.text));
+        clientThread.invokeLater(() -> {
+            boolean restored = handoff.onFailed.test(handoff.text);
+            notificationService.pushChatMessage(unsentNotice(handoff.text, restored));
+        });
+    }
+
+    /**
+     * Tells the player a message was not sent. When it could not go back in the input
+     * (the player had started typing something else), the notice carries the text so
+     * it is not lost.
+     */
+    static ChatMessageBuilder unsentNotice(String text, boolean restored) {
+        ChatMessageBuilder notice = new ChatMessageBuilder().append("Your message could not be sent. ");
+        if (restored)
+            return notice.append("It is back in the chat input.");
+        return notice.append("It was: ").append(text);
     }
 
     private void openOwnPrompt(String target) {
@@ -502,17 +516,17 @@ public class GameChatBridge implements ChatService
         @Nullable final ChatMode mode;
         @Nullable final String target;
         final boolean command;
-        final Consumer<String> onFailed;
+        final Predicate<String> onFailed;
         final long deadline;
         // Set on the client thread once the game's send script has taken the message
         boolean delivered;
 
-        Handoff(String text, ChatMode mode, @Nullable String target, Consumer<String> onFailed) {
+        Handoff(String text, ChatMode mode, @Nullable String target, Predicate<String> onFailed) {
             this(text, mode, target, false, onFailed);
         }
 
         private Handoff(String text, @Nullable ChatMode mode, @Nullable String target, boolean command,
-                        Consumer<String> onFailed) {
+                        Predicate<String> onFailed) {
             this.text = text;
             this.mode = mode;
             this.target = target;
@@ -521,7 +535,7 @@ public class GameChatBridge implements ChatService
             this.deadline = System.currentTimeMillis() + HANDOFF_TIMEOUT_MS;
         }
 
-        static Handoff command(String text, Consumer<String> onFailed) {
+        static Handoff command(String text, Predicate<String> onFailed) {
             return new Handoff(text, null, null, true, onFailed);
         }
 
