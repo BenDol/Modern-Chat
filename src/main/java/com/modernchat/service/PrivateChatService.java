@@ -1,10 +1,7 @@
 package com.modernchat.service;
 
 import com.modernchat.ModernChatConfig;
-import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatProxy;
-import com.modernchat.common.NotificationService;
-import com.modernchat.event.ChatSendLockedEvent;
 import com.modernchat.util.ClientUtil;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
@@ -25,11 +22,7 @@ import net.runelite.client.util.Text;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.awt.Color;
 import java.awt.event.KeyEvent;
-import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
 
 @Slf4j
 @Singleton
@@ -39,13 +32,10 @@ public class PrivateChatService implements ChatService, KeyListener {
     @Inject private ClientThread clientThread;
     @Inject private EventBus eventBus;
     @Inject private KeyManager keyManager;
-    @Inject private NotificationService notificationService;
-    @Inject private MessageService messageService;
     @Inject private ChatProxy chatProxy;
     @Inject private ModernChatConfig config;
 
     private volatile String lastPmFrom = null;
-    private volatile boolean canShowLockMessage = true;
     @Getter private volatile String lastChatInput;
 
     // Queue to execute scripts after the frame (avoids reentrancy)
@@ -76,7 +66,6 @@ public class PrivateChatService implements ChatService, KeyListener {
         pmTarget = null;
         pendingPmTarget = null;
         pendingPrefill = null;
-        canShowLockMessage = true;
     }
 
     @Override
@@ -143,20 +132,6 @@ public class PrivateChatService implements ChatService, KeyListener {
             return;
         }
 
-         if (messageService.isSendLocked()) {
-            if (canShowLockMessage) {
-                long remainingLock = Math.max(0, messageService.getSendLockedUntil() - System.currentTimeMillis());
-                canShowLockMessage = false;
-                notificationService.pushChatMessage(new ChatMessageBuilder()
-                    .append("You are sending PMs too quickly. Please wait ")
-                    .append(Color.RED, String.format(Locale.ROOT, "%.1f", remainingLock / 1000.0))
-                    .append(Color.RED, " seconds."));
-            }
-            return;
-        }
-
-        canShowLockMessage = true;
-
         final String currentTarget = Text.toJagexName(target);
         final String body = pendingPrefill;
         pendingPmTarget = null;
@@ -166,38 +141,8 @@ public class PrivateChatService implements ChatService, KeyListener {
             setPmTarget(null);
     }
 
-    @Subscribe
-    public void onChatSendLockedEvent(ChatSendLockedEvent e) {
-        if (!e.isPrivate())
-            return;
-
-        var lockDelay = Math.max(0, messageService.getSendLockedUntil() - System.currentTimeMillis());
-
-        String lastPmTarget = getPmTarget();
-        cancelPrivateMessage();
-
-        ChatMessageBuilder messageBuilder = new ChatMessageBuilder()
-            .append("You are sending PMs too quickly. Please wait ")
-            .append(Color.RED, String.format(Locale.ROOT, "%.1f", lockDelay / 1000.0))
-            .append(Color.RED, " seconds");
-
-        if (lockDelay < 10000) {
-            messageBuilder.append(" (reopening chat momentarily)");
-            new Timer().schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    if (StringUtil.isNullOrEmpty(getPmTarget()))
-                        setPmTarget(lastPmTarget);
-                }
-            }, lockDelay);
-        }
-
-        notificationService.pushChatMessage(messageBuilder);
-    }
-
     public void setPmTarget(String pmTarget) {
         this.pmTarget = pmTarget;
-        canShowLockMessage = true; // Reset lock message state
     }
 
     public void cancelPrivateMessage() {

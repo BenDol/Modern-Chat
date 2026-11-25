@@ -3,17 +3,14 @@ package com.modernchat.feature;
 import com.google.inject.Provides;
 import com.modernchat.ModernChatConfig;
 import com.modernchat.ModernChatConfigBase;
-import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.ChatProxy;
 import com.modernchat.common.FontStyle;
 import com.modernchat.common.MessageLine;
-import com.modernchat.common.NotificationService;
 import com.modernchat.common.WidgetBucket;
 import com.modernchat.draw.Margin;
 import com.modernchat.draw.Padding;
 import com.modernchat.event.ChatResizedEvent;
-import com.modernchat.event.ChatSendLockedEvent;
 import com.modernchat.event.LegacyChatVisibilityChangeEvent;
 import com.modernchat.event.MessageLayerClosedEvent;
 import com.modernchat.event.MessageLayerOpenedEvent;
@@ -24,7 +21,6 @@ import com.modernchat.overlay.ChatOverlayConfig;
 import com.modernchat.overlay.MessageContainer;
 import com.modernchat.overlay.MessageContainerConfig;
 import com.modernchat.service.MessageFilterService;
-import com.modernchat.service.MessageService;
 import com.modernchat.util.ChatUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +48,6 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.awt.Color;
-import java.util.Locale;
 
 import static com.modernchat.ModernChatConfig.CHAT_HEIGHT;
 import static com.modernchat.ModernChatConfig.CHAT_WIDTH;
@@ -151,9 +146,7 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
     @Inject private ConfigManager configManager;
     @Inject private OverlayManager overlayManager;
     @Inject private WidgetBucket widgetBucket;
-    @Inject private MessageService messageService;
     @Inject private MessageFilterService messageFilterService;
-    @Inject private NotificationService notificationService;
     @Inject private ChatOverlay overlay;
     @Inject private ChannelFilterState channelFilterState;
     @Inject private ChatProxy chatProxy;
@@ -549,21 +542,6 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
         log.debug("Chat message received: {}", line);
         overlay.addMessage(line);
-    }
-
-    @Subscribe
-    public void onChatSendLockedEvent(ChatSendLockedEvent e) {
-        if (e.isPrivate())
-            return;
-
-        var lockDelay = Math.max(0, messageService.getSendLockedUntil() - System.currentTimeMillis());
-
-        ChatMessageBuilder messageBuilder = new ChatMessageBuilder()
-            .append("You are sending messages too quickly. Please wait ")
-            .append(Color.RED, String.format(Locale.ROOT, "%.1f", lockDelay / 1000.0))
-            .append(Color.RED, " seconds");
-
-        notificationService.pushChatMessage(messageBuilder);
     }
 
     @Subscribe
