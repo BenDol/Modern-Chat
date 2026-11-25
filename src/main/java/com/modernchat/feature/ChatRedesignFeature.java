@@ -553,15 +553,13 @@ public class ChatRedesignFeature extends AbstractChatFeature<ChatRedesignFeature
 
     @Subscribe
     public void onChatSendLockedEvent(ChatSendLockedEvent e) {
-        if (e.isPrivate())
-            return;
-
         var lockDelay = Math.max(0, messageService.getSendLockedUntil() - System.currentTimeMillis());
 
         ChatMessageBuilder messageBuilder = new ChatMessageBuilder()
             .append("You are sending messages too quickly. Please wait ")
             .append(Color.RED, String.format(Locale.ROOT, "%.1f", lockDelay / 1000.0))
-            .append(Color.RED, " seconds");
+            .append(Color.RED, " seconds")
+            .append(". Your message is still in the chat input.");
 
         notificationService.pushChatMessage(messageBuilder);
     }

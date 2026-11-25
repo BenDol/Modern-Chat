@@ -60,9 +60,9 @@ public class MessageService implements ChatService
     {
         /** Handed to the game: let the Enter key event reach the game, clear the input. */
         PASS_TO_GAME,
-        /** Dealt with here (filtered or rate limited): consume, clear. */
+        /** Dealt with here (empty or filtered): consume, clear. */
         HANDLED,
-        /** Not sent and worth retrying: consume and keep the text in the input. */
+        /** Not sent and worth retrying (send locked, PM prompt not ready): consume, keep the text. */
         RETAINED
     }
 
@@ -100,23 +100,21 @@ public class MessageService implements ChatService
             }
         }
 
-        if (processSendLock()) {
-            log.debug("Message send is locked, cannot send message: {}", text);
+        if (isSendLocked()) {
+            log.debug("Message send is locked, keeping the message");
             notifyLocked(targetName, isPrivate);
-            return SubmitResult.HANDLED;
+            return SubmitResult.RETAINED;
         }
 
         if (isCommand) {
             // The game's chat script runs "::" commands exactly as the vanilla chatbox does:
             // its own (::toggleroof, ::wiki), RuneLite's (CommandExecuted) and the server's
-            gameChatBridge.handOffCommand(text, onFailed);
+            gameChatBridge.handOffCommand(text, onFailed, this::recordSend);
         } else if (isPrivate) {
-            gameChatBridge.handOffPrivateMessage(text, targetName, onFailed);
+            gameChatBridge.handOffPrivateMessage(text, targetName, onFailed, this::recordSend);
         } else {
-            gameChatBridge.handOffChannelMessage(text, mode, onFailed);
+            gameChatBridge.handOffChannelMessage(text, mode, onFailed, this::recordSend);
         }
-
-        lastSendTimestamp = System.currentTimeMillis();
         return SubmitResult.PASS_TO_GAME;
     }
 
@@ -124,26 +122,20 @@ public class MessageService implements ChatService
         eventBus.post(new ChatSendLockedEvent(targetName, getSendLockedUntil(), isPrivate));
     }
 
-    private boolean processSendLock() {
-        if (isSendLocked())
-            return true;
-
-        if (!isSendCooldownActive())
-            return false;
-
-        sendHotMessageCount.incrementAndGet();
-        if (sendHotMessageCount.get() < SEND_HOT_MESSAGE_MAX)
-            return false;
-
+    /**
+     * Counts a message the game has sent toward the send lock. Only confirmed sends count,
+     * so a message the game did not take can be retried without tripping the lock.
+     * Called on the client thread.
+     */
+    private void recordSend() {
         long now = System.currentTimeMillis();
-        if (now - lastSendLock >= SEND_LOCK_COUNT_RESET_MS)
-            sendLockCount.set(0);
-
-        lastSendLock = now;
-        long lockCount = sendLockCount.incrementAndGet();
-        long lockDelay = Math.min(lockCount * SEND_LOCK_MS, SEND_LOCK_COUNT_RESET_MS);
-        sendLockedUntil = lastSendLock + lockDelay;
-        return true;
+        if (isSendCooldownActive() && sendHotMessageCount.incrementAndGet() >= SEND_HOT_MESSAGE_MAX) {
+            if (now - lastSendLock >= SEND_LOCK_COUNT_RESET_MS)
+                sendLockCount.set(0);
+            lastSendLock = now;
+            sendLockedUntil = now + Math.min(sendLockCount.incrementAndGet() * SEND_LOCK_MS, SEND_LOCK_COUNT_RESET_MS);
+        }
+        lastSendTimestamp = now;
     }
 
     public boolean isSendCooldownActive() {
