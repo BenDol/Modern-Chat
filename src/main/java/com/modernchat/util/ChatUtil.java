@@ -40,8 +40,11 @@ public class ChatUtil
     public static final AtomicBoolean LEGACY_CHAT_CONCEALED = new AtomicBoolean(false);
     /** Target of the game's private message prompt while Modern Chat holds it open, else null. */
     public static final AtomicReference<String> OWN_PRIVATE_PROMPT_TARGET = new AtomicReference<>();
-    // Far enough off any canvas that the concealed chatbox can neither draw nor take clicks
-    private static final int CONCEALED_POSITION = -10000;
+    // Far enough past any canvas that the concealed chatbox can neither draw nor take clicks.
+    // Must be positive: the client re-applies a forced position on every layout only when it
+    // is above -1 (negative means "cleared"), so a negative one is undone by the next rebuild.
+    // Forced positions are stored as shorts, so it must also stay below Short.MAX_VALUE.
+    private static final int CONCEALED_POSITION = 30000;
     public static final String MODERN_CHAT_TAG = "[ModernChat]";
 
     private static final Pattern IMG_TAG_PATTERN = Pattern.compile("<img=(\\d+)>");
