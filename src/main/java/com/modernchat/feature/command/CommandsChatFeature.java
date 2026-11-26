@@ -20,7 +20,6 @@ import net.runelite.client.input.KeyListener;
 import net.runelite.client.util.Text;
 import org.apache.commons.lang3.tuple.Pair;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.HashMap;
@@ -124,10 +123,9 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
         commandHandlers.put("pm", privateMessageChatCommand);
         commandHandlers.put("private", new ChatCommandLink("pm"));
 
-        // /g send to Group Ironman group chat
-        commandHandlers.put("g", groupIronmanChatCommand);
-        commandHandlers.put("gim", new ChatCommandLink("g"));
-        commandHandlers.put("group", new ChatCommandLink("g"));
+        // /gim and /group are held back (the game's own /g sends to group chat)
+        commandHandlers.put("gim", groupIronmanChatCommand);
+        commandHandlers.put("group", new ChatCommandLink("gim"));
     }
 
     private void shutDownCommandHandlers() {
@@ -207,19 +205,19 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
     }
 
     /**
-     * When the input is a group chat command (/g, /gim, /group) and that command is on,
-     * returns the message to send to group chat; otherwise null.
-     * MUST be on client thread.
+     * When the text is /gim or /group and that check is on, tells the player to use /g and
+     * returns true: the caller must not send it (see {@link GroupIronmanChatCommand}).
      */
-    public @Nullable String resolveGroupChatAlias(String raw) {
+    public boolean holdBackGroupChatAlias(String raw) {
         if (!isEnabled() || !config.featureCommands_GroupChatEnabled())
-            return null;
+            return false;
 
         final Pair<ChatCommandHandler, String[]> pair = getCommandHandler(raw);
         if (pair == null || pair.getLeft() != groupIronmanChatCommand)
-            return null;
+            return false;
 
-        return groupIronmanChatCommand.extractMessage(raw);
+        groupIronmanChatCommand.notifyHeldBack(true);
+        return true;
     }
 
     private Pair<ChatCommandHandler, String[]> getCommandHandler(String raw) {

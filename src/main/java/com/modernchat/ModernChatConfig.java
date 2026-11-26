@@ -1773,8 +1773,8 @@ public interface ModernChatConfig extends Config, ModernChatConfigBase
 
     @ConfigItem(
         keyName = "featureCommands_GroupChatEnabled",
-        name = "Group Chat Enabled",
-        description = "Enable the /g (aliases /gim, /group) command to send a message to Group Ironman group chat from any tab",
+        name = "Catch /gim and /group",
+        description = "Hold back messages starting with /gim or /group, which the game would send as public chat. Use the game's /g to talk in Group Ironman group chat from any tab",
         position = 4,
         section = commandsSection
     )

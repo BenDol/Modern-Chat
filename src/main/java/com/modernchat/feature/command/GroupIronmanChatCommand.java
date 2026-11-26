@@ -1,34 +1,35 @@
 package com.modernchat.feature.command;
 
-import com.modernchat.util.StringUtil;
-import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.util.Text;
+import com.modernchat.common.ChatMessageBuilder;
+import com.modernchat.common.NotificationService;
+import net.runelite.client.events.ChatboxInput;
 
-import javax.annotation.Nullable;
+import javax.inject.Inject;
 
 /**
- * /g, /gim and /group send the rest of the line to group ironman group chat.
- * <p>
- * The game has to send the message itself, so this command is not handled after
- * submission like the others: GameChatBridge asks {@link CommandsChatFeature#resolveGroupChatAlias}
- * before the game's chat script runs, and sends the message body to group chat.
+ * Holds back /gim and /group. The game only sends to Group Ironman group chat with /g, so
+ * these would go out as public chat, and Modern Chat must not rewrite a message the player
+ * sends. The player is pointed at /g instead. Modern Chat's own input holds them back before
+ * sending (see {@link CommandsChatFeature#holdBackGroupChatAlias}); this catches the game's chatbox.
  */
-@Slf4j
 public class GroupIronmanChatCommand extends AbstractChatCommand {
 
-    /**
-     * The message after the command word, or null when there is none.
-     */
-    public @Nullable String extractMessage(String raw) {
-        if (StringUtil.isNullOrEmpty(raw))
-            return null;
+    @Inject private NotificationService notificationService;
 
-        String stripped = Text.removeTags(raw).trim();
-        int space = stripped.indexOf(' ');
-        if (space < 0)
-            return null;
+    @Override
+    public void handleSubmit(String[] args, ChatboxInput ev) {
+        if (ev == null || !feature.getConfig().featureCommands_GroupChatEnabled())
+            return;
 
-        String text = stripped.substring(space + 1).trim();
-        return text.isEmpty() ? null : text;
+        ev.consume(); // RuneLite blanks the message so the game does not send it
+        notifyHeldBack(false);
+    }
+
+    void notifyHeldBack(boolean keptInInput) {
+        ChatMessageBuilder notice = new ChatMessageBuilder()
+            .append("Not sent: use /g to talk in Group Ironman group chat.");
+        if (keptInInput)
+            notice.append(" Your message is still in the chat input.");
+        notificationService.pushChatMessage(notice);
     }
 }

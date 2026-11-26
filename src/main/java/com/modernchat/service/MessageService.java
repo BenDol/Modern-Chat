@@ -4,6 +4,7 @@ import com.modernchat.common.ChatMessageBuilder;
 import com.modernchat.common.ChatMode;
 import com.modernchat.common.NotificationService;
 import com.modernchat.event.ChatSendLockedEvent;
+import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.util.StringUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import net.runelite.client.eventbus.EventBus;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.inject.Provider;
 import javax.inject.Singleton;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -28,6 +30,8 @@ public class MessageService implements ChatService
     @Inject private FilterService filterService;
     @Inject private GameChatBridge gameChatBridge;
     @Inject private NotificationService notificationService;
+    // Provider: the commands feature depends on services that depend on this one
+    @Inject private Provider<CommandsChatFeature> commandsChatFeature;
 
     @Getter private volatile long lastSendTimestamp = 0L;
     @Getter private volatile long lastSendLock = 0L;
@@ -87,6 +91,9 @@ public class MessageService implements ChatService
         final String trimmed = text.trim();
         final boolean isCommand = trimmed.startsWith("::");
         final boolean isPrivate = !isCommand && mode == ChatMode.PRIVATE;
+        // Sent as is, /gim and /group would go out as public chat
+        if (!isCommand && !isPrivate && commandsChatFeature.get().holdBackGroupChatAlias(trimmed))
+            return SubmitResult.RETAINED;
         if (isPrivate) {
             if (StringUtil.isNullOrEmpty(targetName)) {
                 log.warn("Attempted to send private chat message to no target");

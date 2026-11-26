@@ -6,7 +6,6 @@ import com.modernchat.common.NotificationService;
 import com.modernchat.event.ChatMessageSentEvent;
 import com.modernchat.event.ChatPrivateMessageSentEvent;
 import com.modernchat.event.SubmitHistoryEvent;
-import com.modernchat.feature.command.CommandsChatFeature;
 import com.modernchat.util.ChatUtil;
 import com.modernchat.util.ClientUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +29,6 @@ import net.runelite.client.util.Text;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import javax.inject.Provider;
 import javax.inject.Singleton;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -81,7 +79,6 @@ public class GameChatBridge implements ChatService
     @Inject private ClientThread clientThread;
     @Inject private EventBus eventBus;
     @Inject private NotificationService notificationService;
-    @Inject private Provider<CommandsChatFeature> commandsChatFeature;
 
     // Submitted on the AWT thread, claimed on the client thread by the key script hooks
     private final AtomicReference<Handoff> pending = new AtomicReference<>();
@@ -309,7 +306,6 @@ public class GameChatBridge implements ChatService
      * chatdefault_onkey is about to run for a key press.
      */
     private void beforeChatKey(boolean enter) {
-        boolean concealed = ChatUtil.LEGACY_CHAT_CONCEALED.get();
         if (enter) {
             Handoff handoff = claim(false);
             if (handoff != null) {
@@ -321,19 +317,11 @@ public class GameChatBridge implements ChatService
                 }
                 return;
             }
-
-            if (!concealed) {
-                // The game chatbox is in use: still honour Modern Chat's group chat aliases
-                String body = resolveGroupChatAlias(client.getVarcStrValue(VarClientID.CHATINPUT));
-                if (body != null)
-                    prepareChannelSend(body, ChatMode.CLAN_GIM);
-                return;
-            }
         }
 
         // While Modern Chat owns the chat, the game must not type, reply or send anything
         // the player did not submit through Modern Chat
-        if (concealed)
+        if (ChatUtil.LEGACY_CHAT_CONCEALED.get())
             suppressChatKey();
     }
 
@@ -358,20 +346,16 @@ public class GameChatBridge implements ChatService
         client.setVarcStrValue(VarClientID.MESLAYERINPUT, "");
     }
 
+    /**
+     * Loads the text exactly as the player submitted it. Channel prefixes such as /g are
+     * left for the game's chat script, which handles them like the vanilla chatbox.
+     */
     private void prepareChannelSend(String text, ChatMode mode) {
-        String body = text;
-        ChatMode channel = mode;
-        String aliasBody = resolveGroupChatAlias(text);
-        if (aliasBody != null) {
-            body = aliasBody;
-            channel = ChatMode.CLAN_GIM;
-        }
-
-        client.setVarcStrValue(VarClientID.CHATINPUT, body);
+        client.setVarcStrValue(VarClientID.CHATINPUT, text);
 
         // An unprefixed message goes to the channel of the game's chatbox mode, unless
         // the game chatbox is showing a channel tab. Point both at the chosen channel.
-        int chatboxMode = channel.getChatboxMode();
+        int chatboxMode = mode.getChatboxMode();
         if (chatboxMode < 0)
             return;
 
@@ -500,12 +484,6 @@ public class GameChatBridge implements ChatService
             if (current != null && isSamePlayer(current, target))
                 client.setVarcStrValue(VarClientID.FRIENDTOMESSAGE, "");
         }
-    }
-
-    private @Nullable String resolveGroupChatAlias(@Nullable String text) {
-        if (text == null || text.isEmpty())
-            return null;
-        return commandsChatFeature.get().resolveGroupChatAlias(text);
     }
 
     private static boolean isSamePlayer(String a, String b) {
