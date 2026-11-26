@@ -10,10 +10,10 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.VarClientStr;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.PostClientTick;
 import net.runelite.api.events.VarClientStrChanged;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.Keybind;
 import net.runelite.client.eventbus.EventBus;
@@ -112,7 +112,7 @@ public class PrivateChatService implements ChatService, KeyListener {
 
     @Subscribe
     public void onVarClientStrChanged(VarClientStrChanged e) {
-        if (e.getIndex() != VarClientStr.CHATBOX_TYPED_TEXT)
+        if (e.getIndex() != VarClientID.CHATINPUT)
             return;
 
         if (chatProxy.isHidden())
@@ -121,7 +121,7 @@ public class PrivateChatService implements ChatService, KeyListener {
         if (ClientUtil.isSystemTextEntryActive(client))
             return; // Don't do anything if a system prompt is active
 
-        lastChatInput = client.getVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT);
+        lastChatInput = client.getVarcStrValue(VarClientID.CHATINPUT);
     }
 
     @Subscribe

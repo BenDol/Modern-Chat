@@ -54,7 +54,6 @@ import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
 import net.runelite.api.Point;
 import net.runelite.api.ScriptID;
-import net.runelite.api.VarClientStr;
 import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
@@ -62,6 +61,7 @@ import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarClientStrChanged;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetSizeMode;
@@ -1465,7 +1465,7 @@ public class ChatOverlay extends OverlayPanel
 
     @Subscribe
     public void onVarClientStrChanged(VarClientStrChanged e) {
-        if (e.getIndex() == VarClientStr.CHATBOX_TYPED_TEXT && !syncingInput) {
+        if (e.getIndex() == VarClientID.CHATINPUT && !syncingInput) {
             // keep the legacy chat input in sync, if the text matches it will be ignored
             setInputText(ClientUtil.getChatInputText(client), false);
         }
@@ -2618,7 +2618,7 @@ public class ChatOverlay extends OverlayPanel
         clientThread.invokeLater(() -> {
             String input = getInputText();
             ClientUtil.setChatInputText(client, input);
-            eventBus.post(new VarClientStrChanged(VarClientStr.CHATBOX_TYPED_TEXT));
+            eventBus.post(new VarClientStrChanged(VarClientID.CHATINPUT));
 
             syncingInput = false;
         });

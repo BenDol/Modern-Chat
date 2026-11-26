@@ -8,7 +8,6 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.eventbus.EventBus;
@@ -70,8 +69,8 @@ public class WidgetBucket {
         else if (groupId == InterfaceID.PM_CHAT) {
             pmWidget = null;
         }
-        else if (groupId == WidgetUtil.componentToInterface(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT)
-              || groupId == WidgetUtil.componentToInterface(ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT)) {
+        else if (groupId == WidgetUtil.componentToInterface(InterfaceID.ToplevelPreEoc.CHAT_CONTAINER)
+              || groupId == WidgetUtil.componentToInterface(InterfaceID.ToplevelOsrsStretch.CHAT_CONTAINER)) {
             chatViewportWidget = null;
         }
         else if (groupId == InterfaceID.CHAT_LEFT) {
@@ -139,7 +138,7 @@ public class WidgetBucket {
     }
     public Widget getChatParentWidget() {
         if (chatParentWidget == null)
-            chatParentWidget = client.getWidget(ComponentID.CHATBOX_PARENT);
+            chatParentWidget = client.getWidget(InterfaceID.Chatbox.UNIVERSE);
         return chatParentWidget;
     }
 
@@ -148,9 +147,9 @@ public class WidgetBucket {
     }
     public Widget getChatboxViewportWidget() {
         if (chatViewportWidget == null) {
-            chatViewportWidget = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_CHATBOX_PARENT);
+            chatViewportWidget = client.getWidget(InterfaceID.ToplevelPreEoc.CHAT_CONTAINER);
             if (chatViewportWidget == null) {
-                chatViewportWidget = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_CHATBOX_PARENT);
+                chatViewportWidget = client.getWidget(InterfaceID.ToplevelOsrsStretch.CHAT_CONTAINER);
             }
         }
         return chatViewportWidget;

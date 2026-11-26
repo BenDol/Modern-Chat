@@ -10,8 +10,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.VarClientStr;
 import net.runelite.api.events.VarClientStrChanged;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -139,7 +139,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
 
     @Subscribe
     public void onVarClientStrChanged(VarClientStrChanged e) {
-        if (e.getIndex() != VarClientStr.CHATBOX_TYPED_TEXT)
+        if (e.getIndex() != VarClientID.CHATINPUT)
             return;
 
         if (chatProxy.isHidden())
@@ -149,7 +149,7 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
             return; // Don't do anything if a system prompt is active
         }
 
-        String raw = client.getVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT);
+        String raw = client.getVarcStrValue(VarClientID.CHATINPUT);
         handleChatInput(raw);
         lastChatInput = raw;
     }

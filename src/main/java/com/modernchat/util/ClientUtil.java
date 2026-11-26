@@ -9,8 +9,6 @@ import net.runelite.api.IndexedSprite;
 import net.runelite.api.MessageNode;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
-import net.runelite.api.VarClientInt;
-import net.runelite.api.VarClientStr;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarClientID;
@@ -76,13 +74,13 @@ public class ClientUtil
         if (isOwnPrivatePrompt(client))
             return false;
 
-        // INPUT_TYPE is a VarClient int id, so it must be read as a varc int.
+        // MESLAYERMODE is a VarClient int id, so it must be read as a varc int.
         // Varc access can still fail very early in the client lifecycle
         // (pre-login); treat any failure as "no system text entry active" -
         // the widget fallbacks below are naturally safe since getWidget
         // returns null when interfaces aren't loaded.
         try {
-            int type = client.getVarcIntValue(VarClientInt.INPUT_TYPE);
+            int type = client.getVarcIntValue(VarClientID.MESLAYERMODE);
             if (type != 0 && type != 1) {
                 return true;
             }
@@ -98,7 +96,7 @@ public class ClientUtil
 
         // Fallback: typed text buffer for system inputs
         try {
-            String s = client.getVarcStrValue(VarClientStr.INPUT_TEXT);
+            String s = client.getVarcStrValue(VarClientID.MESLAYERINPUT);
             return s != null && !s.isEmpty();
         } catch (Throwable ignored) {
             return false;
@@ -150,7 +148,7 @@ public class ClientUtil
 
     public static boolean isPmComposeOpen(Client client) {
         try {
-            String t = client.getVarcStrValue(VarClientStr.PRIVATE_MESSAGE_TARGET);
+            String t = client.getVarcStrValue(VarClientID.FRIENDTOMESSAGE);
             if (t != null && !t.isEmpty()) return true;
         } catch (Throwable ignored) {
             return true; // varc not available on this build, assume it is to avoid getting stuck
@@ -161,7 +159,7 @@ public class ClientUtil
 
     public static String getSystemInputText(Client client) {
         try {
-            return client.getVarcStrValue(VarClientStr.INPUT_TEXT);
+            return client.getVarcStrValue(VarClientID.MESLAYERINPUT);
         } catch (Throwable ignored) {
         }
 
@@ -251,7 +249,7 @@ public class ClientUtil
     public static void clearChatInput(Client client, ClientThread clientThread, Runnable callback) {
         clientThread.invokeLater(() -> {
             callback.run();
-            client.setVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT, "");
+            client.setVarcStrValue(VarClientID.CHATINPUT, "");
             client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, "");
         });
     }
@@ -259,9 +257,9 @@ public class ClientUtil
     public static void cancelPrivateMessage(Client client, ClientThread clientThread, Runnable callback) {
         clientThread.invokeLater(() -> {
             try {
-                client.setVarcStrValue(VarClientStr.PRIVATE_MESSAGE_TARGET, "");
+                client.setVarcStrValue(VarClientID.FRIENDTOMESSAGE, "");
             } catch (Throwable ex) {
-                // Some client builds may not have this VarClientStr; safe to ignore
+                // Varc access can fail before the client is ready; safe to ignore
             }
 
             try {
@@ -324,7 +322,6 @@ public class ClientUtil
         final String v = value == null ? "" : value;
         try {
             client.setVarcStrValue(VarClientID.CHATINPUT, v);
-            client.setVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT, v);
             client.runScript(ScriptID.CHAT_TEXT_INPUT_REBUILD, "");
         } catch (Throwable ex) {
             log.debug("setChatInputText failed", ex);
@@ -333,8 +330,8 @@ public class ClientUtil
 
     public static boolean isChatInputEditable(Client client) {
         try {
-            // INPUT_TYPE is a VarClient int id, so it must be read as a varc int
-            if (client.getVarcIntValue(VarClientInt.INPUT_TYPE) != 0)
+            // MESLAYERMODE is a VarClient int id, so it must be read as a varc int
+            if (client.getVarcIntValue(VarClientID.MESLAYERMODE) != 0)
                 return false;
         } catch (Throwable ignored) {
             // varc cache not ready yet - fall through to widget check
@@ -346,7 +343,7 @@ public class ClientUtil
 
     public static String getChatInputText(Client client) {
         try {
-            String s = client.getVarcStrValue(VarClientStr.CHATBOX_TYPED_TEXT);
+            String s = client.getVarcStrValue(VarClientID.CHATINPUT);
             return s != null ? Text.removeTags(s) : "";
         } catch (Throwable t) {
             return "";

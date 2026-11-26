@@ -49,7 +49,6 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptID;
-import net.runelite.api.VarClientStr;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
@@ -61,6 +60,7 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -445,9 +445,9 @@ public class ModernChatPlugin extends Plugin {
 
 	@Subscribe
 	public void onVarClientStrChanged(VarClientStrChanged e) {
-		if (e.getIndex() == VarClientStr.INPUT_TEXT) {
+		if (e.getIndex() == VarClientID.MESLAYERINPUT) {
 			// When the player starts typing into a system prompt, ensure chat is shown
-			String s = client.getVarcStrValue(VarClientStr.INPUT_TEXT);
+			String s = client.getVarcStrValue(VarClientID.MESLAYERINPUT);
 			if (s != null && chatProxy.isLegacyHidden() && chatProxy.isLegacy()) {
 				chatProxy.ensureLegacyChatVisible();
 				chatProxy.setAutoHide(config.featureToggle_Enabled());
