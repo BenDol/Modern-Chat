@@ -8,7 +8,7 @@ import javax.inject.Inject;
 
 /**
  * Holds back /gim and /group. The game only sends to Group Ironman group chat with /g, so
- * these would go out as public chat, and Modern Chat must not rewrite a message the player
+ * the game reads these as its "/" friends chat prefix, and Modern Chat must not rewrite a message the player
  * sends. The player is pointed at /g instead. Modern Chat's own input holds them back before
  * sending (see {@link CommandsChatFeature#holdBackGroupChatAlias}); this catches the game's chatbox.
  */

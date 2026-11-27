@@ -231,7 +231,14 @@ public class ClientUtil
         if (client.getVarcIntValue(VarClientID.MESLAYERMODE) != MESLAYER_MODE_PRIVATE_MESSAGE)
             return false;
         String current = client.getVarcStrValue(VarClientID.FRIENDTOMESSAGE);
-        return current != null && Text.toJagexName(current).equalsIgnoreCase(Text.toJagexName(target));
+        return current != null && isSamePlayer(current, target);
+    }
+
+    /**
+     * Whether two display names are the same player, the way the game compares them.
+     */
+    public static boolean isSamePlayer(String a, String b) {
+        return Text.toJagexName(a).equalsIgnoreCase(Text.toJagexName(b));
     }
 
     public static MessageNode findMessageNode(Client client, int id) {

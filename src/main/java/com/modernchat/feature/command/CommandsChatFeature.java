@@ -22,9 +22,9 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Singleton
@@ -66,7 +66,8 @@ public class CommandsChatFeature extends AbstractChatFeature<CommandsChatFeature
     private String lastChatInput;
 
     // "command" -> handler(args)
-    private final Map<String, ChatCommandHandler> commandHandlers = new HashMap<>();
+    // Read on the key thread when Modern Chat submits (MessageService)
+    private final Map<String, ChatCommandHandler> commandHandlers = new ConcurrentHashMap<>();
 
     @Inject
     public CommandsChatFeature(ModernChatConfig rootConfig, EventBus eventBus) {

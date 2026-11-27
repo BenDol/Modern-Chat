@@ -91,7 +91,7 @@ public class MessageService implements ChatService
         final String trimmed = text.trim();
         final boolean isCommand = trimmed.startsWith("::");
         final boolean isPrivate = !isCommand && mode == ChatMode.PRIVATE;
-        // Sent as is, /gim and /group would go out as public chat
+        // Sent as is, the game would read /gim and /group as its "/" friends chat prefix
         if (!isCommand && !isPrivate && commandsChatFeature.get().holdBackGroupChatAlias(trimmed))
             return SubmitResult.RETAINED;
         if (isPrivate) {

@@ -25,7 +25,6 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.util.Text;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -152,7 +151,7 @@ public class GameChatBridge implements ChatService
      */
     public boolean isPrivatePromptReady(String target) {
         String ready = readyPromptTarget;
-        return ready != null && target != null && isSamePlayer(ready, target);
+        return ready != null && target != null && ClientUtil.isSamePlayer(ready, target);
     }
 
     /**
@@ -168,10 +167,10 @@ public class GameChatBridge implements ChatService
             own = null;
         }
 
-        if (target == null || (failedPromptTarget != null && !isSamePlayer(failedPromptTarget, target)))
+        if (target == null || (failedPromptTarget != null && !ClientUtil.isSamePlayer(failedPromptTarget, target)))
             failedPromptTarget = null;
 
-        if (own == null ? target == null : target != null && isSamePlayer(own, target))
+        if (own == null ? target == null : target != null && ClientUtil.isSamePlayer(own, target))
             return;
 
         // Never pull the prompt away from a message that is on its way out
@@ -334,7 +333,7 @@ public class GameChatBridge implements ChatService
             return; // A prompt the game opened itself: leave it alone
 
         Handoff handoff = claim(true);
-        if (handoff != null && isSamePlayer(handoff.target, own)) {
+        if (handoff != null && ClientUtil.isSamePlayer(handoff.target, own)) {
             active = handoff;
             client.setVarcStrValue(VarClientID.MESLAYERINPUT, handoff.text);
             return;
@@ -481,13 +480,9 @@ public class GameChatBridge implements ChatService
         // checks don't read a private message as still being composed
         if (client.getVarcIntValue(VarClientID.MESLAYERMODE) != ClientUtil.MESLAYER_MODE_PRIVATE_MESSAGE) {
             String current = client.getVarcStrValue(VarClientID.FRIENDTOMESSAGE);
-            if (current != null && isSamePlayer(current, target))
+            if (current != null && ClientUtil.isSamePlayer(current, target))
                 client.setVarcStrValue(VarClientID.FRIENDTOMESSAGE, "");
         }
-    }
-
-    private static boolean isSamePlayer(String a, String b) {
-        return Text.toJagexName(a).equalsIgnoreCase(Text.toJagexName(b));
     }
 
     private static final class Handoff
