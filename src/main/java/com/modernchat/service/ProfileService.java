@@ -31,7 +31,6 @@ import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -239,7 +238,7 @@ public class ProfileService implements ChatService
         Filepath out = resolveProfileFile(profileName);
 
         if (failIfExists && out.exists())
-            throw new FileAlreadyExistsException(out.toString());
+            throw new IOException("Profile \"" + profileName + "\" already exists");
 
         JsonObject root = buildJsonFromConfig(cfg);
         var gsonPretty = gson.newBuilder().setPrettyPrinting().create();
