@@ -54,6 +54,14 @@ public class ChatProxy
         return modernChat.isHidden();
     }
 
+    /**
+     * Whether this Enter press sent a Modern Chat message and must not toggle the chat
+     * (Auto-hide on send is off). The key still reaches the game, which sends the message.
+     */
+    public boolean isSendOnlyEnter(KeyEvent e) {
+        return modernChat.isEnabled() && modernChat.isSendOnlyEnter(e);
+    }
+
     public @Nullable Rectangle getBounds() {
         if (modernChat.isEnabled())
             return modernChat.getViewPort();

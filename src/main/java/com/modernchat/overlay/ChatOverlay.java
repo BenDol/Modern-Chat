@@ -173,6 +173,10 @@ public class ChatOverlay extends OverlayPanel
     // Input box state
     private final Rectangle inputBounds = new Rectangle();
     private volatile boolean inputFocused = false;
+    // The Enter press that sent a message while Auto-hide on send is off. The game sends the
+    // message when that press reaches it, so it can't be consumed; ToggleChatFeature, which
+    // gets every key after this overlay, skips it instead so the chat stays open
+    private volatile KeyEvent sendOnlyEnter;
     private final StringBuilder inputBuf = new StringBuilder();
     private int caret = 0;
     private int inputScrollPx = 0;
@@ -1951,11 +1955,21 @@ public class ChatOverlay extends OverlayPanel
                 eventBus.post(new ChatToggleEvent(true));
             }
             // A handed-off message is sent by the game when this Enter press reaches it
-            if (result != SubmitResult.PASS_TO_GAME)
+            if (result == SubmitResult.PASS_TO_GAME)
+                sendOnlyEnter = e;
+            else
                 e.consume();
         }
 
         return true;
+    }
+
+    /**
+     * Whether this Enter press sent a message that must not also toggle the chat: it is let
+     * through to the game, which sends the message, while Auto-hide on send is off.
+     */
+    public boolean isSendOnlyEnter(KeyEvent e) {
+        return e != null && e == sendOnlyEnter;
     }
 
     public @Nullable String getCurrentTarget() {

@@ -169,6 +169,12 @@ public class ToggleChatFeature extends AbstractChatFeature<ToggleChatFeatureConf
             return;
         }
 
+		// Enter that just sent a message with Auto-hide on send off: the game needs the key to
+		// send it (so it is not consumed), but the chat stays open
+		if (chatProxy.isSendOnlyEnter(e)) {
+			return;
+		}
+
 		// Don't toggle when a system widget is active (dialog, "Enter amount:", etc.)
 		// This prevents the deferred toggle from firing after the system input closes.
 		if (chatProxy.isSystemWidgetActive()) {
